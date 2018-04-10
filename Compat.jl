@@ -2,7 +2,7 @@ __precompile__()
 module Compat
 using Base.Meta
 export @compat
-"""Get just the function part of a function declaration."""
+
 withincurly(ex) = isexpr(ex, :curly) ? ex.args[1] : ex
 is_index_style(ex::Expr) = ex == :(Compat.IndexStyle) || ex == :(Base.IndexStyle) ||
     (ex.head == :(.) && (ex.args[1] == :Compat || ex.args[1] == :Base) &&
