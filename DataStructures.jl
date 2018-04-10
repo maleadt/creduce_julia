@@ -2790,19 +2790,11 @@ function next(e::EnumerateAll, s)
 end
 mutable struct SortedDict{K, D, Ord <: Ordering} <: AbstractDict{K,D}
     bt::BalancedTree23{K,D,Ord}
-    ## Base constructors
-    """
-        SortedDict{K,V}(o=Forward)
-    Construct an empty `SortedDict` with key type `K` and value type
-    `V` with `o` ordering (default to forward ordering).
-    """
     SortedDict{K,D,Ord}(o::Ord) where {K, D, Ord <: Ordering} =
         new{K,D,Ord}(BalancedTree23{K,D,Ord}(o))
     function SortedDict{K,D,Ord}(o::Ord, kv) where {K, D, Ord <: Ordering}
         s = new{K,D,Ord}(BalancedTree23{K,D,Ord}(o))
         if eltype(kv) <: Pair
-            # It's (possibly?) more efficient to access the first and second
-            # elements of Pairs directly, rather than destructure
             for p in kv
                 s[p.first] = p.second
             end
@@ -2997,14 +2989,6 @@ isordered(::Type{T}) where {T<:SortedDict} = true
 mutable struct SortedMultiDict{K, D, Ord <: Ordering}
     bt::BalancedTree23{K,D,Ord}
     ## Base constructors
-    """
-        SortedMultiDict{K,V,Ord}(o)
-    Construct an empty sorted multidict in which type parameters are
-    explicitly listed; ordering object is explicitly specified. (See
-    below for discussion of ordering.) An empty SortedMultiDict may also
-    be constructed via `SortedMultiDict(K[], V[], o)` where the `o`
-    argument is optional.
-    """
     SortedMultiDict{K,D,Ord}(o::Ord) where {K,D,Ord} = new{K,D,Ord}(BalancedTree23{K,D,Ord}(o))
     function SortedMultiDict{K,D,Ord}(o::Ord, kv) where {K,D,Ord}
         smd = new{K,D,Ord}(BalancedTree23{K,D,Ord}(o))

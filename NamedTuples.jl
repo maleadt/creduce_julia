@@ -175,38 +175,6 @@ function make_tuple( exprs::Vector)
         return Expr( :call, ty, values ... )
     end
 end
-@doc doc"""
-Syntax
-    @NT( a, b )                 -> Defines a tuple with a and b as members
-    @NT( a::Int64, b::Float64 ) -> Defines a tuple with the specific arg types as members
-    @NT( a = 1, b = "hello")  -> Defines and constructs a tuple with the specifed members and values
-    @NT( a, b )( 1, "hello")    -> Is equivalent to the above definition
-    @NT( a::Int64 )( 2.0 )      -> Calls `convert( Int64, 2.0 )` on construction and sets `a`
-NamedTuples may be used anywhere you would use a regular Tuple, this includes method definition and return values.
-    module Test
-    using NamedTuples
-    function foo( y )
-        a = 1
-        x = 3
-        return  @NT( a = 1, b = "world", c = "hello", d=a/x, y = a/y  )
-    end
-    function bar( nt::@NT( a::Int64, c::ASCIIString ))
-        return repeat( nt.c, nt.a )
-    end
-    end
-    Test.foo( 1 ) # Returns a NamedTuple of 5 elements
-    Test.bar( @NT( a= 2, c="hello")) # Returns `hellohello`
-function Base.merge( lhs::NamedTuple, rhs::NamedTuple )
-    nms = unique( vcat( fieldnames( lhs ), fieldnames( rhs )) )
-    ty = create_namedtuple_type( nms )
-    # FIXME should handle the type only case
-    vals = [ haskey( lhs, nm ) ? lhs[nm] : rhs[nm] for nm in nms ]
-    ty(vals...)
-end
-@doc doc"""
-Create a new NamedTuple with the new value set on it, either overwriting
-the old value or appending a new value.
-This copies the underlying data.
 function delete( t::NamedTuple, key::Symbol )
     nms = filter( x->x!=key, fieldnames( t ) )
     ty = create_namedtuple_type( nms )

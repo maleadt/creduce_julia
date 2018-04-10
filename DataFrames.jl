@@ -108,10 +108,6 @@ function make_unique(names::Vector{Symbol}; makeunique::Bool=false)
     if length(dups) > 0
         if !makeunique
             Base.depwarn("Duplicate variable names are deprecated: pass makeunique=true to add a suffix automatically.", :make_unique)
-            # TODO: uncomment the lines below after deprecation period
-            # msg = """Duplicate variable names: $(u[dups]).
-            #          Pass makeunique=true to make them unique using a suffix automatically."""
-            # throw(ArgumentError(msg))
         end
     end
     for i in dups
@@ -316,10 +312,6 @@ function add_names(ind::Index, add_ind::Index; makeunique::Bool=false)
     if length(dups) > 0
         if !makeunique
             Base.depwarn("Duplicate variable names are deprecated: pass makeunique=true to add a suffix automatically.", :add_names)
-            # TODO: uncomment the lines below after deprecation period
-            # msg = """Duplicate variable names: $(u[dups]).
-            #          Pass makeunique=true to make them unique using a suffix automatically."""
-            # throw(ArgumentError(msg))
         end
     end
     for i in dups
@@ -754,9 +746,6 @@ function Base.insert!(df::DataFrame, col_ind::Int, item::AbstractVector, name::S
         else
             # TODO: remove depwarn and uncomment ArgumentError below
             Base.depwarn("Inserting duplicate column name is deprecated, use makeunique=true.", :insert!)
-            # msg = """Duplicate variable name $(name).
-            #      Pass makeunique=true to make it unique using a suffix automatically."""
-            # throw(ArgumentError(msg))
         end
     end
     insert!(index(df), col_ind, name)
