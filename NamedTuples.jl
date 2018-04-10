@@ -196,60 +196,6 @@ NamedTuples may be used anywhere you would use a regular Tuple, this includes me
     end
     Test.foo( 1 ) # Returns a NamedTuple of 5 elements
     Test.bar( @NT( a= 2, c="hello")) # Returns `hellohello`
-""" ->
-macro NT( expr... )
-    return make_tuple( collect( expr ))
-end
-if VERSION < v"0.5.0" 
-    getfieldname( t, i ) = fieldnames(t)[i]
-else
-    getfieldname( t, i ) = fieldname( t, i )
-end
-@inline function Base.map(f, nt::NamedTuple, nts::NamedTuple...)
-    # this method makes sure we don't define a map(f) method
-    _map(f, nt, nts...)
-end
-@generated function _map(f, nts::NamedTuple...)
-    fields = fieldnames(nts[1])
-    for x in nts[2:end]
-        if !isequal(fieldnames(x), fields)
-            throw(ArgumentError("All NamedTuple inputs to map must have the same fields in the same order"))
-        end
-    end
-    N = nfields(nts[1])
-    M = length(nts)
-    # This type will already exist if this function may be called
-    NT = create_namedtuple_type(fields, moduleof(nts[1]))
-    args = Expr[:(f($(Expr[:(getfield(nts[$i], $j)) for i = 1:M]...))) for j = 1:N]
-    quote
-        $NT($(args...))
-    end
-end
-@generated function Base.isless(t1::NamedTuple, t2::NamedTuple)
-    if !isequal(fieldnames(t1), fieldnames(t2))
-        throw(ArgumentError("NamedTuple inputs to isless must have the same fields in the same order"))
-    end
-    quote
-        Base.@nexprs $(nfields(t1)) i -> begin
-            a_i = getfield(t1, i)
-            b_i = getfield(t2, i)
-            if !isequal(a_i, b_i)
-                return isless(a_i, b_i)
-            end
-        end
-        return false
-    end
-end
-function Base.getindex( t::NamedTuple, rng::AbstractVector )
-    names = unique( Symbol[ isa(i,Symbol) ? i : getfieldname(typeof(t),i) for i in rng ] )
-    ty = create_namedtuple_type( names )
-    ty([ getfield( t, i ) for i in names ]...)
-end
-@doc doc"""
-Merge two NamedTuples favoring the lhs
-Order is preserved lhs names come first.
-This copies the underlying data.
-""" ->
 function Base.merge( lhs::NamedTuple, rhs::NamedTuple )
     nms = unique( vcat( fieldnames( lhs ), fieldnames( rhs )) )
     ty = create_namedtuple_type( nms )
@@ -261,14 +207,6 @@ end
 Create a new NamedTuple with the new value set on it, either overwriting
 the old value or appending a new value.
 This copies the underlying data.
-""" ->
-function setindex{V}( t::NamedTuple, key::Symbol, val::V)
-    nt = create_namedtuple_type( [key] )( val )
-    return merge( t, nt )
-end
-@doc doc"""
-Create a new NamedTuple with the specified element removed.
-""" ->
 function delete( t::NamedTuple, key::Symbol )
     nms = filter( x->x!=key, fieldnames( t ) )
     ty = create_namedtuple_type( nms )

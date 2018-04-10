@@ -182,11 +182,6 @@ if !isdefined(Base, :axes)
     const axes = Base.indices
 end
 abstract type AbstractWeights{S<:Real, T<:Real, V<:AbstractVector{T}} <: AbstractVector{T} end
-"""
-    @weights name
-Generates a new generic weight type with specified `name`, which subtypes `AbstractWeights`
-and stores the `values` (`V<:RealVector`) and `sum` (`S<:Real`).
-"""
 macro weights(name)
     return quote
         struct $name{S<:Real, T<:Real, V<:AbstractVector{T}} <: AbstractWeights{S, T, V}
@@ -202,65 +197,21 @@ sum(wv::AbstractWeights) = wv.sum
 isempty(wv::AbstractWeights) = isempty(wv.values)
 Base.getindex(wv::AbstractWeights, i) = getindex(wv.values, i)
 Base.size(wv::AbstractWeights) = size(wv.values)
-"""
-    varcorrection(n::Integer, corrected=false)
-Compute a bias correction factor for calculating `var`, `std` and `cov` with
-`n` observations. Returns ``\\frac{1}{n - 1}`` when `corrected=true`
-(i.e. [Bessel's correction](https://en.wikipedia.org/wiki/Bessel's_correction)),
-otherwise returns ``\\frac{1}{n}`` (i.e. no correction).
-"""
 @inline varcorrection(n::Integer, corrected::Bool=false) = 1 / (n - Int(corrected))
 @weights Weights
-"""
-    Weights(vs, wsum=sum(vs))
-Construct a `Weights` vector with weight values `vs`.
-A precomputed sum may be provided as `wsum`.
-The `Weights` type describes a generic weights vector which does not support
-all operations possible for [`FrequencyWeights`](@ref), [`AnalyticWeights`](@ref)
-and [`ProbabilityWeights`](@ref).
-"""
 Weights(vs::V, s::S=sum(vs)) where {S<:Real, V<:RealVector} = Weights{S, eltype(vs), V}(vs, s)
-"""
-    weights(vs)
-Construct a `Weights` vector from array `vs`.
-See the documentation for [`Weights`](@ref) for more details.
-"""
 weights(vs::RealVector) = Weights(vs)
 weights(vs::RealArray) = Weights(vec(vs))
-"""
-    varcorrection(w::Weights, corrected=false)
-Returns ``\\frac{1}{\\sum w}`` when `corrected=false` and throws an `ArgumentError`
-if `corrected=true`.
-"""
 @inline function varcorrection(w::Weights, corrected::Bool=false)
     corrected && throw(ArgumentError("Weights type does not support bias correction: " *
                                      "use FrequencyWeights, AnalyticWeights or ProbabilityWeights if applicable."))
     1 / w.sum
 end
 @weights AnalyticWeights
-"""
-    AnalyticWeights(vs, wsum=sum(vs))
-Construct an `AnalyticWeights` vector with weight values `vs`.
-A precomputed sum may be provided as `wsum`.
-Analytic weights describe a non-random relative importance (usually between 0 and 1)
-for each observation. These weights may also be referred to as reliability weights,
-precision weights or inverse variance weights. These are typically used when the observations
-being weighted are aggregate values (e.g., averages) with differing variances.
-"""
 AnalyticWeights(vs::V, s::S=sum(vs)) where {S<:Real, V<:RealVector} =
     AnalyticWeights{S, eltype(vs), V}(vs, s)
-"""
-    aweights(vs)
-Construct an `AnalyticWeights` vector from array `vs`.
-See the documentation for [`AnalyticWeights`](@ref) for more details.
-"""
 aweights(vs::RealVector) = AnalyticWeights(vs)
 aweights(vs::RealArray) = AnalyticWeights(vec(vs))
-"""
-    varcorrection(w::AnalyticWeights, corrected=false)
-* `corrected=true`: ``\\frac{1}{\\sum w - \\sum {w^2} / \\sum w}``
-* `corrected=false`: ``\\frac{1}{\\sum w}``
-"""
 @inline function varcorrection(w::AnalyticWeights, corrected::Bool=false)
     s = w.sum
     if corrected
@@ -271,27 +222,10 @@ aweights(vs::RealArray) = AnalyticWeights(vec(vs))
     end
 end
 @weights FrequencyWeights
-"""
-    FrequencyWeights(vs, wsum=sum(vs))
-Construct a `FrequencyWeights` vector with weight values `vs`.
-A precomputed sum may be provided as `wsum`.
-Frequency weights describe the number of times (or frequency) each observation
-was observed. These weights may also be referred to as case weights or repeat weights.
-"""
 FrequencyWeights(vs::V, s::S=sum(vs)) where {S<:Real, V<:RealVector} =
     FrequencyWeights{S, eltype(vs), V}(vs, s)
-"""
-    fweights(vs)
-Construct a `FrequencyWeights` vector from a given array.
-See the documentation for [`FrequencyWeights`](@ref) for more details.
-"""
 fweights(vs::RealVector) = FrequencyWeights(vs)
 fweights(vs::RealArray) = FrequencyWeights(vec(vs))
-"""
-    varcorrection(w::FrequencyWeights, corrected=false)
-* `corrected=true`: ``\\frac{1}{\\sum{w} - 1}``
-* `corrected=false`: ``\\frac{1}{\\sum w}``
-"""
 @inline function varcorrection(w::FrequencyWeights, corrected::Bool=false)
     s = w.sum
     if corrected
@@ -301,28 +235,10 @@ fweights(vs::RealArray) = FrequencyWeights(vec(vs))
     end
 end
 @weights ProbabilityWeights
-"""
-    ProbabilityWeights(vs, wsum=sum(vs))
-Construct a `ProbabilityWeights` vector with weight values `vs`.
-A precomputed sum may be provided as `wsum`.
-Probability weights represent the inverse of the sampling probability for each observation,
-providing a correction mechanism for under- or over-sampling certain population groups.
-These weights may also be referred to as sampling weights.
-"""
 ProbabilityWeights(vs::V, s::S=sum(vs)) where {S<:Real, V<:RealVector} =
     ProbabilityWeights{S, eltype(vs), V}(vs, s)
-"""
-    pweights(vs)
-Construct a `ProbabilityWeights` vector from a given array.
-See the documentation for [`ProbabilityWeights`](@ref) for more details.
-"""
 pweights(vs::RealVector) = ProbabilityWeights(vs)
 pweights(vs::RealArray) = ProbabilityWeights(vec(vs))
-"""
-    varcorrection(w::ProbabilityWeights, corrected=false)
-* `corrected=true`: ``\\frac{n}{(n - 1) \\sum w}`` where ``n`` equals `count(!iszero, w)`
-* `corrected=false`: ``\\frac{1}{\\sum w}``
-"""
 @inline function varcorrection(w::ProbabilityWeights, corrected::Bool=false)
     s = w.sum
     if corrected
@@ -340,10 +256,6 @@ for w in (AnalyticWeights, FrequencyWeights, ProbabilityWeights, Weights)
 end
 Base.isequal(x::AbstractWeights, y::AbstractWeights) = false
 Base.:(==)(x::AbstractWeights, y::AbstractWeights)   = false
-"""
-    wsum(v, w::AbstractVector, [dim])
-Compute the weighted sum of an array `v` with weights `w`, optionally over the dimension `dim`.
-"""
 wsum(v::AbstractVector, w::AbstractVector) = dot(v, w)
 wsum(v::AbstractArray, w::AbstractVector) = dot(vec(v), w)
 Base.sum(v::BitArray, w::AbstractWeights) = wsum(v, values(w))
@@ -470,12 +382,6 @@ _wsum!(R::AbstractArray, A::AbstractArray, w::AbstractVector, dim::Int, init::Bo
     _wsum_general!(R, identity, A, w, dim, init)
 wsumtype(::Type{T}, ::Type{W}) where {T,W} = typeof(zero(T) * zero(W) + zero(T) * zero(W))
 wsumtype(::Type{T}, ::Type{T}) where {T<:BlasReal} = T
-"""
-    wsum!(R, A, w, dim; init=true)
-Compute the weighted sum of `A` with weights `w` over the dimension `dim` and store
-the result in `R`. If `init=false`, the sum is added to `R` rather than starting
-from zero.
-"""
 function wsum!(R::AbstractArray, A::AbstractArray{T,N}, w::AbstractVector, dim::Int; init::Bool=true) where {T,N}
     1 <= dim <= N || error("dim should be within [1, $N]")
     ndims(R) <= N || error("ndims(R) should not exceed $N")
@@ -490,30 +396,11 @@ end
 Base.sum!(R::AbstractArray, A::AbstractArray, w::AbstractWeights{<:Real}, dim::Int; init::Bool=true) =
     wsum!(R, A, values(w), dim; init=init)
 Base.sum(A::AbstractArray{<:Number}, w::AbstractWeights{<:Real}, dim::Int) = wsum(A, values(w), dim)
-"""
-    wmean(v, w::AbstractVector)
-Compute the weighted mean of an array `v` with weights `w`.
-"""
 function wmean(v::AbstractArray{<:Number}, w::AbstractVector)
     Base.depwarn("wmean is deprecated, use mean(v, weights(w)) instead.", :wmean)
     mean(v, weights(w))
 end
-"""
-    mean(A::AbstractArray, w::AbstractWeights[, dim::Int])
-Compute the weighted mean of array `A` with weight vector `w`
-(of type `AbstractWeights`). If `dim` is provided, compute the
-weighted mean along dimension `dim`.
-```julia
-w = rand(n)
-mean(x, weights(w))
-```
-"""
 Base.mean(A::AbstractArray, w::AbstractWeights) = sum(A, w) / sum(w)
-"""
-    mean(R::AbstractArray, , A::AbstractArray, w::AbstractWeights[, dim::Int])
-Compute the weighted mean of array `A` with weight vector `w`
-(of type `AbstractWeights`) along dimension `dim`, and write results to `R`.
-"""
 Base.mean!(R::AbstractArray, A::AbstractArray, w::AbstractWeights, dim::Int) =
     scale!(Base.sum!(R, A, w, dim), inv(sum(w)))
 wmeantype(::Type{T}, ::Type{W}) where {T,W} = typeof((zero(T)*zero(W) + zero(T)*zero(W)) / one(W))
@@ -523,18 +410,6 @@ Base.mean(A::AbstractArray{T}, w::AbstractWeights{W}, dim::Int) where {T<:Number
 function Base.median(v::AbstractArray, w::AbstractWeights)
     throw(MethodError(median, (v, w)))
 end
-"""
-    median(v::RealVector, w::AbstractWeights)
-Compute the weighted median of `x`, using weights given by a weight vector `w`
-(of type `AbstractWeights`). The weight and data vectors must have the same length.
-The weighted median ``x_k`` is the element of `x` that satisfies
-``\\sum_{x_i < x_k} w_i \\le \\frac{1}{2} \\sum_{j} w_j`` and
-``\\sum_{x_i > x_k} w_i \\le \\frac{1}{2} \\sum_{j} w_j``.
-If a weight has value zero, then its associated data point is ignored.
-If none of the weights are positive, an error is thrown.
-`NaN` is returned if `x` contains any `NaN` values.
-An error is raised if `w` contains any `NaN` values.
-"""
 function Base.median(v::RealVector, w::AbstractWeights{<:Real})
     isempty(v) && error("median of an empty array is undefined")
     if length(v) != length(w)
@@ -581,25 +456,8 @@ function Base.median(v::RealVector, w::AbstractWeights{<:Real})
         end
     end
 end
-"""
-    wmedian(v, w)
-Compute the weighted median of an array `v` with weights `w`, given as either a
-vector or an `AbstractWeights` vector.
-"""
 wmedian(v::RealVector, w::RealVector) = median(v, weights(w))
 wmedian(v::RealVector, w::AbstractWeights{<:Real}) = median(v, w)
-"""
-    quantile(v, w::AbstractWeights, p)
-Compute the weighted quantiles of a vector `x` at a specified set of probability
-values `p`, using weights given by a weight vector `w` (of type `AbstractWeights`).
-Weights must not be negative. The weights and data vectors must have the same length.
-The quantile for `p` is defined as follows. Denoting
-``S_k = (k-1)w_k + (n-1) \\sum_{i<k}w_i``, define ``x_{k+1}`` the smallest element of `x`
-such that ``S_{k+1}/S_{n}`` is strictly superior to `p`. The function returns
-``(1-\\gamma) x_k + \\gamma x_{k+1}`` with  ``\\gamma = (pS_n- S_k)/(S_{k+1}-S_k)``.
-This corresponds to  R-7, Excel, SciPy-(1,1) and Maple-6 when `w` contains only ones
-(see [Wikipedia](https://en.wikipedia.org/wiki/Quantile)).
-"""
 function quantile(v::RealVector{V}, w::AbstractWeights{W}, p::RealVector) where {V,W<:Real}
     # checks
     isempty(v) && error("quantile of an empty array is undefined")
@@ -659,49 +517,12 @@ function bound_quantiles(qs::AbstractVector{T}) where T<:Real
     T[min(one(T), max(zero(T), q)) for q = qs]
 end
 quantile(v::RealVector, w::AbstractWeights{<:Real}, p::Number) = quantile(v, w, [p])[1]
-"""
-    wquantile(v, w, p)
-Compute the `p`th quantile(s) of `v` with weights `w`, given as either a vector
-or an `AbstractWeights` vector.
-"""
 wquantile(v::RealVector, w::AbstractWeights{<:Real}, p::RealVector) = quantile(v, w, p)
 wquantile(v::RealVector, w::AbstractWeights{<:Real}, p::Number) = quantile(v, w, [p])[1]
 wquantile(v::RealVector, w::RealVector, p::RealVector) = quantile(v, weights(w), p)
 wquantile(v::RealVector, w::RealVector, p::Number) = quantile(v, weights(w), [p])[1]
-"""
-    varm(x, w::AbstractWeights, m, [dim]; corrected=false)
-Compute the variance of a real-valued array `x` with a known mean `m`, optionally
-over a dimension `dim`. Observations in `x` are weighted using weight vector `w`.
-The uncorrected (when `corrected=false`) sample variance is defined as:
-```math
-\\frac{1}{\\sum{w}} \\sum_{i=1}^n {w_i\\left({x_i - m}\\right)^2 }
-```
-where ``n`` is the length of the input. The unbiased estimate (when `corrected=true`) of
-the population variance is computed by replacing
-``\\frac{1}{\\sum{w}}`` with a factor dependent on the type of weights used:
-* `AnalyticWeights`: ``\\frac{1}{\\sum w - \\sum {w^2} / \\sum w}``
-* `FrequencyWeights`: ``\\frac{1}{\\sum{w} - 1}``
-* `ProbabilityWeights`: ``\\frac{n}{(n - 1) \\sum w}`` where ``n`` equals `count(!iszero, w)`
-* `Weights`: `ArgumentError` (bias correction not supported)
-"""
 Base.varm(v::RealArray, w::AbstractWeights, m::Real; corrected::DepBool=nothing) =
     _moment2(v, w, m; corrected=depcheck(:varm, corrected))
-"""
-    var(x, w::AbstractWeights, [dim]; mean=nothing, corrected=false)
-Compute the variance of a real-valued array `x`, optionally over a dimension `dim`.
-Observations in `x` are weighted using weight vector `w`.
-The uncorrected (when `corrected=false`) sample variance is defined as:
-```math
-\\frac{1}{\\sum{w}} \\sum_{i=1}^n {w_i\\left({x_i - μ}\\right)^2 }
-```
-where ``n`` is the length of the input and ``μ`` is the mean.
-The unbiased estimate (when `corrected=true`) of the population variance is computed by
-replacing ``\\frac{1}{\\sum{w}}`` with a factor dependent on the type of weights used:
-* `AnalyticWeights`: ``\\frac{1}{\\sum w - \\sum {w^2} / \\sum w}``
-* `FrequencyWeights`: ``\\frac{1}{\\sum{w} - 1}``
-* `ProbabilityWeights`: ``\\frac{n}{(n - 1) \\sum w}`` where ``n`` equals `count(!iszero, w)`
-* `Weights`: `ArgumentError` (bias correction not supported)
-"""
 function Base.var(v::RealArray, w::AbstractWeights; mean=nothing,
                   corrected::DepBool=nothing)
     corrected = depcheck(:var, corrected)
@@ -751,41 +572,8 @@ function Base.var(A::RealArray, w::AbstractWeights, dim::Int; mean=nothing,
     var!(similar(A, Float64, Base.reduced_indices(indices(A), dim)), A, w, dim;
          mean=mean, corrected=corrected)
 end
-"""
-    stdm(v, w::AbstractWeights, m, [dim]; corrected=false)
-Compute the standard deviation of a real-valued array `x` with a known mean `m`,
-optionally over a dimension `dim`. Observations in `x` are weighted using weight vector `w`.
-The uncorrected (when `corrected=false`) sample standard deviation is defined as:
-```math
-\\sqrt{\\frac{1}{\\sum{w}} \\sum_{i=1}^n {w_i\\left({x_i - m}\\right)^2 }}
-```
-where ``n`` is the length of the input. The unbiased estimate (when `corrected=true`) of the
-population standard deviation is computed by replacing ``\\frac{1}{\\sum{w}}`` with a factor
-dependent on the type of weights used:
-* `AnalyticWeights`: ``\\frac{1}{\\sum w - \\sum {w^2} / \\sum w}``
-* `FrequencyWeights`: ``\\frac{1}{\\sum{w} - 1}``
-* `ProbabilityWeights`: ``\\frac{n}{(n - 1) \\sum w}`` where ``n`` equals `count(!iszero, w)`
-* `Weights`: `ArgumentError` (bias correction not supported)
-"""
 Base.stdm(v::RealArray, w::AbstractWeights, m::Real; corrected::DepBool=nothing) =
     sqrt(varm(v, w, m, corrected=depcheck(:stdm, corrected)))
-"""
-    std(v, w::AbstractWeights, [dim]; mean=nothing, corrected=false)
-Compute the standard deviation of a real-valued array `x`,
-optionally over a dimension `dim`. Observations in `x` are weighted using weight vector `w`.
-The uncorrected (when `corrected=false`) sample standard deviation is defined as:
-```math
-\\sqrt{\\frac{1}{\\sum{w}} \\sum_{i=1}^n {w_i\\left({x_i - μ}\\right)^2 }}
-```
-where ``n`` is the length of the input and ``μ`` is the mean.
-The unbiased estimate (when `corrected=true`) of the population standard deviation is
-computed by replacing ``\\frac{1}{\\sum{w}}`` with a factor dependent on the type of
-weights used:
-* `AnalyticWeights`: ``\\frac{1}{\\sum w - \\sum {w^2} / \\sum w}``
-* `FrequencyWeights`: ``\\frac{1}{\\sum{w} - 1}``
-* `ProbabilityWeights`: ``\\frac{n}{(n - 1) \\sum w}`` where ``n`` equals `count(!iszero, w)`
-* `Weights`: `ArgumentError` (bias correction not supported)
-"""
 Base.std(v::RealArray, w::AbstractWeights; mean=nothing, corrected::DepBool=nothing) =
     sqrt.(var(v, w; mean=mean, corrected=depcheck(:std, corrected)))
 Base.stdm(v::RealArray, m::RealArray, dim::Int; corrected::DepBool=nothing) =
@@ -796,26 +584,11 @@ Base.stdm(v::RealArray, w::AbstractWeights, m::RealArray, dim::Int;
 Base.std(v::RealArray, w::AbstractWeights, dim::Int; mean=nothing,
          corrected::DepBool=nothing) =
     sqrt.(var(v, w, dim; mean=mean, corrected=depcheck(:std, corrected)))
-"""
-    mean_and_var(x, [w::AbstractWeights], [dim]; corrected=false) -> (mean, var)
-Return the mean and variance of a real-valued array `x`, optionally over a dimension
-`dim`, as a tuple. Observations in `x` can be weighted using weight vector `w`.
-Finally, bias correction is be applied to the variance calculation if `corrected=true`.
-See [`var`](@ref) documentation for more details.
-"""
 function mean_and_var(A::RealArray; corrected::Bool=true)
     m = mean(A)
     v = varm(A, m; corrected=corrected)
     m, v
 end
-"""
-    mean_and_std(x, [w::AbstractWeights], [dim]; corrected=false) -> (mean, std)
-Return the mean and standard deviation of a real-valued array `x`, optionally
-over a dimension `dim`, as a tuple. A weighting vector `w` can be specified
-to weight the estimates. Finally, bias correction is applied to the
-standard deviation calculation if `corrected=true`.
-See [`std`](@ref) documentation for more details.
-"""
 function mean_and_std(A::RealArray; corrected::Bool=true)
     m = mean(A)
     s = stdm(A, m; corrected=corrected)
@@ -929,11 +702,6 @@ function _momentk(v::RealArray, k::Int, wv::AbstractWeights, m::Real)
     end
     s / sum(wv)
 end
-"""
-    moment(v, k, [wv::AbstractWeights], m=mean(v))
-Return the `k`th order central moment of a real-valued array `v`, optionally
-specifying a weighting vector `wv` and a center `m`.
-"""
 function moment(v::RealArray, k::Int, m::Real)
     k == 2 ? _moment2(v, m) :
     k == 3 ? _moment3(v, m) :
@@ -950,11 +718,6 @@ moment(v::RealArray, k::Int) = moment(v, k, mean(v))
 function moment(v::RealArray, k::Int, wv::AbstractWeights)
     moment(v, k, wv, mean(v, wv))
 end
-"""
-    skewness(v, [wv::AbstractWeights], m=mean(v))
-Compute the standardized skewness of a real-valued array `v`, optionally
-specifying a weighting vector `wv` and a center `m`.
-"""
 function skewness(v::RealArray, m::Real)
     n = length(v)
     cm2 = 0.0   # empirical 2nd centered moment (variance)
@@ -990,11 +753,6 @@ function skewness(v::RealArray, wv::AbstractWeights, m::Real)
 end
 skewness(v::RealArray) = skewness(v, mean(v))
 skewness(v::RealArray, wv::AbstractWeights) = skewness(v, wv, mean(v, wv))
-"""
-    kurtosis(v, [wv::AbstractWeights], m=mean(v))
-Compute the excess kurtosis of a real-valued array `v`, optionally
-specifying a weighting vector `wv` and a center `m`.
-"""
 function kurtosis(v::RealArray, m::Real)
     n = length(v)
     cm2 = 0.0  # empirical 2nd centered moment (variance)
@@ -1031,10 +789,6 @@ function kurtosis(v::RealArray, wv::AbstractWeights, m::Real)
 end
 kurtosis(v::RealArray) = kurtosis(v, mean(v))
 kurtosis(v::RealArray, wv::AbstractWeights) = kurtosis(v, wv, mean(v, wv))
-"""
-    geomean(a)
-Return the geometric mean of a real-valued array.
-"""
 function geomean(a::RealArray)
     s = 0.0
     n = length(a)
@@ -1043,10 +797,6 @@ function geomean(a::RealArray)
     end
     return exp(s / n)
 end
-"""
-    harmmean(a)
-Return the harmonic mean of a real-valued array.
-"""
 function harmmean(a::RealArray)
     s = 0.0
     n = length(a)
@@ -1055,12 +805,6 @@ function harmmean(a::RealArray)
     end
     return n / s
 end
-"""
-    genmean(a, p)
-Return the generalized/power mean with exponent `p` of a real-valued array,
-i.e. ``\\left( \\frac{1}{n} \\sum_{i=1}^n a_i^p \\right)^{\\frac{1}{p}}``, where `n = length(a)`.
-It is taken to be the geometric mean when `p == 0`.
-"""
 function genmean(a::RealArray, p::Real)
     if p == 0
         return geomean(a)
@@ -1074,12 +818,6 @@ function genmean(a::RealArray, p::Real)
     end
     return (s/n)^(1/p)
 end
-"""
-    mode(a, [r])
-Return the mode (most common number) of an array, optionally
-over a specified range `r`. If several modes exist, the first
-one (in order of appearance) is returned.
-"""
 function mode(a::AbstractArray{T}, r::UnitRange{T}) where T<:Integer
     isempty(a) && error("mode: input array cannot be empty.")
     len = length(a)
@@ -1100,11 +838,6 @@ function mode(a::AbstractArray{T}, r::UnitRange{T}) where T<:Integer
     end
     return mv
 end
-"""
-    modes(a, [r])::Vector
-Return all modes (most common numbers) of an array, optionally over a
-specified range `r`.
-"""
 function modes(a::AbstractArray{T}, r::UnitRange{T}) where T<:Integer
     r0 = r[1]
     r1 = r[end]
@@ -1181,47 +914,13 @@ function modes(a::AbstractArray{T}) where T
     end
     return ms
 end
-"""
-    percentile(v, p)
-Return the `p`th percentile of a real-valued array `v`, i.e. `quantile(x, p / 100)`.
-"""
 percentile(v::AbstractArray{<:Real}, p) = quantile(v, p * 0.01)
 quantile(v::AbstractArray{<:Real}) = quantile(v, [.0, .25, .5, .75, 1.0])
-"""
-    nquantile(v, n)
-Return the n-quantiles of a real-valued array, i.e. the values which
-partition `v` into `n` subsets of nearly equal size.
-Equivalent to `quantile(v, [0:n]/n)`. For example, `nquantiles(x, 5)`
-returns a vector of quantiles, respectively at `[0.0, 0.2, 0.4, 0.6, 0.8, 1.0]`.
-"""
 nquantile(v::AbstractArray{<:Real}, n::Integer) = quantile(v, (0:n)/n)
-"""
-    span(x)
-Return the span of an integer array, i.e. the range `minimum(x):maximum(x)`.
-The minimum and maximum of `x` are computed in one-pass using `extrema`.
-"""
 span(x::AbstractArray{<:Integer}) = ((a, b) = extrema(x); a:b)
-"""
-    variation(x, m=mean(x))
-Return the coefficient of variation of an array `x`, optionally specifying
-a precomputed mean `m`. The coefficient of variation is the ratio of the
-standard deviation to the mean.
-"""
 variation(x::AbstractArray{<:Real}, m::Real) = stdm(x, m) / m
 variation(x::AbstractArray{<:Real}) = variation(x, mean(x))
-"""
-    sem(a)
-Return the standard error of the mean of `a`, i.e. `sqrt(var(a) / length(a))`.
-"""
 sem(a::AbstractArray{<:Real}) = sqrt(var(a) / length(a))
-"""
-    mad(v; center=median(v), normalize=true)
-Compute the median absolute deviation (MAD) of `v` around `center`
-(by default, around the median).
-If `normalize` is set to `true`, the MAD is multiplied by
-`1 / quantile(Normal(), 3/4) ≈ 1.4826`, in order to obtain a consistent estimator
-of the standard deviation under the assumption that the data is normally distributed.
-"""
 function mad(v::AbstractArray{T};
              center::Union{Real,Nothing}=nothing,
              normalize::Union{Bool, Nothing}=nothing) where T<:Real
@@ -1234,14 +933,6 @@ function mad(v::AbstractArray{T};
     end
     mad!(v2, center=center === nothing ? median!(v2) : center, normalize=normalize)
 end
-"""
-    StatsBase.mad!(v; center=median!(v), normalize=true)
-Compute the median absolute deviation (MAD) of `v` around `center`
-(by default, around the median), overwriting `v` in the process.
-If `normalize` is set to `true`, the MAD is multiplied by
-`1 / quantile(Normal(), 3/4) ≈ 1.4826`, in order to obtain a consistent estimator
-of the standard deviation under the assumption that the data is normally distributed.
-"""
 function mad!(v::AbstractArray{T};
               center::Real=median!(v),
               normalize::Union{Bool,Nothing}=true,
@@ -1263,11 +954,6 @@ function mad!(v::AbstractArray{T};
         one(k) * median!(v)
     end
 end
-"""
-    iqr(v)
-Compute the interquartile range (IQR) of an array, i.e. the 75th percentile
-minus the 25th percentile.
-"""
 iqr(v::AbstractArray{<:Real}) = (q = quantile(v, [.25, .75]); q[2] - q[1])
 function _zscore!(Z::AbstractArray, X::AbstractArray, μ::Real, σ::Real)
     # Z and X are assumed to have the same size
@@ -1313,14 +999,6 @@ function _zscore_chksize(X::AbstractArray, μ::AbstractArray, σ::AbstractArray)
         (dμ_i == 1 || dμ_i == size(X,i)) || throw(DimensionMismatch("X and μ have incompatible sizes."))
     end
 end
-"""
-    zscore!([Z], X, μ, σ)
-Compute the z-scores of an array `X` with mean `μ` and standard deviation `σ`.
-z-scores are the signed number of standard deviations above the mean that an
-observation lies, i.e. ``(x - μ) / σ``.
-If a destination array `Z` is provided, the scores are stored
-in `Z` and it must have the same shape as `X`. Otherwise `X` is overwritten.
-"""
 function zscore!(Z::AbstractArray{ZT}, X::AbstractArray{T}, μ::Real, σ::Real) where {ZT<:AbstractFloat,T<:Real}
     size(Z) == size(X) || throw(DimensionMismatch("Z and X must have the same size."))
     _zscore!(Z, X, μ, σ)
@@ -1334,15 +1012,6 @@ end
 zscore!(X::AbstractArray{<:AbstractFloat}, μ::Real, σ::Real) = _zscore!(X, X, μ, σ)
 zscore!(X::AbstractArray{<:AbstractFloat}, μ::AbstractArray{<:Real}, σ::AbstractArray{<:Real}) =
     (_zscore_chksize(X, μ, σ); _zscore!(X, X, μ, σ))
-"""
-    zscore(X, [μ, σ])
-Compute the z-scores of `X`, optionally specifying a precomputed mean `μ` and
-standard deviation `σ`. z-scores are the signed number of standard deviations
-above the mean that an observation lies, i.e. ``(x - μ) / σ``.
-`μ` and `σ` should be both scalars or both arrays. The computation is broadcasting.
-In particular, when `μ` and `σ` are arrays, they should have the same size, and
-`size(μ, i) == 1  || size(μ, i) == size(X, i)` for each dimension.
-"""
 function zscore(X::AbstractArray{T}, μ::Real, σ::Real) where T<:Real
     ZT = typeof((zero(T) - zero(μ)) / one(σ))
     _zscore!(Array{ZT}(uninitialized, size(X)), X, μ, σ)
@@ -1354,11 +1023,6 @@ function zscore(X::AbstractArray{T}, μ::AbstractArray{U}, σ::AbstractArray{S})
 end
 zscore(X::AbstractArray{<:Real}) = ((μ, σ) = mean_and_std(X); zscore(X, μ, σ))
 zscore(X::AbstractArray{<:Real}, dim::Int) = ((μ, σ) = mean_and_std(X, dim); zscore(X, μ, σ))
-"""
-    entropy(p, [b])
-Compute the entropy of an array `p`, optionally specifying a real number
-`b` such that the entropy is scaled by `1/log(b)`.
-"""
 function entropy(p::AbstractArray{T}) where T<:Real
     s = zero(T)
     z = zero(T)
@@ -1371,10 +1035,6 @@ function entropy(p::AbstractArray{T}) where T<:Real
     return -s
 end
 entropy(p::AbstractArray{<:Real}, b::Real) = entropy(p) / log(b)
-"""
-    renyientropy(p, α)
-Compute the Rényi (generalized) entropy of order `α` of an array `p`.
-"""
 function renyientropy(p::AbstractArray{T}, α::Real) where T<:Real
     α < 0 && throw(ArgumentError("Order of Rényi entropy not legal, $(α) < 0."))
     s = zero(T)
@@ -1409,11 +1069,6 @@ function renyientropy(p::AbstractArray{T}, α::Real) where T<:Real
     end
     return s
 end
-"""
-    crossentropy(p, q, [b])
-Compute the cross entropy between `p` and `q`, optionally specifying a real
-number `b` such that the result is scaled by `1/log(b)`.
-"""
 function crossentropy(p::AbstractArray{T}, q::AbstractArray{T}) where T<:Real
     length(p) == length(q) || throw(DimensionMismatch("Inconsistent array length."))
     s = 0.
@@ -1429,11 +1084,6 @@ function crossentropy(p::AbstractArray{T}, q::AbstractArray{T}) where T<:Real
 end
 crossentropy(p::AbstractArray{T}, q::AbstractArray{T}, b::Real) where {T<:Real} =
     crossentropy(p,q) / log(b)
-"""
-    kldivergence(p, q, [b])
-Compute the Kullback-Leibler divergence of `q` from `p`, optionally specifying
-a real number `b` such that the divergence is scaled by `1/log(b)`.
-"""
 function kldivergence(p::AbstractArray{T}, q::AbstractArray{T}) where T<:Real
     length(p) == length(q) || throw(DimensionMismatch("Inconsistent array length."))
     s = 0.
@@ -1457,12 +1107,6 @@ struct SummaryStats{T<:AbstractFloat}
     q75::T
     max::T
 end
-"""
-    summarystats(a)
-Compute summary statistics for a real-valued array `a`. Returns a
-`SummaryStats` object containing the mean, minimum, 25th percentile,
-median, 75th percentile, and maxmimum.
-"""
 function summarystats(a::AbstractArray{T}) where T<:Real
     m = mean(a)
     qs = quantile(a, [0.00, 0.25, 0.50, 0.75, 1.00])
@@ -1484,12 +1128,6 @@ function Base.show(io::IO, ss::SummaryStats)
     @printf(io, "3rd Quartile:   %.6f\n", ss.q75)
     @printf(io, "Maximum:        %.6f\n", ss.max)
 end
-"""
-    describe(a)
-Pretty-print the summary statistics provided by [`summarystats`](@ref):
-the mean, minimum, 25th percentile, median, 75th percentile, and
-maximum.
-"""
 describe(a::AbstractArray) = describe(STDOUT, a)
 function describe(io::IO, a::AbstractArray{T}) where T<:Real
     show(io, summarystats(a))
@@ -1503,26 +1141,9 @@ function describe(io::IO, a::AbstractArray)
     println(io, "Number Unique:  $(length(unique(a)))")
     return
 end
-"""
-    trim(x; prop=0.0, count=0)
-Return a copy of `x` with either `count` or proportion `prop` of the highest
-and lowest elements removed.  To compute the trimmed mean of `x` use
-`mean(trim(x))`; to compute the variance use `trimvar(x)` (see [`trimvar`](@ref)).
-```julia
-julia> trim([1,2,3,4,5], prop=0.2)
-3-element Array{Int64,1}:
- 2
- 3
- 4
-```
-"""
 function trim(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     trim!(copy(x); prop=prop, count=count)
 end
-"""
-    trim!(x; prop=0.0, count=0)
-A variant of [`trim`](@ref) that modifies `x` in place.
-"""
 function trim!(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     n = length(x)
     n > 0 || throw(ArgumentError("x can not be empty."))
@@ -1539,29 +1160,9 @@ function trim!(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     deleteat!(x, 1:count)
     return x
 end
-"""
-    winsor(x; prop=0.0, count=0)
-Return a copy of `x` with either `count` or proportion `prop` of the lowest
-elements of `x` replaced with the next-lowest, and an equal number of the
-highest elements replaced with the previous-highest.  To compute the Winsorized
-mean of `x` use `mean(winsor(x))`.
-```julia
-julia> winsor([1,2,3,4,5], prop=0.2)
-5-element Array{Int64,1}:
- 2
- 2
- 3
- 4
- 4
-```
-"""
 function winsor(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     winsor!(copy(x); prop=prop, count=count)
 end
-"""
-    winsor!(x; prop=0.0, count=0)
-A variant of [`winsor`](@ref) that modifies vector `x` in place.
-"""
 function winsor!(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     n = length(x)
     n > 0 || throw(ArgumentError("x can not be empty."))
@@ -1578,11 +1179,6 @@ function winsor!(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     x[n-count+1:end] = x[n-count]
     return x
 end
-"""
-    trimvar(x; prop=0.0, count=0)
-Compute the variance of the trimmed mean of `x`. This function uses
-the Winsorized variance, as described in Wilcox (2010).
-"""
 function trimvar(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     n = length(x)
     n > 0 || throw(ArgumentError("x can not be empty."))
@@ -1595,11 +1191,6 @@ function trimvar(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     end
     return var(winsor(x, count=count)) / (n * (1 - 2prop)^2)
 end
-"""
-    counteq(a, b)
-Count the number of indices at which the elements of the arrays
-`a` and `b` are equal.
-"""
 function counteq(a::AbstractArray, b::AbstractArray)
     n = length(a)
     length(b) == n || throw(DimensionMismatch("Inconsistent lengths."))
@@ -1611,11 +1202,6 @@ function counteq(a::AbstractArray, b::AbstractArray)
     end
     return c
 end
-"""
-    countne(a, b)
-Count the number of indices at which the elements of the arrays
-`a` and `b` are not equal.
-"""
 function countne(a::AbstractArray, b::AbstractArray)
     n = length(a)
     length(b) == n || throw(DimensionMismatch("Inconsistent lengths."))
@@ -1627,11 +1213,6 @@ function countne(a::AbstractArray, b::AbstractArray)
     end
     return c
 end
-"""
-    sqL2dist(a, b)
-Compute the squared L2 distance between two arrays: ``\\sum_{i=1}^n |a_i - b_i|^2``.
-Efficient equivalent of `sumabs2(a - b)`.
-"""
 function sqL2dist(a::AbstractArray{T}, b::AbstractArray{T}) where T<:Number
     n = length(a)
     length(b) == n || throw(DimensionMismatch("Input dimension mismatch"))
@@ -1641,17 +1222,7 @@ function sqL2dist(a::AbstractArray{T}, b::AbstractArray{T}) where T<:Number
     end
     return r
 end
-"""
-    L2dist(a, b)
-Compute the L2 distance between two arrays: ``\\sqrt{\\sum_{i=1}^n |a_i - b_i|^2}``.
-Efficient equivalent of `sqrt(sumabs2(a - b))`.
-"""
 L2dist(a::AbstractArray{T}, b::AbstractArray{T}) where {T<:Number} = sqrt(sqL2dist(a, b))
-"""
-    L1dist(a, b)
-Compute the L1 distance between two arrays: ``\\sum_{i=1}^n |a_i - b_i|``.
-Efficient equivalent of `sum(abs, a - b)`.
-"""
 function L1dist(a::AbstractArray{T}, b::AbstractArray{T}) where T<:Number
     n = length(a)
     length(b) == n || throw(DimensionMismatch("Input dimension mismatch"))
@@ -1661,12 +1232,6 @@ function L1dist(a::AbstractArray{T}, b::AbstractArray{T}) where T<:Number
     end
     return r
 end
-"""
-    Linfdist(a, b)
-Compute the L∞ distance, also called the Chebyshev distance, between
-two arrays: ``\\max_{i\\in1:n} |a_i - b_i|``.
-Efficient equivalent of `maxabs(a - b)`.
-"""
 function Linfdist(a::AbstractArray{T}, b::AbstractArray{T}) where T<:Number
     n = length(a)
     length(b) == n || throw(DimensionMismatch("Input dimension mismatch"))
@@ -1679,12 +1244,6 @@ function Linfdist(a::AbstractArray{T}, b::AbstractArray{T}) where T<:Number
     end
     return r
 end
-"""
-    gkldiv(a, b)
-Compute the generalized Kullback-Leibler divergence between two arrays:
-``\\sum_{i=1}^n (a_i \\log(a_i/b_i) - a_i + b_i)``.
-Efficient equivalent of `sum(a*log(a/b)-a+b)`.
-"""
 function gkldiv(a::AbstractArray{T}, b::AbstractArray{T}) where T<:AbstractFloat
     n = length(a)
     r = 0.0
@@ -1699,29 +1258,11 @@ function gkldiv(a::AbstractArray{T}, b::AbstractArray{T}) where T<:AbstractFloat
     end
     return r::Float64
 end
-"""
-    meanad(a, b)
-Return the mean absolute deviation between two arrays: `mean(abs(a - b))`.
-"""
 meanad(a::AbstractArray{T}, b::AbstractArray{T}) where {T<:Number} =
     L1dist(a, b) / length(a)
-"""
-    maxad(a, b)
-Return the maximum absolute deviation between two arrays: `maxabs(a - b)`.
-"""
 maxad(a::AbstractArray{T}, b::AbstractArray{T}) where {T<:Number} = Linfdist(a, b)
-"""
-    msd(a, b)
-Return the mean squared deviation between two arrays: `mean(abs2(a - b))`.
-"""
 msd(a::AbstractArray{T}, b::AbstractArray{T}) where {T<:Number} =
     sqL2dist(a, b) / length(a)
-"""
-    rmsd(a, b; normalize=false)
-Return the root mean squared deviation between two optionally
-normalized arrays. The root mean squared deviation is computed
-as `sqrt(msd(a, b))`.
-"""
 function rmsd(a::AbstractArray{T}, b::AbstractArray{T}; normalize::Bool=false) where T<:Number
     v = sqrt(msd(a, b))
     if normalize
@@ -1730,12 +1271,6 @@ function rmsd(a::AbstractArray{T}, b::AbstractArray{T}; normalize::Bool=false) w
     end
     return v
 end
-"""
-    psnr(a, b, maxv)
-Compute the peak signal-to-noise ratio between two arrays `a` and `b`.
-`maxv` is the maximum possible value either array can take. The PSNR
-is computed as `10 * log10(maxv^2 / msd(a, b))`.
-"""
 function psnr(a::AbstractArray{T}, b::AbstractArray{T}, maxv::Real) where T<:Real
     20. * log10(maxv) - 10. * log10(msd(a, b))
 end
@@ -1759,39 +1294,8 @@ end
 scattermat_zm(x::DenseMatrix, vardim::Int) = Base.unscaled_covzm(x, vardim)
 scattermat_zm(x::DenseMatrix, wv::AbstractWeights, vardim::Int) =
     _symmetrize!(Base.unscaled_covzm(x, _scalevars(x, values(wv), vardim), vardim))
-"""
-    scattermat(X, [wv::AbstractWeights]; mean=nothing, vardim=1)
-Compute the scatter matrix, which is an unnormalized covariance matrix.
-A weighting vector `wv` can be specified to weight
-the estimate.
-* `mean=nothing`: a known mean value. `nothing` indicates that the mean is
-  unknown, and the function will compute the mean. Specifying `mean=0` indicates
-  that the data are centered and hence there's no need to subtract the mean.
-* `vardim=1`: the dimension along which the variables are organized.
-  When `vardim = 1`, the variables are considered columns with observations in rows;
-  when `vardim = 2`, variables are in rows with observations in columns.
-"""
 function scattermat end
-"""
-    cov(X, w::AbstractWeights; mean=nothing, vardim=1, corrected=false)
-Compute the weighted covariance matrix. Similar to `var` and `std` the biased covariance
-matrix (`corrected=false`) is computed by multiplying `scattermat(X, w)` by
-``\\frac{1}{\\sum{w}}`` to normalize. However, the unbiased covariance matrix
-(`corrected=true`) is dependent on the type of weights used:
-* `AnalyticWeights`: ``\\frac{1}{\\sum w - \\sum {w^2} / \\sum w}``
-* `FrequencyWeights`: ``\\frac{1}{\\sum{w} - 1}``
-* `ProbabilityWeights`: ``\\frac{n}{(n - 1) \\sum w}`` where ``n`` equals `count(!iszero, w)`
-* `Weights`: `ArgumentError` (bias correction not supported)
-"""
 cov
-"""
-    mean_and_cov(x, [wv::AbstractWeights]; vardim=1, corrected=false) -> (mean, cov)
-Return the mean and covariance matrix as a tuple. A weighting
-vector `wv` can be specified. `vardim` that designates whether
-the variables are columns in the matrix (`1`) or rows (`2`).
-Finally, bias correction is applied to the covariance calculation if
-`corrected=true`. See [`cov`](@ref) documentation for more details.
-"""
 function mean_and_cov end
 scattermatm(x::DenseMatrix, mean, vardim::Int=1) =
     scattermat_zm(x .- mean, vardim)
@@ -1811,11 +1315,6 @@ function Base.corm(x::DenseMatrix, mean, w::AbstractWeights, vardim::Int=1)
     s = Base.stdm(x, w, mean, vardim; corrected=false)
     Base.cov2cor!(c, s)
 end
-"""
-    cor(X, w::AbstractWeights, vardim=1)
-Compute the Pearson correlation matrix of `X` along the dimension
-`vardim` with a weighting `w` .
-"""
 Base.cor(x::DenseMatrix, w::AbstractWeights, vardim::Int=1) =
     Base.corm(x, Base.mean(x, w, vardim), w, vardim)
 if VERSION >= v"0.7.0-DEV.755"
@@ -1834,23 +1333,8 @@ function mean_and_cov(x::DenseMatrix, wv::AbstractWeights, vardim::Int=1;
     m = mean(x, wv, vardim)
     return m, Base.cov(x, wv, vardim; corrected=depcheck(:mean_and_cov, corrected))
 end
-"""
-    cov2cor(C, s)
-Compute the correlation matrix from the covariance matrix `C` and a vector of standard
-deviations `s`. Use `Base.cov2cor!` for an in-place version.
-"""
 cov2cor(C::AbstractMatrix, s::AbstractArray) = Base.cov2cor!(copy(C), s)
-"""
-    cor2cov(C, s)
-Compute the covariance matrix from the correlation matrix `C` and a vector of standard
-deviations `s`. Use `StatsBase.cor2cov!` for an in-place version.
-"""
 cor2cov(C::AbstractMatrix, s::AbstractArray) = cor2cov!(copy(C), s)
-"""
-    cor2cov!(C, s)
-Converts the correlation matrix `C` to a covariance matrix in-place using a vector of
-standard deviations `s`.
-"""
 function cor2cov!(C::AbstractMatrix, s::AbstractArray)
     n = length(s)
     size(C) == (n, n) || throw(DimensionMismatch("inconsistent dimensions"))
@@ -1865,12 +1349,6 @@ if isdefined(Base, :ht_keyindex2)
 else
     using Base: ht_keyindex2!
 end
-"""
-    addcounts!(r, x, levels::UnitRange{<:Int}, [wv::AbstractWeights])
-Add the number of occurrences in `x` of each value in `levels` to an existing
-array `r`. If a weighting vector `wv` is specified, the sum of weights is used
-rather than the raw counts.
-"""
 function addcounts!(r::AbstractArray, x::IntegerArray, levels::IntUnitRange)
     # add counts of integers from x to r
     k = length(levels)
@@ -1901,18 +1379,6 @@ function addcounts!(r::AbstractArray, x::IntegerArray, levels::IntUnitRange, wv:
     end
     return r
 end
-"""
-    counts(x, [wv::AbstractWeights])
-    counts(x, levels::UnitRange{<:Integer}, [wv::AbstractWeights])
-    counts(x, k::Integer, [wv::AbstractWeights])
-Count the number of times each value in `x` occurs. If `levels` is provided, only values
-falling in that range will be considered (the others will be ignored without
-raising an error or a warning). If an integer `k` is provided, only values in the
-range `1:k` will be considered.
-If a weighting vector `wv` is specified, the sum of the weights is used rather than the
-raw counts.
-The output is a vector of length `length(levels)`.
-"""
 function counts end
 counts(x::IntegerArray, levels::IntUnitRange) =
     addcounts!(zeros(Int, length(levels)), x, levels)
@@ -1922,19 +1388,9 @@ counts(x::IntegerArray, k::Integer) = counts(x, 1:k)
 counts(x::IntegerArray, k::Integer, wv::AbstractWeights) = counts(x, 1:k, wv)
 counts(x::IntegerArray) = counts(x, span(x))
 counts(x::IntegerArray, wv::AbstractWeights) = counts(x, span(x), wv)
-"""
-    proportions(x, levels=span(x), [wv::AbstractWeights])
-Return the proportion of values in the range `levels` that occur in `x`.
-Equivalent to `counts(x, levels) / length(x)`. If a weighting vector `wv`
-is specified, the sum of the weights is used rather than the raw counts.
-"""
 proportions(x::IntegerArray, levels::IntUnitRange) = counts(x, levels) .* inv(length(x))
 proportions(x::IntegerArray, levels::IntUnitRange, wv::AbstractWeights) =
     counts(x, levels, wv) .* inv(sum(wv))
-"""
-    proportions(x, k::Integer, [wv::AbstractWeights])
-Return the proportion of integers in 1 to `k` that occur in `x`.
-"""
 proportions(x::IntegerArray, k::Integer) = proportions(x, 1:k)
 proportions(x::IntegerArray, k::Integer, wv::AbstractWeights) = proportions(x, 1:k, wv)
 proportions(x::IntegerArray) = proportions(x, span(x))
@@ -2027,23 +1483,6 @@ function _normalize_countmap(cm::Dict{T}, s::Real) where T
     end
     return r
 end
-"""
-    addcounts!(dict, x[, wv]; alg = :auto)
-Add counts based on `x` to a count map. New entries will be added if new values come up.
-If a weighting vector `wv` is specified, the sum of the weights is used rather than the
-raw counts.
-`alg` can be one of:
-- `:auto` (default): if `StatsBase.radixsort_safe(eltype(x)) == true` then use
-                     `:radixsort`, otherwise use `:dict`.
-- `:radixsort`:      if `radixsort_safe(eltype(x)) == true` then use the
-                     [radix sort](https://en.wikipedia.org/wiki/Radix_sort)
-                     algorithm to sort the input vector which will generally lead to
-                     shorter running time. However the radix sort algorithm creates a
-                     copy of the input vector and hence uses more RAM. Choose `:dict`
-                     if the amount of available RAM is a limitation.
-- `:dict`:           use `Dict`-based method which is generally slower but uses less
-                     RAM and is safe for any data type.
-"""
 function addcounts!(cm::Dict{T}, x::AbstractArray{T}; alg = :auto) where T
     # if it's safe to be sorted using radixsort then it should be faster
     # albeit using more RAM
@@ -2129,28 +1568,8 @@ function addcounts!(cm::Dict{T}, x::AbstractArray{T}, wv::AbstractVector{W}) whe
     end
     return cm
 end
-"""
-    countmap(x; alg = :auto)
-Return a dictionary mapping each unique value in `x` to its number
-of occurrences.
-- `:auto` (default): if `StatsBase.radixsort_safe(eltype(x)) == true` then use
-                     `:radixsort`, otherwise use `:dict`.
-- `:radixsort`:      if `radixsort_safe(eltype(x)) == true` then use the
-                     [radix sort](https://en.wikipedia.org/wiki/Radix_sort)
-                     algorithm to sort the input vector which will generally lead to
-                     shorter running time. However the radix sort algorithm creates a
-                     copy of the input vector and hence uses more RAM. Choose `:dict`
-                     if the amount of available RAM is a limitation.
-- `:dict`:           use `Dict`-based method which is generally slower but uses less
-                     RAM and is safe for any data type.
-"""
 countmap(x::AbstractArray{T}; alg = :auto) where {T} = addcounts!(Dict{T,Int}(), x; alg = alg)
 countmap(x::AbstractArray{T}, wv::AbstractVector{W}) where {T,W<:Real} = addcounts!(Dict{T,W}(), x, wv)
-"""
-    proportionmap(x)
-Return a dictionary mapping each unique value in `x` to its
-proportion in `x`.
-"""
 proportionmap(x::AbstractArray) = _normalize_countmap(countmap(x), length(x))
 proportionmap(x::AbstractArray, wv::AbstractWeights) = _normalize_countmap(countmap(x, wv), sum(wv))
 function _check_randparams(rks, x, p)
@@ -2169,15 +1588,6 @@ function ordinalrank!(rks::AbstractArray, x::AbstractArray, p::IntegerArray)
     end
     return rks
 end
-"""
-    ordinalrank(x; lt = isless, rev::Bool = false)
-Return the [ordinal ranking](https://en.wikipedia.org/wiki/Ranking#Ordinal_ranking_.28.221234.22_ranking.29)
-("1234" ranking) of an array. The `lt` keyword allows providing a custom "less
-than" function; use `rev=true` to reverse the sorting order.
-All items in `x` are given distinct, successive ranks based on their
-position in `sort(x; lt = lt, rev = rev)`.
-Missing values are assigned rank `missing`.
-"""
 ordinalrank(x::AbstractArray; lt = isless, rev::Bool = false) =
     ordinalrank!(Array{Int}(uninitialized, size(x)), x, sortperm(x; lt = lt, rev = rev))
 function competerank!(rks::AbstractArray, x::AbstractArray, p::IntegerArray)
@@ -2201,15 +1611,6 @@ function competerank!(rks::AbstractArray, x::AbstractArray, p::IntegerArray)
     end
     return rks
 end
-"""
-    competerank(x; lt = isless, rev::Bool = false)
-Return the [standard competition ranking](http://en.wikipedia.org/wiki/Ranking#Standard_competition_ranking_.28.221224.22_ranking.29)
-("1224" ranking) of an array. The `lt` keyword allows providing a custom "less
-than" function; use `rev=true` to reverse the sorting order.
-Items that compare equal are given the same rank, then a gap is left
-in the rankings the size of the number of tied items - 1.
-Missing values are assigned rank `missing`.
-"""
 competerank(x::AbstractArray; lt = isless, rev::Bool = false) =
     competerank!(Array{Int}(uninitialized, size(x)), x, sortperm(x; lt = lt, rev = rev))
 function denserank!(rks::AbstractArray, x::AbstractArray, p::IntegerArray)
@@ -2233,15 +1634,6 @@ function denserank!(rks::AbstractArray, x::AbstractArray, p::IntegerArray)
     end
     return rks
 end
-"""
-    denserank(x)
-Return the [dense ranking](http://en.wikipedia.org/wiki/Ranking#Dense_ranking_.28.221223.22_ranking.29)
-("1223" ranking) of an array. The `lt` keyword allows providing a custom "less
-than" function; use `rev=true` to reverse the sorting order. Items that
-compare equal receive the same ranking, and the next subsequent rank is
-assigned with no gap.
-Missing values are assigned rank `missing`.
-"""
 denserank(x::AbstractArray; lt = isless, rev::Bool = false) =
     denserank!(Array{Int}(uninitialized, size(x)), x, sortperm(x; lt = lt, rev = rev))
 function tiedrank!(rks::AbstractArray, x::AbstractArray, p::IntegerArray)
@@ -2272,16 +1664,6 @@ function tiedrank!(rks::AbstractArray, x::AbstractArray, p::IntegerArray)
     end
     return rks
 end
-"""
-    tiedrank(x)
-Return the [tied ranking](http://en.wikipedia.org/wiki/Ranking#Fractional_ranking_.28.221_2.5_2.5_4.22_ranking.29),
-also called fractional or "1 2.5 2.5 4" ranking,
-of an array. The `lt` keyword allows providing a custom "less
-than" function; use `rev=true` to reverse the sorting order.
-Items that compare equal receive the mean of the
-rankings they would have been assigned under ordinal ranking.
-Missing values are assigned rank `missing`.
-"""
 tiedrank(x::AbstractArray; lt = isless, rev::Bool = false) =
     tiedrank!(Array{Float64}(uninitialized, size(x)), x, sortperm(x; lt = lt, rev = rev))
 for (f, f!, S) in zip([:ordinalrank, :competerank, :denserank, :tiedrank],
@@ -2362,12 +1744,6 @@ function levinson!(r::AbstractVector{T}, b::AbstractVector{T}, x::AbstractVector
     return x
 end
 levinson(r::AbstractVector{T}, b::AbstractVector{T}) where {T<:BlasReal} = levinson!(r, copy(b), zeros(T, length(b)))
-"""
-    corspearman(x, y=x)
-Compute Spearman's rank correlation coefficient. If `x` and `y` are vectors, the
-output is a float, otherwise it's a matrix corresponding to the pairwise correlations
-of the columns of `x` and `y`.
-"""
 corspearman(x::RealVector, y::RealVector) = cor(tiedrank(x), tiedrank(y))
 corspearman(X::RealMatrix, Y::RealMatrix) =
     cor(mapslices(tiedrank, X, 1), mapslices(tiedrank, Y, 1))
@@ -2426,11 +1802,6 @@ function corkendall!(x::RealVector, y::RealVector)
     nD = div(n*(n - 1),2)
     return (nD - nT - nU + nV - 2swaps!(y)) / (sqrt(nD - nT) * sqrt(nD - nU))
 end
-"""
-    corkendall(x, y=x)
-Compute Kendall's rank correlation coefficient, τ. `x` and `y` must both be either
-matrices or vectors.
-"""
 corkendall(x::RealVector, y::RealVector) = corkendall!(float(copy(x)), float(copy(y)))
 corkendall(X::RealMatrix, y::RealVector) = Float64[corkendall!(float(X[:,i]), float(copy(y))) for i in 1:size(X, 2)]
 corkendall(x::RealVector, Y::RealMatrix) = (n = size(Y,2); reshape(Float64[corkendall!(float(copy(x)), float(Y[:,i])) for i in 1:n], 1, n))
@@ -2495,16 +1866,6 @@ function demean_col!(z::AbstractVector{T}, x::AbstractMatrix{T}, j::Int, demean:
 end
 default_autolags(lx::Int) = 0 : default_laglen(lx)
 _autodot(x::AbstractVector{<:RealFP}, lx::Int, l::Int) = dot(x, 1:lx-l, x, 1+l:lx)
-"""
-    autocov!(r, x, lags; demean=true)
-Compute the autocovariance of a vector or matrix `x` at `lags` and store the result
-in `r`. `demean` denotes whether the mean of `x` should be subtracted from `x`
-before computing the autocovariance.
-If `x` is a vector, `r` must be a vector of the same length as `x`.
-If `x` is a matrix, `r` must be a matrix of size `(length(lags), size(x,2))`, and
-where each column in the result will correspond to a column in `x`.
-The output is not normalized. See [`autocor!`](@ref) for a method with normalization.
-"""
 function autocov!(r::RealVector, x::AbstractVector{T}, lags::IntegerVector; demean::Bool=true) where T<:RealFP
     lx = length(x)
     m = length(lags)
@@ -2531,18 +1892,6 @@ function autocov!(r::RealMatrix, x::AbstractMatrix{T}, lags::IntegerVector; deme
     end
     return r
 end
-"""
-    autocov(x, [lags]; demean=true)
-Compute the autocovariance of a vector or matrix `x`, optionally specifying
-the `lags` at which to compute the autocovariance. `demean` denotes whether
-the mean of `x` should be subtracted from `x` before computing the autocovariance.
-If `x` is a vector, return a vector of the same length as `x`.
-If `x` is a matrix, return a matrix of size `(length(lags), size(x,2))`,
-where each column in the result corresponds to a column in `x`.
-When left unspecified, the lags used are the integers from 0 to
-`min(size(x,1)-1, 10*log10(size(x,1)))`.
-The output is not normalized. See [`autocor`](@ref) for a function with normalization.
-"""
 function autocov(x::AbstractVector{T}, lags::IntegerVector; demean::Bool=true) where T<:Real
     autocov!(Vector{fptype(T)}(uninitialized, length(lags)), float(x), lags; demean=demean)
 end
@@ -2550,17 +1899,6 @@ function autocov(x::AbstractMatrix{T}, lags::IntegerVector; demean::Bool=true) w
     autocov!(Matrix{fptype(T)}(uninitialized, length(lags), size(x,2)), float(x), lags; demean=demean)
 end
 autocov(x::AbstractVecOrMat{<:Real}; demean::Bool=true) = autocov(x, default_autolags(size(x,1)); demean=demean)
-"""
-    autocor!(r, x, lags; demean=true)
-Compute the autocorrelation function (ACF) of a vector or matrix `x` at `lags`
-and store the result in `r`. `demean` denotes whether the mean of `x` should
-be subtracted from `x` before computing the ACF.
-If `x` is a vector, `r` must be a vector of the same length as `x`.
-If `x` is a matrix, `r` must be a matrix of size `(length(lags), size(x,2))`, and
-where each column in the result will correspond to a column in `x`.
-The output is normalized by the variance of `x`, i.e. so that the lag 0
-autocorrelation is 1. See [`autocov!`](@ref) for the unnormalized form.
-"""
 function autocor!(r::RealVector, x::AbstractVector{T}, lags::IntegerVector; demean::Bool=true) where T<:RealFP
     lx = length(x)
     m = length(lags)
@@ -2589,19 +1927,6 @@ function autocor!(r::RealMatrix, x::AbstractMatrix{T}, lags::IntegerVector; deme
     end
     return r
 end
-"""
-    autocor(x, [lags]; demean=true)
-Compute the autocorrelation function (ACF) of a vector or matrix `x`,
-optionally specifying the `lags`. `demean` denotes whether the mean
-of `x` should be subtracted from `x` before computing the ACF.
-If `x` is a vector, return a vector of the same length as `x`.
-If `x` is a matrix, return a matrix of size `(length(lags), size(x,2))`,
-where each column in the result corresponds to a column in `x`.
-When left unspecified, the lags used are the integers from 0 to
-`min(size(x,1)-1, 10*log10(size(x,1)))`.
-The output is normalized by the variance of `x`, i.e. so that the lag 0
-autocorrelation is 1. See [`autocov`](@ref) for the unnormalized form.
-"""
 function autocor(x::AbstractVector{T}, lags::IntegerVector; demean::Bool=true) where T<:Real
     autocor!(Vector{fptype(T)}(uninitialized, length(lags)), float(x), lags; demean=demean)
 end
@@ -2612,19 +1937,6 @@ autocor(x::AbstractVecOrMat{<:Real}; demean::Bool=true) = autocor(x, default_aut
 default_crosslags(lx::Int) = (l=default_laglen(lx); -l:l)
 _crossdot(x::AbstractVector{T}, y::AbstractVector{T}, lx::Int, l::Int) where {T<:RealFP} =
     (l >= 0 ? dot(x, 1:lx-l, y, 1+l:lx) : dot(x, 1-l:lx, y, 1:lx+l))
-"""
-    crosscov!(r, x, y, lags; demean=true)
-Compute the cross covariance function (CCF) between real-valued vectors or matrices
-`x` and `y` at `lags` and store the result in `r`. `demean` specifies whether the
-respective means of `x` and `y` should be subtracted from them before computing their
-CCF.
-If both `x` and `y` are vectors, `r` must be a vector of the same length as
-`lags`. If either `x` is a matrix and `y` is a vector, `r` must be a matrix of size
-`(length(lags), size(x, 2))`; if `x` is a vector and `y` is a matrix, `r` must be a matrix
-of size `(length(lags), size(y, 2))`. If both `x` and `y` are matrices, `r` must be a
-three-dimensional array of size `(length(lags), size(x, 2), size(y, 2))`.
-The output is not normalized. See [`crosscor!`](@ref) for a function with normalization.
-"""
 function crosscov!(r::RealVector, x::AbstractVector{T}, y::AbstractVector{T}, lags::IntegerVector; demean::Bool=true) where T<:RealFP
     lx = length(x)
     m = length(lags)
@@ -2702,18 +2014,6 @@ function crosscov!(r::AbstractArray{T,3}, x::AbstractMatrix{T}, y::AbstractMatri
     end
     return r
 end
-"""
-    crosscov(x, y, [lags]; demean=true)
-Compute the cross covariance function (CCF) between real-valued vectors or
-matrices `x` and `y`, optionally specifying the `lags`. `demean` specifies
-whether the respective means of `x` and `y` should be subtracted from them
-before computing their CCF.
-If both `x` and `y` are vectors, return a vector of the same length as
-`lags`. Otherwise, compute cross covariances between each pairs of columns in `x` and `y`.
-When left unspecified, the lags used are the integers from
-`-min(size(x,1)-1, 10*log10(size(x,1)))` to `min(size(x,1), 10*log10(size(x,1)))`.
-The output is not normalized. See [`crosscor`](@ref) for a function with normalization.
-"""
 function crosscov(x::AbstractVector{T}, y::AbstractVector{T}, lags::IntegerVector; demean::Bool=true) where T<:Real
     crosscov!(Vector{fptype(T)}(uninitialized, length(lags)), float(x), float(y), lags; demean=demean)
 end
@@ -2727,19 +2027,6 @@ function crosscov(x::AbstractMatrix{T}, y::AbstractMatrix{T}, lags::IntegerVecto
     crosscov!(Array{fptype(T),3}(uninitialized, length(lags), size(x,2), size(y,2)), float(x), float(y), lags; demean=demean)
 end
 crosscov(x::AbstractVecOrMat{T}, y::AbstractVecOrMat{T}; demean::Bool=true) where {T<:Real} = crosscov(x, y, default_crosslags(size(x,1)); demean=demean)
-"""
-    crosscor!(r, x, y, lags; demean=true)
-Compute the cross correlation between real-valued vectors or matrices `x` and `y` at
-`lags` and store the result in `r`. `demean` specifies whether the respective means of
-`x` and `y` should be subtracted from them before computing their cross correlation.
-If both `x` and `y` are vectors, `r` must be a vector of the same length as
-`lags`. If either `x` is a matrix and `y` is a vector, `r` must be a matrix of size
-`(length(lags), size(x, 2))`; if `x` is a vector and `y` is a matrix, `r` must be a matrix
-of size `(length(lags), size(y, 2))`. If both `x` and `y` are matrices, `r` must be a
-three-dimensional array of size `(length(lags), size(x, 2), size(y, 2))`.
-The output is normalized by `sqrt(var(x)*var(y))`. See [`crosscov!`](@ref) for the
-unnormalized form.
-"""
 function crosscor!(r::RealVector, x::AbstractVector{T}, y::AbstractVector{T}, lags::IntegerVector; demean::Bool=true) where T<:RealFP
     lx = length(x)
     m = length(lags)
@@ -2826,18 +2113,6 @@ function crosscor!(r::AbstractArray{T,3}, x::AbstractMatrix{T}, y::AbstractMatri
     end
     return r
 end
-"""
-    crosscor(x, y, [lags]; demean=true)
-Compute the cross correlation between real-valued vectors or matrices `x` and `y`,
-optionally specifying the `lags`. `demean` specifies whether the respective means of
-`x` and `y` should be subtracted from them before computing their cross correlation.
-If both `x` and `y` are vectors, return a vector of the same length as
-`lags`. Otherwise, compute cross covariances between each pairs of columns in `x` and `y`.
-When left unspecified, the lags used are the integers from
-`-min(size(x,1)-1, 10*log10(size(x,1)))` to `min(size(x,1), 10*log10(size(x,1)))`.
-The output is normalized by `sqrt(var(x)*var(y))`. See [`crosscov`](@ref) for the
-unnormalized form.
-"""
 function crosscor(x::AbstractVector{T}, y::AbstractVector{T}, lags::IntegerVector; demean::Bool=true) where T<:Real
     crosscor!(Vector{fptype(T)}(uninitialized, length(lags)), float(x), float(y), lags; demean=demean)
 end
@@ -2878,15 +2153,6 @@ function pacf_yulewalker!(r::RealMatrix, X::AbstractMatrix{T}, lags::IntegerVect
         end
     end
 end
-"""
-    pacf!(r, X, lags; method=:regression)
-Compute the partial autocorrelation function (PACF) of a matrix `X` at `lags` and
-store the result in `r`. `method` designates the estimation method. Recognized values
-are `:regression`, which computes the partial autocorrelations via successive
-regression models, and `:yulewalker`, which computes the partial autocorrelations
-using the Yule-Walker equations.
-`r` must be a matrix of size `(length(lags), size(x, 2))`.
-"""
 function pacf!(r::RealMatrix, X::AbstractMatrix{T}, lags::IntegerVector; method::Symbol=:regression) where T<:RealFP
     lx = size(X, 1)
     m = length(lags)
@@ -2902,30 +2168,12 @@ function pacf!(r::RealMatrix, X::AbstractMatrix{T}, lags::IntegerVector; method:
     end
     return r
 end
-"""
-    pacf(X, lags; method=:regression)
-Compute the partial autocorrelation function (PACF) of a real-valued vector
-or matrix `X` at `lags`. `method` designates the estimation method. Recognized
-values are `:regression`, which computes the partial autocorrelations via successive
-regression models, and `:yulewalker`, which computes the partial autocorrelations
-using the Yule-Walker equations.
-If `x` is a vector, return a vector of the same length as `lags`.
-If `x` is a matrix, return a matrix of size `(length(lags), size(x, 2))`,
-where each column in the result corresponds to a column in `x`.
-"""
 function pacf(X::AbstractMatrix{T}, lags::IntegerVector; method::Symbol=:regression) where T<:Real
     pacf!(Matrix{fptype(T)}(uninitialized, length(lags), size(X,2)), float(X), lags; method=method)
 end
 function pacf(x::AbstractVector{T}, lags::IntegerVector; method::Symbol=:regression) where T<:Real
     vec(pacf(reshape(x, length(x), 1), lags, method=method))
 end
-"""
-    ecdf(X)
-Return an empirical cumulative distribution function (ECDF) based on a vector of samples
-given in `X`.
-Note: this is a higher-level function that returns a function, which can then be applied
-to evaluate CDF values on other samples.
-"""
 function ecdf(X::RealVector{T}) where T<:Real
     Xs = sort(X)
     n = length(X)
@@ -3181,42 +2429,12 @@ function fit(::Type{Histogram{T}}, vs::NTuple{N,AbstractVector}, wv::AbstractWei
     closed = _check_closed_arg(closed,:fit)
     fit(Histogram{T}, vs, wv, histrange(vs,_nbins_tuple(vs, nbins),closed); closed=closed)
 end
-"""
-    fit(Histogram, data[, weight][, edges]; closed=:right, nbins)
-Fit a histogram to `data`.
-* `data`: either a vector (for a 1-dimensional histogram), or a tuple of
-  vectors of equal length (for an *n*-dimensional histogram).
-* `weight`: an optional `AbstractWeights` (of the same length as the
-  data vectors), denoting the weight each observation contributes to the
-  bin. If no weight vector is supplied, each observation has weight 1.
-* `edges`: a vector (typically an `AbstractRange` object), or tuple of vectors, that gives
-  the edges of the bins along each dimension. If no edges are provided, these
-  are determined from the data.
-* `closed=:right`: if `:left`, the bin intervals are left-closed [a,b);
-  if `:right` (the default), intervals are right-closed (a,b].
-* `nbins`: if no `edges` argument is supplied, the approximate number of bins to use
-  along each dimension (can be either a single integer, or a tuple of integers).
-```julia
-h = fit(Histogram, rand(100))
-h = fit(Histogram, rand(100), 0:0.1:1.0)
-h = fit(Histogram, rand(100), nbins=10)
-h = fit(Histogram, rand(100), weights(rand(100)), 0:0.1:1.0)
-h = fit(Histogram, [20], 0:20:100)
-h = fit(Histogram, [20], 0:20:100, closed=:left)
-h = fit(Histogram, (rand(100),rand(100)))
-h = fit(Histogram, (rand(100),rand(100)),nbins=10)
-```
-"""
 fit(::Type{Histogram}, args...; kwargs...) = fit(Histogram{Int}, args...; kwargs...)
 fit(::Type{Histogram}, vs::NTuple{N,AbstractVector}, wv::AbstractWeights{W}, args...; kwargs...) where {N,W} = fit(Histogram{W}, vs, wv, args...; kwargs...)
 norm_type(h::Histogram{T,N}) where {T,N} =
     promote_type(T, _promote_edge_types(h.edges))
 norm_type(::Type{T}) where {T<:Integer} = promote_type(T, Int64)
 norm_type(::Type{T}) where {T<:AbstractFloat} = promote_type(T, Float64)
-"""
-    norm(h::Histogram)
-Calculate the norm of histogram `h` as the absolute value of its integral.
-"""
 @generated function norm(h::Histogram{T,N}) where {T,N}
     quote
         edges = h.edges
@@ -3242,11 +2460,6 @@ Calculate the norm of histogram `h` as the absolute value of its integral.
 end
 float(h::Histogram{T,N}) where {T<:AbstractFloat,N} = h
 float(h::Histogram{T,N}) where {T,N} = Histogram(h.edges, float(h.weights), h.closed, h.isdensity)
-"""
-    normalize!(h::Histogram{T,N}, aux_weights::Array{T,N}...; mode::Symbol=:pdf) where {T<:AbstractFloat,N}
-Normalize the histogram `h` and optionally scale one or more auxiliary weight
-arrays appropriately. See description of `normalize` for details. Returns `h`.
-"""
 @generated function normalize!(h::Histogram{T,N}, aux_weights::Array{T,N}...; mode::Symbol=:pdf) where {T<:AbstractFloat,N}
     quote
         edges = h.edges
@@ -3295,52 +2508,16 @@ arrays appropriately. See description of `normalize` for details. Returns `h`.
         h
     end
 end
-"""
-    normalize(h::Histogram{T,N}; mode::Symbol=:pdf) where {T,N}
-Normalize the histogram `h`.
-Valid values for `mode` are:
-*  `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
-   has norm 1 and represents a PDF.
-* `:density`: Normalize by bin sizes only. Resulting histogram represents
-   count density of input and does not have norm 1. Will not modify the
-   histogram if it already represents a density (`h.isdensity == 1`).
-* `:probability`: Normalize by sum of weights only. Resulting histogram
-   represents the fraction of probability mass for each bin and does not have
-   norm 1.
-*  `:none`: Leaves histogram unchanged. Useful to simplify code that has to
-   conditionally apply different modes of normalization.
-Successive application of both `:probability` and `:density` normalization (in
-any order) is equivalent to `:pdf` normalization.
-"""
 normalize(h::Histogram{T,N}; mode::Symbol=:pdf) where {T,N} =
     normalize!(deepcopy(float(h)), mode = mode)
-"""
-    normalize(h::Histogram{T,N}, aux_weights::Array{T,N}...; mode::Symbol=:pdf) where {T,N}
-Normalize the histogram `h` and rescales one or more auxiliary weight arrays
-at the same time (`aux_weights` may, e.g., contain estimated statistical
-uncertainties). The values of the auxiliary arrays are scaled by the same
-factor as the corresponding histogram weight values. Returns a tuple of the
-normalized histogram and scaled auxiliary weights.
-"""
 function normalize(h::Histogram{T,N}, aux_weights::Array{T,N}...; mode::Symbol=:pdf) where {T,N}
     h_fltcp = deepcopy(float(h))
     aux_weights_fltcp = map(x -> deepcopy(float(x)), aux_weights)
     normalize!(h_fltcp, aux_weights_fltcp..., mode = mode)
     (h_fltcp, aux_weights_fltcp...)
 end
-"""
-    zero(h::Histogram)
-Create a new histogram with the same binning, type and shape of weights
-and the same properties (`closed` and `isdensity`) as `h`, with all weights
-set to zero.
-"""
 Base.zero(h::Histogram{T,N,E}) where {T,N,E} =
     Histogram{T,N,E}(deepcopy(h.edges), zero(h.weights), h.closed, h.isdensity)
-"""
-    merge!(target::Histogram, others::Histogram...)
-Update histogram `target` by merging it with the histograms `others`. See
-`merge(histogram::Histogram, others::Histogram...)` for details.
-"""
 function Base.merge!(target::Histogram, others::Histogram...)
     for h in others
         target.edges != h.edges && throw(ArgumentError("can't merge histograms with different binning"))
@@ -3353,18 +2530,7 @@ function Base.merge!(target::Histogram, others::Histogram...)
     end
     target
 end
-"""
-    merge(h::Histogram, others::Histogram...)
-Construct a new histogram by merging `h` with `others`. All histograms must
-have the same binning, shape of weights and properties (`closed` and
-`isdensity`). The weights of all histograms are summed up for each bin, the
-weights of the resulting histogram will have the same type as those of `h`.
-"""
 Base.merge(h::Histogram, others::Histogram...) = merge!(zero(h), h, others...)
-"""
-    StatsBase.midpoints(v)
-Calculate the midpoints (pairwise mean of consecutive elements).
-"""
 midpoints(v::AbstractVector) = [middle(v[i - 1], v[i]) for i in 2:length(v)]
 midpoints(r::Range) = r[1:(end - 1)] + step(r) / 2
 function norepeat(a::AbstractArray)
@@ -3376,18 +2542,6 @@ function norepeat(a::AbstractArray)
     end
     return true
 end
-"""
-    rle(v) -> (vals, lens)
-Return the run-length encoding of a vector as a tuple. The
-first element of the tuple is a vector of values of the input
-and the second is the number of consecutive occurrences of each
-element.
-```jldoctest
-julia> using StatsBase
-julia> rle([1,1,1,2,2,3,3,3,3,2,2,2])
-([1, 2, 3, 2], [3, 2, 4, 3])
-```
-"""
 function rle(v::Vector{T}) where T
     n = length(v)
     vals = T[]
@@ -3413,12 +2567,6 @@ function rle(v::Vector{T}) where T
     push!(lens, cl)
     return (vals, lens)
 end
-"""
-    inverse_rle(vals, lens)
-Reconstruct a vector from its run-length encoding (see [`rle`](@ref)).
-`vals` is a vector of the values and `lens` is a vector of the corresponding
-run lengths.
-"""
 function inverse_rle(vals::AbstractVector{T}, lens::IntegerVector) where T
     m = length(vals)
     length(lens) == m || raise_dimerror()
@@ -3434,11 +2582,6 @@ function inverse_rle(vals::AbstractVector{T}, lens::IntegerVector) where T
     end
     return r
 end
-"""
-    indexmap(a)
-Construct a dictionary that maps each unique value in `a` to
-the index of its first occurrence in `a`.
-"""
 function indexmap(a::AbstractArray{T}) where T
     d = Dict{T,Int}()
     for i = 1 : length(a)
@@ -3449,11 +2592,6 @@ function indexmap(a::AbstractArray{T}) where T
     end
     return d
 end
-"""
-    levelsmap(a)
-Construct a dictionary that maps each of the `n` unique values
-in `a` to a number between 1 and `n`.
-"""
 function levelsmap(a::AbstractArray{T}) where T
     d = Dict{T,Int}()
     index = 1
@@ -3466,29 +2604,9 @@ function levelsmap(a::AbstractArray{T}) where T
     end
     return d
 end
-"""
-    indicatormat(x, k::Integer; sparse=false)
-Construct a boolean matrix `I` of size `(k, length(x))` such that
-`I[x[i], i] = true` and all other elements are set to `false`.
-If `sparse` is `true`, the output will be a sparse matrix, otherwise
-it will be dense (default).
-```jldoctest
-julia> using StatsBase
-julia> indicatormat([1 2 2], 2)
-2×3 Array{Bool,2}:
-  true  false  false
- false   true   true
-```
-"""
 function indicatormat(x::IntegerArray, k::Integer; sparse::Bool=false)
     sparse ? _indicatormat_sparse(x, k) : _indicatormat_dense(x, k)
 end
-"""
-    indicatormat(x, c=sort(unique(x)); sparse=false)
-Construct a boolean matrix `I` of size `(length(c), length(x))`.
-Let `ci` be the index of `x[i]` in `c`. Then `I[ci, i] = true` and
-all other elements are `false`.
-"""
 function indicatormat(x::AbstractArray, c::AbstractArray; sparse::Bool=false)
     sparse ? _indicatormat_sparse(x, c) : _indicatormat_dense(x, c)
 end
@@ -3542,12 +2660,6 @@ function direct_sample!(rng::AbstractRNG, a::UnitRange, x::AbstractArray)
     return x
 end
 direct_sample!(a::UnitRange, x::AbstractArray) = direct_sample!(Base.GLOBAL_RNG, a, x)
-"""
-    direct_sample!([rng], a::AbstractArray, x::AbstractArray)
-Direct sampling: for each `j` in `1:k`, randomly pick `i` from `1:n`,
-and set `x[j] = a[i]`, with `n=length(a)` and `k=length(x)`.
-This algorithm consumes `k` random numbers.
-"""
 function direct_sample!(rng::AbstractRNG, a::AbstractArray, x::AbstractArray)
     s = RangeGenerator(1:length(a))
     for i = 1:length(x)
@@ -3556,36 +2668,17 @@ function direct_sample!(rng::AbstractRNG, a::AbstractArray, x::AbstractArray)
     return x
 end
 direct_sample!(a::AbstractArray, x::AbstractArray) = direct_sample!(Base.GLOBAL_RNG, a, x)
-"""
-    samplepair([rng], n)
-Draw a pair of distinct integers between 1 and `n` without replacement.
-Optionally specify a random number generator `rng` as the first argument
-(defaults to `Base.GLOBAL_RNG`).
-"""
 function samplepair(rng::AbstractRNG, n::Int)
     i1 = rand(rng, 1:n)
     i2 = rand(rng, 1:n-1)
     return (i1, ifelse(i2 == i1, n, i2))
 end
 samplepair(n::Int) = samplepair(Base.GLOBAL_RNG, n)
-"""
-    samplepair([rng], a)
-Draw a pair of distinct elements from the array `a` without replacement.
-Optionally specify a random number generator `rng` as the first argument
-(defaults to `Base.GLOBAL_RNG`).
-"""
 function samplepair(rng::AbstractRNG, a::AbstractArray)
     i1, i2 = samplepair(rng, length(a))
     return a[i1], a[i2]
 end
 samplepair(a::AbstractArray) = samplepair(Base.GLOBAL_RNG, a)
-"""
-    knuths_sample!([rng], a, x)
-*Knuth's Algorithm S* for random sampling without replacement.
-Reference: D. Knuth. *The Art of Computer Programming*. Vol 2, 3.4.2, p.142.
-This algorithm consumes `length(a)` random numbers. It requires no additional
-memory space. Suitable for the case where memory is tight.
-"""
 function knuths_sample!(rng::AbstractRNG, a::AbstractArray, x::AbstractArray;
                         initshuffle::Bool=true)
     n = length(a)
@@ -3616,24 +2709,6 @@ function knuths_sample!(rng::AbstractRNG, a::AbstractArray, x::AbstractArray;
 end
 knuths_sample!(a::AbstractArray, x::AbstractArray; initshuffle::Bool=true) =
     knuths_sample!(Base.GLOBAL_RNG, a, x; initshuffle=initshuffle)
-"""
-    fisher_yates_sample!([rng], a::AbstractArray, x::AbstractArray)
-Fisher-Yates shuffling (with early termination).
-Pseudo-code:
-```
-n = length(a)
-k = length(x)
-inds = collect(1:n)
-for i = 1:k
-    # swap element `i` with another random element in inds[i:n]
-    # set element `i` in `x`
-end
-```
-This algorithm consumes `k=length(x)` random numbers. It uses an integer array of
-length `n=length(a)` internally to maintain the shuffled indices. It is considerably
-faster than Knuth's algorithm especially when `n` is greater than `k`.
-It is ``O(n)`` for initialization, plus ``O(k)`` for random shuffling
-"""
 function fisher_yates_sample!(rng::AbstractRNG, a::AbstractArray, x::AbstractArray)
     n = length(a)
     k = length(x)
@@ -3653,17 +2728,6 @@ function fisher_yates_sample!(rng::AbstractRNG, a::AbstractArray, x::AbstractArr
 end
 fisher_yates_sample!(a::AbstractArray, x::AbstractArray) =
     fisher_yates_sample!(Base.GLOBAL_RNG, a, x)
-"""
-    self_avoid_sample!([rng], a::AbstractArray, x::AbstractArray)
-Self-avoid sampling: use a set to maintain the index that has been sampled.
-Each time draw a new index, if the index has already been sampled,
-redraw until it draws an unsampled one.
-This algorithm consumes about (or slightly more than) `k=length(x)` random numbers,
-and requires ``O(k)`` memory to store the set of sampled indices.
-Very fast when ``n >> k``, with `n=length(a)`.
-However, if `k` is large and approaches ``n``, the rejection rate would increase
-drastically, resulting in poorer performance.
-"""
 function self_avoid_sample!(rng::AbstractRNG, a::AbstractArray, x::AbstractArray)
     n = length(a)
     k = length(x)
@@ -3688,14 +2752,6 @@ function self_avoid_sample!(rng::AbstractRNG, a::AbstractArray, x::AbstractArray
 end
 self_avoid_sample!(a::AbstractArray, x::AbstractArray) =
     self_avoid_sample!(Base.GLOBAL_RNG, a, x)
-"""
-    seqsample_a!([rng], a::AbstractArray, x::AbstractArray)
-Random subsequence sampling using algorithm A described in the following paper (page 714):
-Jeffrey Scott Vitter. "Faster Methods for Random Sampling". Communications of the ACM,
-27 (7), July 1984.
-This algorithm consumes ``O(n)`` random numbers, with `n=length(a)`.
-The outputs are ordered.
-"""
 function seqsample_a!(rng::AbstractRNG, a::AbstractArray, x::AbstractArray)
     n = length(a)
     k = length(x)
@@ -3721,14 +2777,6 @@ function seqsample_a!(rng::AbstractRNG, a::AbstractArray, x::AbstractArray)
     return x
 end
 seqsample_a!(a::AbstractArray, x::AbstractArray) = seqsample_a!(Base.GLOBAL_RNG, a, x)
-"""
-    seqsample_c!([rng], a::AbstractArray, x::AbstractArray)
-Random subsequence sampling using algorithm C described in the following paper (page 715):
-Jeffrey Scott Vitter. "Faster Methods for Random Sampling". Communications of the ACM,
-27 (7), July 1984.
-This algorithm consumes ``O(k^2)`` random numbers, with `k=length(x)`.
-The outputs are ordered.
-"""
 function seqsample_c!(rng::AbstractRNG, a::AbstractArray, x::AbstractArray)
     n = length(a)
     k = length(x)
@@ -3758,26 +2806,8 @@ function seqsample_c!(rng::AbstractRNG, a::AbstractArray, x::AbstractArray)
     return x
 end
 seqsample_c!(a::AbstractArray, x::AbstractArray) = seqsample_c!(Base.GLOBAL_RNG, a, x)
-"""
-    sample([rng], a, [wv::AbstractWeights])
-Select a single random element of `a`. Sampling probabilities are proportional to
-the weights given in `wv`, if provided.
-Optionally specify a random number generator `rng` as the first argument
-(defaults to `Base.GLOBAL_RNG`).
-"""
 sample(rng::AbstractRNG, a::AbstractArray) = a[rand(rng, 1:length(a))]
 sample(a::AbstractArray) = sample(Base.GLOBAL_RNG, a)
-"""
-    sample!([rng], a, [wv::AbstractWeights], x; replace=true, ordered=false)
-Draw a random sample of `length(x)` elements from an array `a`
-and store the result in `x`. A polyalgorithm is used for sampling.
-Sampling probabilities are proportional to the weights given in `wv`,
-if provided. `replace` dictates whether sampling is performed with
-replacement and `order` dictates whether an ordered sample, also called
-a sequential sample, should be taken.
-Optionally specify a random number generator `rng` as the first argument
-(defaults to `Base.GLOBAL_RNG`).
-"""
 function sample!(rng::AbstractRNG, a::AbstractArray, x::AbstractArray;
                  replace::Bool=true, ordered::Bool=false)
     n = length(a)
@@ -3813,45 +2843,18 @@ function sample!(rng::AbstractRNG, a::AbstractArray, x::AbstractArray;
 end
 sample!(a::AbstractArray, x::AbstractArray; replace::Bool=true, ordered::Bool=false) =
     sample!(Base.GLOBAL_RNG, a, x; replace=replace, ordered=ordered)
-"""
-    sample([rng], a, [wv::AbstractWeights], n::Integer; replace=true, ordered=false)
-Select a random, optionally weighted sample of size `n` from an array `a`
-using a polyalgorithm. Sampling probabilities are proportional to the weights
-given in `wv`, if provided. `replace` dictates whether sampling is performed
-with replacement and `order` dictates whether an ordered sample, also called
-a sequential sample, should be taken.
-Optionally specify a random number generator `rng` as the first argument
-(defaults to `Base.GLOBAL_RNG`).
-"""
 function sample(rng::AbstractRNG, a::AbstractArray{T}, n::Integer;
                 replace::Bool=true, ordered::Bool=false) where T
     sample!(rng, a, Vector{T}(uninitialized, n); replace=replace, ordered=ordered)
 end
 sample(a::AbstractArray, n::Integer; replace::Bool=true, ordered::Bool=false) =
     sample(Base.GLOBAL_RNG, a, n; replace=replace, ordered=ordered)
-"""
-    sample([rng], a, [wv::AbstractWeights], dims::Dims; replace=true, ordered=false)
-Select a random, optionally weighted sample from an array `a` specifying
-the dimensions `dims` of the output array. Sampling probabilities are
-proportional to the weights given in `wv`, if provided. `replace` dictates
-whether sampling is performed with replacement and `order` dictates whether
-an ordered sample, also called a sequential sample, should be taken.
-Optionally specify a random number generator `rng` as the first argument
-(defaults to `Base.GLOBAL_RNG`).
-"""
 function sample(rng::AbstractRNG, a::AbstractArray{T}, dims::Dims;
                 replace::Bool=true, ordered::Bool=false) where T
     sample!(rng, a, Array{T}(uninitialized, dims), rng; replace=replace, ordered=ordered)
 end
 sample(a::AbstractArray, dims::Dims; replace::Bool=true, ordered::Bool=false) =
     sample(Base.GLOBAL_RNG, a, dims; replace=replace, ordered=ordered)
-"""
-    sample([rng], wv::AbstractWeights)
-Select a single random integer in `1:length(wv)` with probabilities
-proportional to the weights given in `wv`.
-Optionally specify a random number generator `rng` as the first argument
-(defaults to `Base.GLOBAL_RNG`).
-"""
 function sample(rng::AbstractRNG, wv::AbstractWeights)
     t = rand(rng) * sum(wv)
     w = values(wv)
@@ -3867,15 +2870,6 @@ end
 sample(wv::AbstractWeights) = sample(Base.GLOBAL_RNG, wv)
 sample(rng::AbstractRNG, a::AbstractArray, wv::AbstractWeights) = a[sample(rng, wv)]
 sample(a::AbstractArray, wv::AbstractWeights) = sample(Base.GLOBAL_RNG, a, wv)
-"""
-    direct_sample!([rng], a::AbstractArray, wv::AbstractWeights, x::AbstractArray)
-Direct sampling.
-Draw each sample by scanning the weight vector.
-Noting `k=length(x)` and `n=length(a)`, this algorithm:
-* consumes `k` random numbers
-* has time complexity ``O(n k)``, as scanning the weight vector each time takes ``O(n)``
-* requires no additional memory space.
-"""
 function direct_sample!(rng::AbstractRNG, a::AbstractArray,
                         wv::AbstractWeights, x::AbstractArray)
     n = length(a)
@@ -3939,15 +2933,6 @@ function make_alias_table!(w::AbstractVector{Float64}, wsum::Float64,
     end
     nothing
 end
-"""
-    alias_sample!([rng], a::AbstractArray, wv::AbstractWeights, x::AbstractArray)
-Alias method.
-Build an alias table, and sample therefrom.
-Reference: Walker, A. J. "An Efficient Method for Generating Discrete Random Variables
-with General Distributions." *ACM Transactions on Mathematical Software* 3 (3): 253, 1977.
-Noting `k=length(x)` and `n=length(a)`, this algorithm takes ``O(n \\log n)`` time
-for building the alias table, and then ``O(1)`` to draw each sample. It consumes ``2 k`` random numbers.
-"""
 function alias_sample!(rng::AbstractRNG, a::AbstractArray, wv::AbstractWeights, x::AbstractArray)
     n = length(a)
     length(wv) == n || throw(DimensionMismatch("Inconsistent lengths."))
@@ -3965,14 +2950,6 @@ function alias_sample!(rng::AbstractRNG, a::AbstractArray, wv::AbstractWeights, 
 end
 alias_sample!(a::AbstractArray, wv::AbstractWeights, x::AbstractArray) =
     alias_sample!(Base.GLOBAL_RNG, a, wv, x)
-"""
-    naive_wsample_norep!([rng], a::AbstractArray, wv::AbstractWeights, x::AbstractArray)
-Naive implementation of weighted sampling without replacement.
-It makes a copy of the weight vector at initialization, and sets the weight to zero
-when the corresponding sample is picked.
-Noting `k=length(x)` and `n=length(a)`, this algorithm consumes ``O(k)`` random numbers,
-and has overall time complexity ``O(n k)``.
-"""
 function naive_wsample_norep!(rng::AbstractRNG, a::AbstractArray,
                               wv::AbstractWeights, x::AbstractArray)
     n = length(a)
@@ -3996,14 +2973,6 @@ function naive_wsample_norep!(rng::AbstractRNG, a::AbstractArray,
 end
 naive_wsample_norep!(a::AbstractArray, wv::AbstractWeights, x::AbstractArray) =
     naive_wsample_norep!(Base.GLOBAL_RNG, a, wv, x)
-"""
-    efraimidis_a_wsample_norep!([rng], a::AbstractArray, wv::AbstractWeights, x::AbstractArray)
-Weighted sampling without replacement using Efraimidis-Spirakis A algorithm.
-Reference: Efraimidis, P. S., Spirakis, P. G. "Weighted random sampling with a reservoir."
-*Information Processing Letters*, 97 (5), 181-185, 2006. doi:10.1016/j.ipl.2005.11.003.
-Noting `k=length(x)` and `n=length(a)`, this algorithm takes ``O(n + k \\log k)``
-processing time to draw ``k`` elements. It consumes ``n`` random numbers.
-"""
 function efraimidis_a_wsample_norep!(rng::AbstractRNG, a::AbstractArray,
                                      wv::AbstractWeights, x::AbstractArray)
     n = length(a)
@@ -4023,14 +2992,6 @@ function efraimidis_a_wsample_norep!(rng::AbstractRNG, a::AbstractArray,
 end
 efraimidis_a_wsample_norep!(a::AbstractArray, wv::AbstractWeights, x::AbstractArray) =
     efraimidis_a_wsample_norep!(Base.GLOBAL_RNG, a, wv, x)
-"""
-    efraimidis_ares_wsample_norep!([rng], a::AbstractArray, wv::AbstractWeights, x::AbstractArray)
-Implementation of weighted sampling without replacement using Efraimidis-Spirakis A-Res algorithm.
-Reference: Efraimidis, P. S., Spirakis, P. G. "Weighted random sampling with a reservoir."
-*Information Processing Letters*, 97 (5), 181-185, 2006. doi:10.1016/j.ipl.2005.11.003.
-Noting `k=length(x)` and `n=length(a)`, this algorithm takes ``O(k \\log(k) \\log(n / k))``
-processing time to draw ``k`` elements. It consumes ``n`` random numbers.
-"""
 function efraimidis_ares_wsample_norep!(rng::AbstractRNG, a::AbstractArray,
                                         wv::AbstractWeights, x::AbstractArray)
     n = length(a)
@@ -4077,14 +3038,6 @@ function efraimidis_ares_wsample_norep!(rng::AbstractRNG, a::AbstractArray,
 end
 efraimidis_ares_wsample_norep!(a::AbstractArray, wv::AbstractWeights, x::AbstractArray) =
     efraimidis_ares_wsample_norep!(Base.GLOBAL_RNG, a, wv, x)
-"""
-    efraimidis_aexpj_wsample_norep!([rng], a::AbstractArray, wv::AbstractWeights, x::AbstractArray)
-Implementation of weighted sampling without replacement using Efraimidis-Spirakis A-ExpJ algorithm.
-Reference: Efraimidis, P. S., Spirakis, P. G. "Weighted random sampling with a reservoir."
-*Information Processing Letters*, 97 (5), 181-185, 2006. doi:10.1016/j.ipl.2005.11.003.
-Noting `k=length(x)` and `n=length(a)`, this algorithm takes ``O(k \\log(k) \\log(n / k))``
-processing time to draw ``k`` elements. It consumes ``O(k \\log(n / k))`` random numbers.
-"""
 function efraimidis_aexpj_wsample_norep!(rng::AbstractRNG, a::AbstractArray,
                                          wv::AbstractWeights, x::AbstractArray)
     n = length(a)
@@ -4174,56 +3127,22 @@ sample(rng::AbstractRNG, a::AbstractArray{T}, wv::AbstractWeights, dims::Dims;
 sample(a::AbstractArray, wv::AbstractWeights, dims::Dims;
        replace::Bool=true, ordered::Bool=false) =
     sample(Base.GLOBAL_RNG, a, wv, dims; replace=replace, ordered=ordered)
-"""
-    wsample!([rng], a, w, x; replace=true, ordered=false)
-Select a weighted sample from an array `a` and store the result in `x`. Sampling
-probabilities are proportional to the weights given in `w`. `replace` dictates
-whether sampling is performed with replacement and `order` dictates whether an
-ordered sample, also called a sequential sample, should be taken.
-Optionally specify a random number generator `rng` as the first argument
-(defaults to `Base.GLOBAL_RNG`).
-"""
 wsample!(rng::AbstractRNG, a::AbstractArray, w::RealVector, x::AbstractArray;
          replace::Bool=true, ordered::Bool=false) =
     sample!(rng, a, weights(w), x; replace=replace, ordered=ordered)
 wsample!(a::AbstractArray, w::RealVector, x::AbstractArray;
          replace::Bool=true, ordered::Bool=false) =
     sample!(Base.GLOBAL_RNG, a, weights(w), x; replace=replace, ordered=ordered)
-"""
-    wsample([rng], [a], w)
-Select a weighted random sample of size 1 from `a` with probabilities proportional
-to the weights given in `w`. If `a` is not present, select a random weight from `w`.
-Optionally specify a random number generator `rng` as the first argument
-(defaults to `Base.GLOBAL_RNG`).
-"""
 wsample(rng::AbstractRNG, w::RealVector) = sample(rng, weights(w))
 wsample(w::RealVector) = wsample(Base.GLOBAL_RNG, w)
 wsample(rng::AbstractRNG, a::AbstractArray, w::RealVector) = sample(rng, a, weights(w))
 wsample(a::AbstractArray, w::RealVector) = wsample(Base.GLOBAL_RNG, a, w)
-"""
-    wsample([rng], [a], w, n::Integer; replace=true, ordered=false)
-Select a weighted random sample of size `n` from `a` with probabilities proportional
-to the weights given in `w` if `a` is present, otherwise select a random sample of size
-`n` of the weights given in `w`. `replace` dictates whether sampling is performed with
-replacement and `order` dictates whether an ordered sample, also called a sequential
-sample, should be taken.
-Optionally specify a random number generator `rng` as the first argument
-(defaults to `Base.GLOBAL_RNG`).
-"""
 wsample(rng::AbstractRNG, a::AbstractArray{T}, w::RealVector, n::Integer;
         replace::Bool=true, ordered::Bool=false) where {T} =
     wsample!(rng, a, w, Vector{T}(uninitialized, n); replace=replace, ordered=ordered)
 wsample(a::AbstractArray, w::RealVector, n::Integer;
         replace::Bool=true, ordered::Bool=false) =
     wsample(Base.GLOBAL_RNG, a, w, n; replace=replace, ordered=ordered)
-"""
-    wsample([rng], [a], w, dims::Dims; replace=true, ordered=false)
-Select a weighted random sample from `a` with probabilities proportional to the
-weights given in `w` if `a` is present, otherwise select a random sample of size
-`n` of the weights given in `w`. The dimensions of the output are given by `dims`.
-Optionally specify a random number generator `rng` as the first argument
-(defaults to `Base.GLOBAL_RNG`).
-"""
 wsample(rng::AbstractRNG, a::AbstractArray{T}, w::RealVector, dims::Dims;
         replace::Bool=true, ordered::Bool=false) where {T} =
     wsample!(rng, a, w, Array{T}(uninitialized, dims); replace=replace, ordered=ordered)
@@ -4231,124 +3150,27 @@ wsample(a::AbstractArray, w::RealVector, dims::Dims;
         replace::Bool=true, ordered::Bool=false) =
     wsample(Base.GLOBAL_RNG, a, w, dims; replace=replace, ordered=ordered)
 abstract type StatisticalModel end
-"""
-    coef(obj::StatisticalModel)
-Return the coefficients of the model.
-"""
 coef(obj::StatisticalModel) = error("coef is not defined for $(typeof(obj)).")
-"""
-    coefnames(obj::StatisticalModel)
-Return the names of the coefficients.
-"""
 coefnames(obj::StatisticalModel) = error("coefnames is not defined for $(typeof(obj)).")
-"""
-    coeftable(obj::StatisticalModel)
-Return a table of class `CoefTable` with coefficients and related statistics.
-"""
 coeftable(obj::StatisticalModel) = error("coeftable is not defined for $(typeof(obj)).")
-"""
-    confint(obj::StatisticalModel)
-Compute confidence intervals for coefficients.
-"""
 confint(obj::StatisticalModel) = error("coefint is not defined for $(typeof(obj)).")
-"""
-    deviance(obj::StatisticalModel)
-Return the deviance of the model relative to a reference, which is usually when applicable
-the saturated model. It is equal, *up to a constant*, to ``-2 \\log L``, with ``L``
-the likelihood of the model.
-"""
 deviance(obj::StatisticalModel) = error("deviance is not defined for $(typeof(obj)).")
-"""
-    nulldeviance(obj::StatisticalModel)
-Return the deviance of the null model, that is the one including only the intercept.
-"""
 nulldeviance(obj::StatisticalModel) = error("nulldeviance is not defined for $(typeof(obj)).")
-"""
-    loglikelihood(obj::StatisticalModel)
-Return the log-likelihood of the model.
-"""
 loglikelihood(obj::StatisticalModel) = error("loglikelihood is not defined for $(typeof(obj)).")
-"""
-    loglikelihood(obj::StatisticalModel)
-Return the log-likelihood of the null model corresponding to model `obj`.
-This is usually the model containing only the intercept.
-"""
 nullloglikelihood(obj::StatisticalModel) = error("nullloglikelihood is not defined for $(typeof(obj)).")
-"""
-    nobs(obj::StatisticalModel)
-Return the number of independent observations on which the model was fitted. Be careful
-when using this information, as the definition of an independent observation may vary
-depending on the model, on the format used to pass the data, on the sampling plan
-(if specified), etc.
-"""
 nobs(obj::StatisticalModel) = error("nobs is not defined for $(typeof(obj)).")
-"""
-    dof(obj::StatisticalModel)
-Return the number of degrees of freedom consumed in the model, including
-when applicable the intercept and the distribution's dispersion parameter.
-"""
 dof(obj::StatisticalModel) = error("dof is not defined for $(typeof(obj)).")
-"""
-    stderr(obj::StatisticalModel)
-Return the standard errors for the coefficients of the model.
-"""
 stderr(obj::StatisticalModel) = sqrt.(diag(vcov(obj)))
-"""
-    vcov(obj::StatisticalModel)
-Return the variance-covariance matrix for the coefficients of the model.
-"""
 vcov(obj::StatisticalModel) = error("vcov is not defined for $(typeof(obj)).")
-"""
-Fit a statistical model.
-"""
 fit(obj::StatisticalModel, args...) = error("fit is not defined for $(typeof(obj)).")
-"""
-Fit a statistical model in-place.
-"""
 fit!(obj::StatisticalModel, args...) = error("fit! is not defined for $(typeof(obj)).")
-"""
-    aic(obj::StatisticalModel)
-Akaike's Information Criterion, defined as ``-2 \\log L + 2k``, with ``L`` the likelihood
-of the model, and `k` its number of consumed degrees of freedom
-(as returned by [`dof`](@ref)).
-"""
 aic(obj::StatisticalModel) = -2loglikelihood(obj) + 2dof(obj)
-"""
-    aicc(obj::StatisticalModel)
-Corrected Akaike's Information Criterion for small sample sizes (Hurvich and Tsai 1989),
-defined as ``-2 \\log L + 2k + 2k(k-1)/(n-k-1)``, with ``L`` the likelihood of the model,
-``k`` its number of consumed degrees of freedom (as returned by [`dof`](@ref)),
-and ``n`` the number of observations (as returned by [`nobs`](@ref)).
-"""
 function aicc(obj::StatisticalModel)
     k = dof(obj)
     n = nobs(obj)
     -2loglikelihood(obj) + 2k + 2k*(k+1)/(n-k-1)
 end
-"""
-    bic(obj::StatisticalModel)
-Bayesian Information Criterion, defined as ``-2 \\log L + k \\log n``, with ``L``
-the likelihood of the model,  ``k`` its number of consumed degrees of freedom
-(as returned by [`dof`](@ref)), and ``n`` the number of observations
-(as returned by [`nobs`](@ref)).
-"""
 bic(obj::StatisticalModel) = -2loglikelihood(obj) + dof(obj)*log(nobs(obj))
-"""
-    r2(obj::StatisticalModel, variant::Symbol)
-    r²(obj::StatisticalModel, variant::Symbol)
-Coefficient of determination (R-squared).
-For a linear model, the R² is defined as ``ESS/TSS``, with ``ESS`` the explained sum of squares
-and ``TSS`` the total sum of squares, and `variant` can be omitted.
-For other models, one of several pseudo R² definitions must be chosen via `variant`.
-Supported variants are:
-- `:MacFadden` (a.k.a. likelihood ratio index), defined as ``1 - \\log L/\\log L0``.
-- `:CoxSnell`, defined as ``1 - (L0/L)^{2/n}``
-- `:Nagelkerke`, defined as ``(1 - (L0/L)^{2/n})/(1 - L0^{2/n})``, with ``n`` the number
-of observations (as returned by [`nobs`](@ref)).
-In the above formulas, ``L`` is the likelihood of the model, ``L0`` that of the null model
-(the model including only the intercept). These two quantities are taken to be minus half
-`deviance` of the corresponding models.
-"""
 function r2(obj::StatisticalModel, variant::Symbol)
     ll = -deviance(obj)/2
     ll0 = -nulldeviance(obj)/2
@@ -4363,20 +3185,6 @@ function r2(obj::StatisticalModel, variant::Symbol)
     end
 end
 const r² = r2
-"""
-    adjr2(obj::StatisticalModel, variant::Symbol)
-    adjr²(obj::StatisticalModel, variant::Symbol)
-Adjusted coefficient of determination (adjusted R-squared).
-For linear models, the adjusted R² is defined as ``1 - (1 - (1-R^2)(n-1)/(n-p))``, with ``R^2``
-the coefficient of determination, ``n`` the number of observations, and ``p`` the number of
-coefficients (including the intercept). This definition is generally known as the Wherry Formula I.
-For other models, one of the several pseudo R² definitions must be chosen via `variant`.
-The only currently supported variant is `:MacFadden`, defined as ``1 - (\\log L - k)/\\log L0``.
-In this formula, ``L`` is the likelihood of the model, ``L0`` that of the null model
-(the model including only the intercept). These two quantities are taken to be minus half
-`deviance` of the corresponding models. ``k`` is the number of consumed degrees of freedom
-of the model (as returned by [`dof`](@ref)).
-"""
 function adjr2(obj::StatisticalModel, variant::Symbol)
     ll = -deviance(obj)/2
     ll0 = -nulldeviance(obj)/2
@@ -4389,49 +3197,15 @@ function adjr2(obj::StatisticalModel, variant::Symbol)
 end
 const adjr² = adjr2
 abstract type RegressionModel <: StatisticalModel end
-"""
-    fitted(obj::RegressionModel)
-Return the fitted values of the model.
-"""
 fitted(obj::RegressionModel) = error("fitted is not defined for $(typeof(obj)).")
-"""
-    model_response(obj::RegressionModel)
-Return the model response (a.k.a. the dependent variable).
-"""
 model_response(obj::RegressionModel) = error("model_response is not defined for $(typeof(obj)).")
-"""
-    modelmatrix(obj::RegressionModel)
-Return the model matrix (a.k.a. the design matrix).
-"""
 modelmatrix(obj::RegressionModel) = error("modelmatrix is not defined for $(typeof(obj)).")
-"""
-    residuals(obj::RegressionModel)
-Return the residuals of the model.
-"""
 residuals(obj::RegressionModel) = error("residuals is not defined for $(typeof(obj)).")
-"""
-    predict(obj::RegressionModel, [newX])
-Form the predicted response of model `obj`. An object with new covariate values `newX` can be supplied,
-which should have the same type and structure as that used to fit `obj`; e.g. for a GLM
-it would generally be a `DataFrame` with the same variable names as the original predictors.
-"""
 function predict end
 predict(obj::RegressionModel) = error("predict is not defined for $(typeof(obj)).")
-"""
-    predict!
-In-place version of [`predict`](@ref).
-"""
 function predict! end
 predict!(obj::RegressionModel) = error("predict! is not defined for $(typeof(obj)).")
-"""
-    dof_residual(obj::RegressionModel)
-Return the residual degrees of freedom of the model.
-"""
 dof_residual(obj::RegressionModel) = error("dof_residual is not defined for $(typeof(obj)).")
-"""
-    params(obj)
-Return all parameters of a model.
-"""
 params(obj) = error("params is not defined for $(typeof(obj))")
 function params! end
 mutable struct CoefTable
@@ -4505,12 +3279,6 @@ function show(io::IO, ct::CoefTable)
         println(io)
     end
 end
-"""
-    ConvergenceException(iters::Int, lastchange::Real=NaN, tol::Real=NaN)
-The fitting procedure failed to converge in `iters` number of iterations,
-i.e. the `lastchange` between the cost of the final and penultimate iteration was greater than
-specified tolerance `tol`.
-"""
 struct ConvergenceException{T<:Real} <: Exception
     iters::Int
     lastchange::T
@@ -4561,11 +3329,6 @@ function findat!(r::IntegerArray, a::AbstractArray{T}, b::AbstractArray{T}) wher
     end
     return r
 end
-"""
-    findat(a, b)
-For each element in `b`, find its first index in `a`. If the value does
-not occur in `a`, the corresponding index is 0.
-"""
 findat(a::AbstractArray, b::AbstractArray) = findat!(Array{Int}(uninitialized, size(b)), a, b)
 @deprecate df(obj::StatisticalModel) dof(obj)
 @deprecate df_residual(obj::StatisticalModel) dof_residual(obj)

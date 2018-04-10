@@ -2,17 +2,6 @@ __precompile__(true)
 module WeakRefStrings
 export WeakRefString, WeakRefStringArray
 using Missings, Compat
-"""
-A custom "weakref" string type that only points to external string data.
-Allows for the creation of a "string" instance without copying data,
-which allows for more efficient string parsing/movement in certain data processing tasks.
-**Please note that no original reference is kept to the parent string/memory, so `WeakRefString` becomes unsafe
-once the parent object goes out of scope (i.e. loses a reference to it)**
-Internally, a `WeakRefString{T}` holds:
-  * `ptr::Ptr{T}`: a pointer to the string data (code unit size is parameterized on `T`)
-  * `len::Int`: the number of code units in the string data
-See also [`WeakRefStringArray`](@ref)
-"""
 struct WeakRefString{T} <: AbstractString
     ptr::Ptr{T}
     len::Int # of code units
@@ -60,15 +49,6 @@ Base.String(x::WeakRefString) = string(x)
 Base.Symbol(x::WeakRefString{UInt8}) = ccall(:jl_symbol_n, Ref{Symbol}, (Ptr{UInt8}, Int), x.ptr, x.len)
 init(::Type{T}, rows) where {T} = fill(zero(T), rows)
 init(::Type{Union{Missing, T}}, rows) where {T} = Vector{Union{Missing, T}}(undef, rows)
-"""
-A [`WeakRefString`](@ref) container.
-Holds the "strong" references to the data pointed by its strings, ensuring that
-the referenced memory blocks stay valid during `WeakRefStringArray` lifetime.
-Upon indexing an elemnt in a `WeakRefStringArray`, the underlying `WeakRefString` is converted to a proper
-Julia `String` type by copying the memory; this ensures safe string processing in the general case. If additional
-optimizations are desired, the direct `WeakRefString` elements can be accessed by indexing `A.elements`, where
-`A` is a `WeakRefStringArray`.
-"""
 struct WeakRefStringArray{T<:WeakRefString, N, U} <: AbstractArray{Union{String, U}, N}
     data::Vector{Any}
     elements::Array{Union{T, U}, N}

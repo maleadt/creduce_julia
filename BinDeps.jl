@@ -498,11 +498,6 @@ function eval_anon_module(context, file)
     end
     return
 end
-"""
-    glibc_version()
-For Linux-based systems, return the version of glibc in use. For non-glibc Linux and
-other platforms, returns `nothing`.
-"""
 function glibc_version()
     Compat.Sys.islinux() || return
     libc = ccall(:jl_dlopen, Ptr{Cvoid}, (Ptr{Cvoid}, UInt32), C_NULL, 0)

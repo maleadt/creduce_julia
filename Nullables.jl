@@ -9,26 +9,6 @@ struct Nullable{T}
     Nullable{T}() where {T} = new(false)
     Nullable{T}(value::T, hasvalue::Bool=true) where {T} = new(hasvalue, value)
 end
-"""
-    Nullable(x, hasvalue::Bool=true)
-Wrap value `x` in an object of type `Nullable`, which indicates whether a value is present.
-`Nullable(x)` yields a non-empty wrapper and `Nullable{T}()` yields an empty instance of a
-wrapper that might contain a value of type `T`.
-`Nullable(x, false)` yields `Nullable{typeof(x)}()` with `x` stored in the result's `value`
-field.
-```jldoctest
-julia> Nullable(1)
-Nullable{Int64}(1)
-julia> Nullable{Int64}()
-Nullable{Int64}()
-julia> Nullable(1, false)
-Nullable{Int64}()
-julia> dump(Nullable(1, false))
-Nullable{Int64}
-  hasvalue: Bool false
-  value: Int64 1
-```
-"""
 Nullable(value::T, hasvalue::Bool=true) where {T} = Nullable{T}(value, hasvalue)
 Nullable() = Nullable{Union{}}()
 Base.eltype(::Type{Nullable{T}}) where {T} = T
@@ -64,19 +44,6 @@ function Base.show(io::IO, x::Nullable)
         print(io, ')')
     end
 end
-"""
-    get(x::Nullable[, y])
-Attempt to access the value of `x`. Returns the value if it is present;
-otherwise, returns `y` if provided, or throws a `NullException` if not.
-```jldoctest
-julia> get(Nullable(5))
-5
-julia> get(Nullable())
-ERROR: NullException()
-Stacktrace:
- [1] get(::Nullable{Union{}}) at ./nullable.jl:102
-```
-"""
 @inline function Base.get(x::Nullable{T}, y) where T
     if isbits(T)
         ifelse(isnull(x), y, x.value)
@@ -85,65 +52,10 @@ Stacktrace:
     end
 end
 Base.get(x::Nullable) = isnull(x) ? throw(NullException()) : x.value
-"""
-    unsafe_get(x)
-Return the value of `x` for [`Nullable`](@ref) `x`; return `x` for
-all other `x`.
-This method does not check whether or not `x` is null before attempting to
-access the value of `x` for `x::Nullable` (hence "unsafe").
-```jldoctest
-julia> x = Nullable(1)
-Nullable{Int64}(1)
-julia> unsafe_get(x)
-1
-julia> x = Nullable{String}()
-Nullable{String}()
-julia> unsafe_get(x)
-ERROR: UndefRefError: access to undefined reference
-Stacktrace:
- [1] unsafe_get(::Nullable{String}) at ./nullable.jl:152
-julia> x = 1
-1
-julia> unsafe_get(x)
-1
-```
-"""
 unsafe_get(x::Nullable) = x.value
 unsafe_get(x) = x
-"""
-    isnull(x::Nullable)
-Return whether or not `x` is null.
-```jldoctest
-julia> x = Nullable(1, false)
-Nullable{Int64}()
-julia> isnull(x)
-true
-julia> x = Nullable(1, true)
-Nullable{Int64}(1)
-julia> isnull(x)
-false
-julia> x = 1
-1
-julia> isnull(x)
-false
-```
-"""
 isnull(x::Nullable) = !x.hasvalue
 isnull(x) = false
-"""
-    null_safe_op(f::Any, ::Type, ::Type...)::Bool
-Returns whether an operation `f` can safely be applied to any value of the passed type(s).
-Returns `false` by default.
-Custom types should implement methods for some or all operations `f` when applicable:
-returning `true` means that the operation may be called on any bit pattern without
-throwing an error (though returning invalid or nonsensical results is not a problem).
-In particular, this means that the operation can be applied on the whole domain of the
-type *and on uninitialized objects*. As a general rule, these properties are only true for
-safe operations on `isbits` types.
-Types declared as safe can benefit from higher performance for operations on nullable: by
-always computing the result even for null values, a branch is avoided, which helps
-vectorization.
-"""
 null_safe_op(f::Any, ::Type, ::Type...) = false
 const NullSafeSignedInts = Union{Type{Int128}, Type{Int16}, Type{Int32},
                                  Type{Int64}, Type{Int8}}
@@ -159,22 +71,6 @@ null_safe_op(f::EqualOrLess, ::Type{Rational{S}}, ::Type{T}) where {S,T} =
     null_safe_op(f, T, S)
 null_safe_op(::typeof(isequal), ::Type{Complex{S}}, ::Type{T}) where {S,T} =
     null_safe_op(isequal, T, S)
-"""
-    isequal(x::Nullable, y::Nullable)
-If neither `x` nor `y` is null, compare them according to their values
-(i.e. `isequal(get(x), get(y))`). Else, return `true` if both arguments are null,
-and `false` if one is null but not the other: nulls are considered equal.
-```jldoctest
-julia> isequal(Nullable(5), Nullable(5))
-true
-julia> isequal(Nullable(5), Nullable(4))
-false
-julia> isequal(Nullable(5), Nullable())
-false
-julia> isequal(Nullable(), Nullable())
-true
-```
-"""
 @inline function Base.isequal(x::Nullable{S}, y::Nullable{T}) where {S,T}
     if null_safe_op(isequal, S, T)
         (isnull(x) & isnull(y)) | (!isnull(x) & !isnull(y) & isequal(x.value, y.value))
@@ -185,27 +81,6 @@ end
 Base.isequal(x::Nullable{Union{}}, y::Nullable{Union{}}) = true
 Base.isequal(x::Nullable{Union{}}, y::Nullable) = isnull(y)
 Base.isequal(x::Nullable, y::Nullable{Union{}}) = isnull(x)
-"""
-    isless(x::Nullable, y::Nullable)
-If neither `x` nor `y` is null, compare them according to their values
-(i.e. `isless(get(x), get(y))`). Else, return `true` if only `y` is null, and `false`
-otherwise: nulls are always considered greater than non-nulls, but not greater than
-another null.
-```jldoctest
-julia> isless(Nullable(6), Nullable(5))
-false
-julia> isless(Nullable(5), Nullable(6))
-true
-julia> isless(Nullable(5), Nullable(4))
-false
-julia> isless(Nullable(5), Nullable())
-true
-julia> isless(Nullable(), Nullable())
-false
-julia> isless(Nullable(), Nullable(5))
-false
-```
-"""
 @inline function Base.isless(x::Nullable{S}, y::Nullable{T}) where {S,T}
     # NULL values are sorted last
     if null_safe_op(isless, S, T)
@@ -226,18 +101,6 @@ function Base.hash(x::Nullable, h::UInt)
         return hash(x.value, h + nullablehash_seed)
     end
 end
-"""
-    filter(p, x::Nullable)
-Return null if either `x` is null or `p(get(x))` is false, and `x` otherwise.
-```jldoctest
-julia> filter(isodd, Nullable(5))
-Nullable{Int64}(5)
-julia> filter(isodd, Nullable(4))
-Nullable{Int64}()
-julia> filter(isodd, Nullable{Int}())
-Nullable{Int64}()
-```
-"""
 function Base.filter(p, x::Nullable{T}) where T
     if isbits(T)
         val = unsafe_get(x)
@@ -246,27 +109,7 @@ function Base.filter(p, x::Nullable{T}) where T
         isnull(x) || p(unsafe_get(x)) ? x : Nullable{T}()
     end
 end
-"""
-Return the given type if it is concrete, and `Union{}` otherwise.
-"""
 nullable_returntype(::Type{T}) where {T} = isconcretetype(T) ? T : Union{}
-"""
-    map(f, x::Nullable)
-Return `f` applied to the value of `x` if it has one, as a `Nullable`. If `x`
-is null, then return a null value of type `Nullable{S}`. `S` is guaranteed to
-be either `Union{}` or a concrete type. Whichever of these is chosen is an
-implementation detail, but typically the choice that maximizes performance
-would be used. If `x` has a value, then the return type is guaranteed to be of
-type `Nullable{typeof(f(x))}`.
-```jldoctest
-julia> map(isodd, Nullable(1))
-Nullable{Bool}(true)
-julia> map(isodd, Nullable(2))
-Nullable{Bool}(false)
-julia> map(isodd, Nullable{Int}())
-Nullable{Bool}()
-```
-"""
 function Base.map(f, x::Nullable{T}) where T
     S = Base.promote_op(f, T)
     if isconcretetype(S) && null_safe_op(f, T)

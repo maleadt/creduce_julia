@@ -129,11 +129,6 @@ function make_unique(names::Vector{Symbol}; makeunique::Bool=false)
     end
     return names
 end
-"""
-    gennames(n::Integer)
-Generate standardized names for columns of a DataFrame. The first name will be `:x1`, the
-second `:x2`, etc.
-"""
 function gennames(n::Integer)
     res = Array{Symbol}(n)
     for i in 1:n
@@ -141,10 +136,6 @@ function gennames(n::Integer)
     end
     return res
 end
-"""
-    countmissing(a::AbstractArray)
-Count the number of `missing` values in an array.
-"""
 function countmissing(a::AbstractArray)
     res = 0
     for x in a
@@ -346,56 +337,6 @@ function add_names(ind::Index, add_ind::Index; makeunique::Bool=false)
     end
     return u
 end
-"""
-An abstract type for which all concrete types expose a database-like
-interface.
-**Common methods**
-An AbstractDataFrame is a two-dimensional table with Symbols for
-column names. An AbstractDataFrame is also similar to an Associative
-type in that it allows indexing by a key (the columns).
-The following are normally implemented for AbstractDataFrames:
-* [`describe`](@ref) : summarize columns
-* [`dump`](@ref) : show structure
-* `hcat` : horizontal concatenation
-* `vcat` : vertical concatenation
-* `names` : columns names
-* [`names!`](@ref) : set columns names
-* [`rename!`](@ref) : rename columns names based on keyword arguments
-* [`eltypes`](@ref) : `eltype` of each column
-* `length` : number of columns
-* `size` : (nrows, ncols)
-* [`head`](@ref) : first `n` rows
-* [`tail`](@ref) : last `n` rows
-* `convert` : convert to an array
-* [`completecases`](@ref) : boolean vector of complete cases (rows with no missings)
-* [`dropmissing`](@ref) : remove rows with missing values
-* [`dropmissing!`](@ref) : remove rows with missing values in-place
-* [`nonunique`](@ref) : indexes of duplicate rows
-* [`unique!`](@ref) : remove duplicate rows
-* `similar` : a DataFrame with similar columns as `d`
-**Indexing**
-Table columns are accessed (`getindex`) by a single index that can be
-a symbol identifier, an integer, or a vector of each. If a single
-column is selected, just the column object is returned. If multiple
-columns are selected, some AbstractDataFrame is returned.
-```julia
-d[:colA]
-d[3]
-d[[:colA, :colB]]
-d[[1:3; 5]]
-```
-Rows and columns can be indexed like a `Matrix` with the added feature
-of indexing columns by name.
-```julia
-d[1:3, :colA]
-d[3,3]
-d[3,:]
-d[3,[:colA, :colB]]
-d[:, [:colA, :colB]]
-d[[1:3; 5], :]
-```
-`setindex` works similarly.
-"""
 abstract type AbstractDataFrame end
 struct Cols{T <: AbstractDataFrame} <: AbstractVector{Any}
     df::T
@@ -411,28 +352,6 @@ Base.getindex(itr::Cols, inds...) = getindex(itr.df, inds...)
 columns(df::T) where {T <: AbstractDataFrame} = Cols{T}(df)
 Base.names(df::AbstractDataFrame) = names(index(df))
 _names(df::AbstractDataFrame) = _names(index(df))
-"""
-Set column names
-```julia
-names!(df::AbstractDataFrame, vals)
-```
-**Arguments**
-* `df` : the AbstractDataFrame
-* `vals` : column names, normally a Vector{Symbol} the same length as
-  the number of columns in `df`
-* `makeunique` : if `false` (the default), an error will be raised
-  if duplicate names are found; if `true`, duplicate names will be suffixed
-  with `_i` (`i` starting at 1 for the first duplicate).
-**Result**
-* `::AbstractDataFrame` : the updated result
-**Examples**
-```julia
-df = DataFrame(i = 1:10, x = rand(10), y = rand(["a", "b", "c"], 10))
-names!(df, [:a, :b, :c])
-names!(df, [:a, :b, :a])  # throws ArgumentError
-names!(df, [:a, :b, :a], makeunique=true)  # renames second :a to :a_1
-```
-"""
 function names!(df::AbstractDataFrame, vals; allow_duplicates=false, makeunique::Bool=false)
     if allow_duplicates
         Base.depwarn("Keyword argument allow_duplicates is deprecated. Use makeunique.", :names!)
@@ -450,54 +369,7 @@ function rename!(f::Function, df::AbstractDataFrame)
 end
 rename(df::AbstractDataFrame, args...) = rename!(copy(df), args...)
 rename(f::Function, df::AbstractDataFrame) = rename!(f, copy(df))
-"""
-Rename columns
-```julia
-rename!(df::AbstractDataFrame, (from => to)::Pair{Symbol, Symbol}...)
-rename!(df::AbstractDataFrame, d::Associative{Symbol,Symbol})
-rename!(df::AbstractDataFrame, d::AbstractArray{Pair{Symbol,Symbol}})
-rename!(f::Function, df::AbstractDataFrame)
-rename(df::AbstractDataFrame, (from => to)::Pair{Symbol, Symbol}...)
-rename(df::AbstractDataFrame, d::Associative{Symbol,Symbol})
-rename(df::AbstractDataFrame, d::AbstractArray{Pair{Symbol,Symbol}})
-rename(f::Function, df::AbstractDataFrame)
-```
-**Arguments**
-* `df` : the AbstractDataFrame
-* `d` : an Associative type or an AbstractArray of pairs that maps
-  the original names to new names
-* `f` : a function which for each column takes the old name (a Symbol)
-  and returns the new name (a Symbol)
-**Result**
-* `::AbstractDataFrame` : the updated result
-New names are processed sequentially. A new name must not already exist in the `DataFrame`
-at the moment an attempt to rename a column is performed.
-**Examples**
-```julia
-df = DataFrame(i = 1:10, x = rand(10), y = rand(["a", "b", "c"], 10))
-rename(df, :i => :A, :x => :X)
-rename(df, [:i => :A, :x => :X])
-rename(df, Dict(:i => :A, :x => :X))
-rename(x -> Symbol(uppercase(string(x))), df)
-rename!(df, Dict(:i =>: A, :x => :X))
-```
-"""
 (rename!, rename)
-"""
-Return element types of columns
-```julia
-eltypes(df::AbstractDataFrame)
-```
-**Arguments**
-* `df` : the AbstractDataFrame
-**Result**
-* `::Vector{Type}` : the element type of each column
-**Examples**
-```julia
-df = DataFrame(i = 1:10, x = rand(10), y = rand(["a", "b", "c"], 10))
-eltypes(df)
-```
-"""
 eltypes(df::AbstractDataFrame) = map!(eltype, Vector{Type}(size(df,2)), columns(df))
 Base.size(df::AbstractDataFrame) = (nrow(df), ncol(df))
 function Base.size(df::AbstractDataFrame, i::Integer)
@@ -512,12 +384,6 @@ end
 Base.length(df::AbstractDataFrame) = ncol(df)
 Base.endof(df::AbstractDataFrame) = ncol(df)
 Base.ndims(::AbstractDataFrame) = 2
-"""
-    similar(df::DataFrame[, rows::Integer])
-Create a new `DataFrame` with the same column names and column element types
-as `df`. An optional second argument can be provided to request a number of rows
-that is different than the number of rows present in `df`.
-"""
 function Base.similar(df::AbstractDataFrame, rows::Integer = size(df, 1))
     rows < 0 && throw(ArgumentError("the number of rows must be positive"))
     DataFrame(Any[similar(x, rows) for x in columns(df)], copy(index(df)))
@@ -549,43 +415,7 @@ head(df::AbstractDataFrame, r::Int) = df[1:min(r,nrow(df)), :]
 head(df::AbstractDataFrame) = head(df, 6)
 tail(df::AbstractDataFrame, r::Int) = df[max(1,nrow(df)-r+1):nrow(df), :]
 tail(df::AbstractDataFrame) = tail(df, 6)
-"""
-Show the first or last part of an AbstractDataFrame
-```julia
-head(df::AbstractDataFrame, r::Int = 6)
-tail(df::AbstractDataFrame, r::Int = 6)
-```
-**Arguments**
-* `df` : the AbstractDataFrame
-* `r` : the number of rows to show
-**Result**
-* `::AbstractDataFrame` : the first or last part of `df`
-**Examples**
-```julia
-df = DataFrame(i = 1:10, x = rand(10), y = rand(["a", "b", "c"], 10))
-head(df)
-tail(df)
-```
-"""
 (head, tail)
-"""
-Show the structure of an AbstractDataFrame, in a tree-like format
-```julia
-dump(df::AbstractDataFrame, n::Int = 5)
-dump(io::IO, df::AbstractDataFrame, n::Int = 5)
-```
-**Arguments**
-* `df` : the AbstractDataFrame
-* `n` : the number of levels to show
-* `io` : optional output descriptor
-**Result**
-* nothing
-**Examples**
-```julia
-df = DataFrame(i = 1:10, x = rand(10), y = rand(["a", "b", "c"], 10))
-dump(df)
-```
-"""
 function Base.dump(io::IO, df::AbstractDataFrame, n::Int, indent)
     println(io, typeof(df), "  $(nrow(df)) observations of $(ncol(df)) variables")
     if n > 0
@@ -595,29 +425,6 @@ function Base.dump(io::IO, df::AbstractDataFrame, n::Int, indent)
         end
     end
 end
-"""
-Summarize the columns of an AbstractDataFrame
-```julia
-describe(df::AbstractDataFrame)
-describe(io, df::AbstractDataFrame)
-```
-**Arguments**
-* `df` : the AbstractDataFrame
-* `io` : optional output descriptor
-**Result**
-* nothing
-**Details**
-If the column's base type derives from Number, compute the minimum, first
-quantile, median, mean, third quantile, and maximum. Missings are filtered and
-reported separately.
-For boolean columns, report trues, falses, and missings.
-For other types, show column characteristics and number of missings.
-**Examples**
-```julia
-df = DataFrame(i = 1:10, x = rand(10), y = rand(["a", "b", "c"], 10))
-describe(df)
-```
-"""
 StatsBase.describe(df::AbstractDataFrame) = describe(STDOUT, df)
 function StatsBase.describe(io, df::AbstractDataFrame)
     for (name, col) in eachcol(df)
@@ -667,70 +474,6 @@ unique!(df::AbstractDataFrame) = deleterows!(df, find(nonunique(df)))
 unique!(df::AbstractDataFrame, cols::Any) = deleterows!(df, find(nonunique(df, cols)))
 Base.unique(df::AbstractDataFrame) = df[(!).(nonunique(df)), :]
 Base.unique(df::AbstractDataFrame, cols::Any) = df[(!).(nonunique(df, cols)), :]
-"""
-Delete duplicate rows
-```julia
-unique(df::AbstractDataFrame)
-unique(df::AbstractDataFrame, cols)
-unique!(df::AbstractDataFrame)
-unique!(df::AbstractDataFrame, cols)
-```
-**Arguments**
-* `df` : the AbstractDataFrame
-* `cols` :  column indicator (Symbol, Int, Vector{Symbol}, etc.)
-specifying the column(s) to compare.
-**Result**
-* `::AbstractDataFrame` : the updated version of `df` with unique rows.
-          makeunique::Bool=false)
-DataFrame(ds::Vector{Associative})
-```
-**Arguments**
-* `columns` : a Vector with each column as contents or a Matrix
-* `names` : the column names
-* `makeunique` : if `false` (the default), an error will be raised
-  if duplicates in `names` are found; if `true`, duplicate names will be suffixed
-  with `_i` (`i` starting at 1 for the first duplicate).
-* `kwargs` : the key gives the column names, and the value is the
-  column contents
-* `t` : elemental type of all columns
-* `nrows`, `ncols` : number of rows and columns
-* `column_eltypes` : elemental type of each column
-* `categorical` : `Vector{Bool}` indicating which columns should be converted to
-                  `CategoricalVector`
-* `ds` : a vector of Associatives
-Each column in `columns` should be the same length.
-**Notes**
-A `DataFrame` is a lightweight object. As long as columns are not
-manipulated, creation of a DataFrame from existing AbstractVectors is
-inexpensive. For example, indexing on columns is inexpensive, but
-indexing by rows is expensive because copies are made of each column.
-Because column types can vary, a DataFrame is not type stable. For
-performance-critical code, do not index into a DataFrame inside of
-loops.
-**Examples**
-```julia
-df = DataFrame()
-v = ["x","y","z"][rand(1:3, 10)]
-df1 = DataFrame(Any[collect(1:10), v, rand(10)], [:A, :B, :C])
-df2 = DataFrame(A = 1:10, B = v, C = rand(10))
-dump(df1)
-dump(df2)
-describe(df2)
-head(df1)
-df1[:A] + df2[:C]
-df1[1:4, 1:2]
-df1[[:A,:C]]
-df1[1:2, [:A,:C]]
-df1[:, [:A,:C]]
-df1[:, [1,3]]
-df1[1:4, :]
-df1[1:4, :C]
-df1[1:4, :C] = 40. * df1[1:4, :C]
-[df1; df2]  # vcat
-[df1  df2]  # hcat
-size(df1)
-```
-"""
 mutable struct DataFrame <: AbstractDataFrame
     columns::Vector
     colindex::Index
@@ -991,37 +734,6 @@ Base.setindex!(df::DataFrame, v, ::Colon, col_inds) =
     (df[col_inds] = v; df)
 Base.setindex!(df::DataFrame, x::Void, col_ind::Int) = delete!(df, col_ind)
 Base.empty!(df::DataFrame) = (empty!(df.columns); empty!(index(df)); df)
-"""
-Insert a column into a data frame in place.
-```julia
-insert!(df::DataFrame, col_ind::Int, item::AbstractVector, name::Symbol;
-        makeunique::Bool=false)
-```
-* `df` : the DataFrame to which we want to add a column
-* `col_ind` : a position at which we want to insert a column
-* `item` : a column to be inserted into `df`
-* `name` : column name
-* `makeunique` : Defines what to do if `name` already exists in `df`;
-  if it is `false` an error will be thrown; if it is `true` a new unique name will
-  be generated by adding a suffix
-* `::DataFrame` : a `DataFrame` with added column.
-```jldoctest
-julia> d = DataFrame(a=1:3)
-3×1 DataFrames.DataFrame
-│ Row │ a │
-├─────┼───┤
-│ 1   │ 1 │
-│ 2   │ 2 │
-│ 3   │ 3 │
-julia> insert!(d, 1, 'a':'c', :b)
-3×2 DataFrames.DataFrame
-│ Row │ b   │ a │
-├─────┼─────┼───┤
-│ 1   │ 'a' │ 1 │
-│ 2   │ 'b' │ 2 │
-│ 3   │ 'c' │ 3 │
-```
-"""
 function Base.insert!(df::DataFrame, col_ind::Int, item::AbstractVector, name::Symbol;
                       makeunique::Bool=false)
     0 < col_ind <= ncol(df) + 1 || throw(BoundsError())
@@ -1054,28 +766,6 @@ end
 function Base.insert!(df::DataFrame, col_ind::Int, item, name::Symbol; makeunique::Bool=false)
     insert!(df, col_ind, upgrade_scalar(df, item), name, makeunique=makeunique)
 end
-"""
-Merge data frames.
-```julia
-merge!(df::DataFrame, others::AbstractDataFrame...)
-```
-For every column `c` with name `n` in `others` sequentially perform `df[n] = c`.
-In particular, if there are duplicate column names present in `df` and `others`
-the last encountered column will be retained.
-This behavior is identical with how `merge!` works for any `Associative` type.
-Use `join` if you want to join two `DataFrame`s.
-**Arguments**
-* `df` : the DataFrame to merge into
-* `others` : `AbstractDataFrame`s to be merged into `df`
-**Result**
-* `::DataFrame` : the updated result. Columns with duplicate names are overwritten.
-**Examples**
-```julia
-df = DataFrame(id = 1:10, x = rand(10), y = rand(["a", "b", "c"], 10))
-df2 = DataFrame(id = 11:20, z = rand(10))
-merge!(df, df2)  # column z is added, column id is overwritten
-```
-"""
 function Base.merge!(df::DataFrame, others::AbstractDataFrame...)
     for other in others
         for n in _names(other)
@@ -1160,17 +850,6 @@ Base.hcat(df1::DataFrame, df2::AbstractDataFrame; makeunique::Bool=false) =
 Base.hcat(df1::DataFrame, df2::AbstractDataFrame, dfn::AbstractDataFrame...;
           makeunique::Bool=false) =
     hcat!(hcat(df1, df2, makeunique=makeunique), dfn..., makeunique=makeunique)
-"""
-    allowmissing!(df::DataFrame)
-Convert all columns of a `df` from element type `T` to
-`Union{T, Missing}` to support missing values.
-    allowmissing!(df::DataFrame, col::Union{Integer, Symbol})
-Convert a single column of a `df` from element type `T` to
-`Union{T, Missing}` to support missing values.
-    allowmissing!(df::DataFrame, cols::AbstractVector{<:Union{Integer, Symbol}})
-Convert multiple columns of a `df` from element type `T` to
-`Union{T, Missing}` to support missing values.
-"""
 function allowmissing! end
 function allowmissing!(df::DataFrame, col::ColumnIndex)
     df[col] = allowmissing(df[col])
@@ -1288,35 +967,6 @@ struct SubDataFrame{T <: AbstractVector{Int}} <: AbstractDataFrame
         new(parent, rows)
     end
 end
-"""
-A view of row subsets of an AbstractDataFrame
-A `SubDataFrame` is meant to be constructed with `view`.  A
-SubDataFrame is used frequently in split/apply sorts of operations.
-```julia
-view(d::AbstractDataFrame, rows)
-```
-* `d` : an AbstractDataFrame
-* `rows` : any indexing type for rows, typically an Int,
-  AbstractVector{Int}, AbstractVector{Bool}, or a Range
-A `SubDataFrame` is an AbstractDataFrame, so expect that most
-DataFrame functions should work. Such methods include `describe`,
-`dump`, `nrow`, `size`, `by`, `stack`, and `join`. Indexing is just
-like a DataFrame; copies are returned.
-To subset along columns, use standard column indexing as that creates
-a view to the columns by default. To subset along rows and columns,
-use column-based indexing with `view`.
-```julia
-df = DataFrame(a = repeat([1, 2, 3, 4], outer=[2]),
-               b = repeat([2, 1], outer=[4]),
-               c = randn(8))
-sdf1 = view(df, 1:6)
-sdf2 = view(df, df[:a] .> 1)
-sdf3 = view(df[[1,3]], df[:a] .> 1)  # row and column subsetting
-sdf4 = groupby(df, :a)[1]  # indexing a GroupedDataFrame returns a SubDataFrame
-sdf5 = view(sdf1, 1:3)
-sdf1[:,[:a,:b]]
-```
-"""
 SubDataFrame
 function SubDataFrame(parent::DataFrame, rows::T) where {T <: AbstractVector{Int}}
     return SubDataFrame{T}(parent, rows)
@@ -1366,11 +1016,6 @@ function Base.setindex!(sdf::SubDataFrame, val::Any, rowinds::Any, colinds::Any)
 end
 Base.map(f::Function, sdf::SubDataFrame) = f(sdf) # TODO: deprecate
 without(sdf::SubDataFrame, c) = view(without(sdf.parent, c), sdf.rows)
-"""
-The result of a `groupby` operation on an AbstractDataFrame; a
-view into the AbstractDataFrame grouped by rows.
-Not meant to be constructed directly, see `groupby`.
-"""
 mutable struct GroupedDataFrame
     parent::AbstractDataFrame
     cols::Vector         # columns used for sorting
@@ -1378,41 +1023,6 @@ mutable struct GroupedDataFrame
     starts::Vector{Int}  # starts of groups
     ends::Vector{Int}    # ends of groups
 end
-"""
-A view of an AbstractDataFrame split into row groups
-```julia
-groupby(d::AbstractDataFrame, cols; sort = false, skipmissing = false)
-groupby(cols; sort = false, skipmissing = false)
-```
-* `d` : an AbstractDataFrame to split (optional, see [Returns](#returns))
-* `cols` : data table columns to group by
-* `sort`: whether to sort rows according to the values of the grouping columns `cols`
-* `skipmissing`: whether to skip rows with `missing` values in one of the grouping columns `cols`
-* `::GroupedDataFrame` : a grouped view into `d`
-* `::Function`: a function `x -> groupby(x, cols)` (if `d` is not specified)
-An iterator over a `GroupedDataFrame` returns a `SubDataFrame` view
-for each grouping into `d`. A `GroupedDataFrame` also supports
-indexing by groups and `map`.
-See the following for additional split-apply-combine operations:
-* `by` : split-apply-combine using functions
-* `aggregate` : split-apply-combine; applies functions in the form of a cross product
-* `combine` : combine (obviously)
-* `colwise` : apply a function to each column in an AbstractDataFrame or GroupedDataFrame
-```julia
-df = DataFrame(a = repeat([1, 2, 3, 4], outer=[2]),
-               b = repeat([2, 1], outer=[4]),
-               c = randn(8))
-gd = groupby(df, :a)
-gd[1]
-last(gd)
-vcat([g[:b] for g in gd]...)
-for g in gd
-    println(g)
-end
-map(d -> mean(skipmissing(d[:c])), gd)   # returns a GroupApplied object
-combine(map(d -> mean(skipmissing(d[:c])), gd))
-```
-"""
 function groupby(df::AbstractDataFrame, cols::Vector{T};
                  sort::Bool = false, skipmissing::Bool = false) where T
     sdf = df[cols]
@@ -1444,13 +1054,6 @@ Base.getindex(gd::GroupedDataFrame, I::AbstractArray{Bool}) =
     GroupedDataFrame(gd.parent, gd.cols, gd.idx, gd.starts[I], gd.ends[I])
 Base.names(gd::GroupedDataFrame) = names(gd.parent)
 _names(gd::GroupedDataFrame) = _names(gd.parent)
-"""
-The result of a `map` operation on a GroupedDataFrame; mainly for use
-with `combine`
-Not meant to be constructed directly, see `groupby` abnd
-`combine`. Minimal support is provided for this type. `map` is
-provided for a GroupApplied object.
-"""
 struct GroupApplied{T<:AbstractDataFrame}
     gd::GroupedDataFrame
     vals::Vector{T}
@@ -1469,21 +1072,6 @@ end
 wrap(df::AbstractDataFrame) = df
 wrap(A::Matrix) = convert(DataFrame, A)
 wrap(s::Any) = DataFrame(x1 = s)
-"""
-Combine a GroupApplied object (rudimentary)
-```julia
-combine(ga::GroupApplied)
-```
-* `ga` : a GroupApplied
-* `::DataFrame`
-```julia
-df = DataFrame(a = repeat([1, 2, 3, 4], outer=[2]),
-               b = repeat([2, 1], outer=[4]),
-               c = randn(8))
-gd = groupby(df, :a)
-combine(map(d -> mean(skipmissing(d[:c])), gd))
-```
-"""
 function combine(ga::GroupApplied)
     gd, vals = ga.gd, ga.vals
     valscat = _vcat(vals)
@@ -1496,92 +1084,13 @@ function combine(ga::GroupApplied)
     end
     hcat!(gd.parent[idx, gd.cols], valscat)
 end
-"""
-Apply a function to each column in an AbstractDataFrame or
-GroupedDataFrame
-```julia
-colwise(f::Function, d)
-colwise(d)
-```
-* `f` : a function or vector of functions
-* `d` : an AbstractDataFrame of GroupedDataFrame
-If `d` is not provided, a curried version of groupby is given.
-* various, depending on the call
-```julia
-df = DataFrame(a = repeat([1, 2, 3, 4], outer=[2]),
-               b = repeat([2, 1], outer=[4]),
-               c = randn(8))
-colwise(sum, df)
-colwise([sum, length], df)
-colwise((minimum, maximum), df)
-colwise(sum, groupby(df, :a))
-```
-"""
 colwise(f, d::AbstractDataFrame) = [f(d[i]) for i in 1:ncol(d)]
 colwise(fns::Union{AbstractVector, Tuple}, d::AbstractDataFrame) = [f(d[i]) for f in fns, i in 1:ncol(d)]
 colwise(f, gd::GroupedDataFrame) = [colwise(f, g) for g in gd]
-"""
-Split-apply-combine in one step; apply `f` to each grouping in `d`
-based on columns `col`
-```julia
-by(d::AbstractDataFrame, cols, f::Function; sort::Bool = false)
-by(f::Function, d::AbstractDataFrame, cols; sort::Bool = false)
-```
-* `d` : an AbstractDataFrame
-* `cols` : a column indicator (Symbol, Int, Vector{Symbol}, etc.)
-* `f` : a function to be applied to groups; expects each argument to
-  be an AbstractDataFrame
-* `sort`: sort row groups (no sorting by default)
-`f` can return a value, a vector, or a DataFrame. For a value or
-vector, these are merged into a column along with the `cols` keys. For
-a DataFrame, `cols` are combined along columns with the resulting
-DataFrame. Returning a DataFrame is the clearest because it allows
-column labeling.
-A method is defined with `f` as the first argument, so do-block
-notation can be used.
-`by(d, cols, f)` is equivalent to `combine(map(f, groupby(d, cols)))`.
-* `::DataFrame`
-```julia
-df = DataFrame(a = repeat([1, 2, 3, 4], outer=[2]),
-               b = repeat([2, 1], outer=[4]),
-               c = randn(8))
-by(df, :a, d -> sum(d[:c]))
-by(df, :a, d -> 2 * skipmissing(d[:c]))
-by(df, :a, d -> DataFrame(c_sum = sum(d[:c]), c_mean = mean(skipmissing(d[:c]))))
-by(df, :a, d -> DataFrame(c = d[:c], c_mean = mean(skipmissing(d[:c]))))
-by(df, [:a, :b]) do d
-    DataFrame(m = mean(skipmissing(d[:c])), v = var(skipmissing(d[:c])))
-end
-```
-"""
 by(d::AbstractDataFrame, cols, f::Function; sort::Bool = false) =
     combine(map(f, groupby(d, cols, sort = sort)))
 by(f::Function, d::AbstractDataFrame, cols; sort::Bool = false) =
     by(d, cols, f, sort = sort)
-"""
-Split-apply-combine that applies a set of functions over columns of an
-AbstractDataFrame or GroupedDataFrame
-```julia
-aggregate(d::AbstractDataFrame, cols, fs)
-aggregate(gd::GroupedDataFrame, fs)
-```
-* `d` : an AbstractDataFrame
-* `gd` : a GroupedDataFrame
-* `cols` : a column indicator (Symbol, Int, Vector{Symbol}, etc.)
-* `fs` : a function or vector of functions to be applied to vectors
-  within groups; expects each argument to be a column vector
-Each `fs` should return a value or vector. All returns must be the
-same length.
-* `::DataFrame`
-```julia
-df = DataFrame(a = repeat([1, 2, 3, 4], outer=[2]),
-               b = repeat([2, 1], outer=[4]),
-               c = randn(8))
-aggregate(df, :a, sum)
-aggregate(df, :a, [sum, x->mean(skipmissing(x))])
-aggregate(groupby(df, :a), [sum, x->mean(skipmissing(x))])
-```
-"""
 aggregate(d::AbstractDataFrame, fs::Function; sort::Bool=false) = aggregate(d, [fs], sort=sort)
 function aggregate(d::AbstractDataFrame, fs::Vector{T}; sort::Bool=false) where T<:Function
     headers = _makeheaders(fs, _names(d))
@@ -1874,11 +1383,6 @@ end
 struct DFRowIterator{T <: AbstractDataFrame}
     df::T
 end
-"""
-    eachrow(df) => DataFrames.DFRowIterator
-Iterate a DataFrame row by row, with each row represented as a `DataFrameRow`,
-which is a view that acts like a one-row DataFrame.
-"""
 eachrow(df::AbstractDataFrame) = DFRowIterator(df)
 Base.start(itr::DFRowIterator) = 1
 Base.done(itr::DFRowIterator, i::Int) = i > size(itr.df, 1)
@@ -2078,24 +1582,6 @@ function update_row_maps!(left_table::AbstractDataFrame,
     end
     return to_bimap(left_ixs), to_bimap(leftonly_ixs), to_bimap(right_ixs), to_bimap(rightonly_ixs)
 end
-"""
-    join(df1, df2; on = Symbol[], kind = :inner, makeunique = false)
-Join two `DataFrame` objects
-* `df1`, `df2` : the two AbstractDataFrames to be joined
-* `on` : A column, or vector of columns to join df1 and df2 on. If the column(s)
-    that df1 and df2 will be joined on have different names, then the columns
-    should be `(left, right)` tuples or `left => right` pairs, or a vector of
-    such tuples or pairs. `on` is a required argument for all joins except for
-    `kind = :cross`
-* `kind` : the type of join, options include:
-  - `:inner` : only include rows with keys that match in both `df1`
-    and `df2`, the default
-  - `:outer` : include all rows from `df1` and `df2`
-  - `:left` : include all rows from `df1`
-wide3 = unstack(long, [:id, :a], :variable, :value)
-```
-Note that there are some differences between the widened results above.
-"""
 function unstack(df::AbstractDataFrame, rowkey::Int, colkey::Int, value::Int)
     refkeycol = categorical(df[rowkey])
     droplevels!(refkeycol)
@@ -2212,18 +1698,6 @@ function _unstack(df::AbstractDataFrame, rowkeys::AbstractVector{Symbol},
     hcat(df1, df2)
 end
 unstack(df::AbstractDataFrame) = unstack(df, :id, :variable, :value)
-"""
-An AbstractVector{Any} that is a linear, concatenated view into
-another set of AbstractVectors
-NOTE: Not exported.
-```julia
-StackedVector(d::AbstractVector...)
-```
-* `d...` : one or more AbstractVectors
-```julia
-StackedVector(Any[[1,2], [9,10], [11,12]])  # [1,2,9,10,11,12]
-```
-"""
 mutable struct StackedVector <: AbstractVector{Any}
     components::Vector{Any}
 end
@@ -2254,25 +1728,6 @@ Base.eltype(v::StackedVector) = promote_type(map(eltype, v.components)...)
 Base.similar(v::StackedVector, T::Type, dims::Union{Integer, AbstractUnitRange}...) =
     similar(v.components[1], T, dims...)
 CategoricalArrays.CategoricalArray(v::StackedVector) = CategoricalArray(v[:]) # could be more efficient
-"""
-An AbstractVector that is a view into another AbstractVector with
-repeated elements
-NOTE: Not exported.
-```julia
-RepeatedVector(parent::AbstractVector, inner::Int, outer::Int)
-```
-* `parent` : the AbstractVector that's repeated
-* `inner` : the numer of times each element is repeated
-* `outer` : the numer of times the whole vector is repeated after
-  expanded by `inner`
-`inner` and `outer` have the same meaning as similarly named arguments
-to `repeat`.
-```julia
-RepeatedVector([1,2], 3, 1)   # [1,1,1,2,2,2]
-RepeatedVector([1,2], 1, 3)   # [1,2,1,2,1,2]
-RepeatedVector([1,2], 2, 2)   # [1,2,1,2,1,2,1,2]
-```
-"""
 mutable struct RepeatedVector{T} <: AbstractVector{T}
     parent::AbstractVector{T}
     inner::Int
@@ -2301,41 +1756,6 @@ function CategoricalArrays.CategoricalArray(v::RepeatedVector)
     res.refs = repeat(res.refs, inner = [v.inner], outer = [v.outer])
     res
 end
-"""
-A stacked view of a DataFrame (long format)
-Like `stack` and `melt`, but a view is returned rather than data
-copies.
-```julia
-stackdf(df::AbstractDataFrame, [measure_vars], [id_vars];
-        variable_name::Symbol=:variable, value_name::Symbol=:value)
-meltdf(df::AbstractDataFrame, [id_vars], [measure_vars];
-       variable_name::Symbol=:variable, value_name::Symbol=:value)
-```
-* `df` : the wide AbstractDataFrame
-* `measure_vars` : the columns to be stacked (the measurement
-  variables), a normal column indexing type, like a Symbol,
-  Vector{Symbol}, Int, etc.; for `melt`, defaults to all
-  variables that are not `id_vars`
-* `id_vars` : the identifier columns that are repeated during
-  stacking, a normal column indexing type; for `stack` defaults to all
-  variables that are not `measure_vars`
-* `::DataFrame` : the long-format DataFrame with column `:value`
-  holding the values of the stacked columns (`measure_vars`), with
-  column `:variable` a Vector of Symbols with the `measure_vars` name,
-  and with columns for each of the `id_vars`.
-The result is a view because the columns are special AbstractVectors
-that return indexed views into the original DataFrame.
-```julia
-d1 = DataFrame(a = repeat([1:3;], inner = [4]),
-               b = repeat([1:4;], inner = [3]),
-               c = randn(12),
-               d = randn(12),
-               e = map(string, 'a':'l'))
-d1s = stackdf(d1, [:c, :d])
-d1s2 = stackdf(d1, [:c, :d], [:a])
-d1m = meltdf(d1, [:a, :b, :e])
-```
-"""
 function stackdf(df::AbstractDataFrame, measure_vars::AbstractVector{<:Integer},
                  id_vars::AbstractVector{<:Integer}; variable_name::Symbol=:variable,
                  value_name::Symbol=:value)
@@ -2374,9 +1794,6 @@ function stackdf(df::AbstractDataFrame, measure_vars = numeric_vars(df);
     stackdf(df, m_inds, setdiff(1:ncol(df), m_inds);
             variable_name=variable_name, value_name=value_name)
 end
-"""
-A stacked view of a DataFrame (long format); see `stackdf`
-"""
 function meltdf(df::AbstractDataFrame, id_vars; variable_name::Symbol=:variable,
                 value_name::Symbol=:value)
     id_inds = index(df)[id_vars]
@@ -3092,26 +2509,6 @@ import Base: keys, values, insert!
 @deprecate complete_cases completecases
 @deprecate sub(df::AbstractDataFrame, rows) view(df, rows)
 export writetable
-"""
-Write data to a tabular-file format (CSV, TSV, ...)
-```julia
-writetable(filename, df, [keyword options])
-```
-* `filename::AbstractString` : the filename to be created
-* `df::AbstractDataFrame` : the AbstractDataFrame to be written
-* `separator::Char` -- The separator character that you would like to use. Defaults to the output of `getseparator(filename)`, which uses commas for files that end in `.csv`, tabs for files that end in `.tsv` and a single space for files that end in `.wsv`.
-* `quotemark::Char` -- The character used to delimit string fields. Defaults to `'"'`.
-* `header::Bool` -- Should the file contain a header that specifies the column names from `df`. Defaults to `true`.
-* `nastring::AbstractString` -- What to write in place of missing data. Defaults to `"NA"`.
-* `::DataFrame`
-```julia
-df = DataFrame(A = 1:10)
-writetable("output.csv", df)
-writetable("output.dat", df, separator = ',', header = false)
-writetable("output.dat", df, quotemark = '\'', separator = ',')
-writetable("output.dat", df, header = false)
-```
-"""
 function writetable(filename::AbstractString,
                     df::AbstractDataFrame;
                     header::Bool = true,
@@ -3702,40 +3099,6 @@ function readtable!(p::ParsedCSV,
     return df
 end
 export readtable
-"""
-Read data from a tabular-file format (CSV, TSV, ...)
-```julia
-readtable(filename, [keyword options])
-```
-* `filename::AbstractString` : the filename to be read
-*   `header::Bool` -- Use the information from the file's header line to determine column names. Defaults to `true`.
-*   `separator::Char` -- Assume that fields are split by the `separator` character. If not specified, it will be guessed from the filename: `.csv` defaults to `','`, `.tsv` defaults to `'\t'`, `.wsv` defaults to `' '`.
-*   `quotemark::Vector{Char}` -- Assume that fields contained inside of two `quotemark` characters are quoted, which disables processing of separators and linebreaks. Set to `Char[]` to disable this feature and slightly improve performance. Defaults to `['"']`.
-*   `decimal::Char` -- Assume that the decimal place in numbers is written using the `decimal` character. Defaults to `'.'`.
-*   `nastrings::Vector{String}` -- Translate any of the strings into this vector into a `missing`. Defaults to `["", "NA"]`.
-*   `truestrings::Vector{String}` -- Translate any of the strings into this vector into a Boolean `true`. Defaults to `["T", "t", "TRUE", "true"]`.
-*   `falsestrings::Vector{String}` -- Translate any of the strings into this vector into a Boolean `false`. Defaults to `["F", "f", "FALSE", "false"]`.
-*   `makefactors::Bool` -- Convert string columns into `PooledDataVector`'s for use as factors. Defaults to `false`.
-*   `nrows::Int` -- Read only `nrows` from the file. Defaults to `-1`, which indicates that the entire file should be read.
-*   `names::Vector{Symbol}` -- Use the values in this array as the names for all columns instead of or in lieu of the names in the file's header. Defaults to `[]`, which indicates that the header should be used if present or that numeric names should be invented if there is no header.
-*   `eltypes::Vector` -- Specify the types of all columns. Defaults to `[]`.
-*   `allowcomments::Bool` -- Ignore all text inside comments. Defaults to `false`.
-*   `commentmark::Char` -- Specify the character that starts comments. Defaults to `'#'`.
-*   `ignorepadding::Bool` -- Ignore all whitespace on left and right sides of a field. Defaults to `true`.
-*   `skipstart::Int` -- Specify the number of initial rows to skip. Defaults to `0`.
-*   `skiprows::Vector{Int}` -- Specify the indices of lines in the input to ignore. Defaults to `[]`.
-*   `skipblanks::Bool` -- Skip any blank lines in input. Defaults to `true`.
-*   `encoding::Symbol` -- Specify the file's encoding as either `:utf8` or `:latin1`. Defaults to `:utf8`.
-*   `normalizenames::Bool` -- Ensure that column names are valid Julia identifiers. For instance this renames a column named `"a b"` to `"a_b"` which can then be accessed with `:a_b` instead of `Symbol("a b")`. Defaults to `true`.
-* `::DataFrame`
-```julia
-df = readtable("data.csv")
-df = readtable("data.tsv")
-df = readtable("data.wsv")
-df = readtable("data.txt", separator = '\t')
-df = readtable("data.txt", header = false)
-```
-"""
 function readtable(pathname::AbstractString;
                    header::Bool = true,
                    separator::Char = getseparator(pathname),
@@ -3798,17 +3161,6 @@ function readtable(pathname::AbstractString;
         io = open(_r, pathname, "r")
     end
 end
-"""
-    inlinetable(s[, flags]; args...)
-A helper function to process strings as tabular data for non-standard string
-literals. Parses the string `s` containing delimiter-separated tabular data
-(by default, comma-separated values) using `readtable`. The optional `flags`
-argument contains a list of flag characters, which, if present, are equivalent
-to supplying named arguments to `readtable` as follows:
-- `f`: `makefactors=true`, convert string columns to `PooledData` columns
-- `c`: `allowcomments=true`, ignore lines beginning with `#`
-- `H`: `header=false`, do not interpret the first line as column names
-"""
 inlinetable(s::AbstractString; args...) = readtable(IOBuffer(s); args...)
 function inlinetable(s::AbstractString, flags::AbstractString; args...)
     flagbindings = Dict(
@@ -3825,61 +3177,12 @@ function inlinetable(s::AbstractString, flags::AbstractString; args...)
     readtable(IOBuffer(s); args...)
 end
 export @csv_str, @csv2_str, @tsv_str, @wsv_str
-"""
-    @csv_str(s[, flags])
-    csv"[data]"fcH
-Construct a `DataFrame` from a non-standard string literal containing comma-
-separated values (CSV) using `readtable`, just as if it were being loaded from
-an external file. The suffix flags `f`, `c`, and `H` are optional. If present,
-they are equivalent to supplying named arguments to `readtable` as follows:
-* `f`: `makefactors=true`, convert string columns to `CategoricalArray` columns
-* `c`: `allowcomments=true`, ignore lines beginning with `#`
-* `H`: `header=false`, do not interpret the first line as column names
-```jldoctest
-julia> df = csv\"""
-           name,  age, squidPerWeek
-           Alice,  36,         3.14
-           Bob,    24,         0
-           Carol,  58,         2.71
-           Eve,    49,         7.77
-           \"""
-4×3 DataFrames.DataFrame
-│ 4   │ "Eve"   │ 49  │ 7.77         │
-```
-"""
 macro wsv_str(s, flags...)
     Base.depwarn("@wsv_str and the wsv\"\"\" syntax are deprecated. " *
                  "Use CSV.read(IOBuffer(...)) from the CSV package instead.",
                  :wsv_str)
     inlinetable(s, flags...; separator=' ')
 end
-"""
-    @tsv_str(s[, flags])
-    tsv"[data]"fcH
-Construct a `DataFrame` from a non-standard string literal containing tab-
-separated values (TSV) using `readtable`, just as if it were being loaded from
-an external file. The suffix flags `f`, `c`, and `H` are optional. If present,
-they are equivalent to supplying named arguments to `readtable` as follows:
-* `f`: `makefactors=true`, convert string columns to `CategoricalArray` columns
-* `c`: `allowcomments=true`, ignore lines beginning with `#`
-* `H`: `header=false`, do not interpret the first line as column names
-```jldoctest
-julia> df = tsv\"""
-           name\tage\tsquidPerWeek
-           Alice\t36\t3.14
-           Bob\t24\t0
-           Carol\t58\t2.71
-           Eve\t49\t7.77
-           \"""
-4×3 DataFrames.DataFrame
-│ Row │ name    │ age │ squidPerWeek │
-├─────┼─────────┼─────┼──────────────┤
-│ 1   │ "Alice" │ 36  │ 3.14         │
-│ 2   │ "Bob"   │ 24  │ 0.0          │
-│ 3   │ "Carol" │ 58  │ 2.71         │
-│ 4   │ "Eve"   │ 49  │ 7.77         │
-```
-"""
 macro tsv_str(s, flags...)
     Base.depwarn("@tsv_str and the tsv\"\"\" syntax are deprecated." *
                  "Use CSV.read(IOBuffer(...)) from the CSV package instead.",

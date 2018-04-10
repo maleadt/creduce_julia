@@ -55,18 +55,10 @@ struct OrderedLevelsException{T, S} <: Exception
     newlevel::S
     levels::Vector{T}
 end
-"""
-Default categorical value type for
-referencing values of type `T`.
-"""
 struct CategoricalValue{T, R <: Integer}
     level::R
     pool::CategoricalPool{T, R, CategoricalValue{T, R}}
 end
-"""
-`String` categorical value.
-Provides `AbstractString` interoperability.
-"""
 struct CategoricalString{R <: Integer} <: AbstractString
     level::R
     pool::CategoricalPool{String, R, CategoricalString{R}}
@@ -197,10 +189,6 @@ Base.length(pool::CategoricalPool) = length(pool.index)
 Base.getindex(pool::CategoricalPool, i::Integer) = pool.valindex[i]
 Base.get(pool::CategoricalPool, level::Any) = pool.invindex[level]
 Base.get(pool::CategoricalPool, level::Any, default::Any) = get(pool.invindex, level, default)
-"""
-add the returned value to pool.invindex, this function doesn't do this itself to
-avoid doing a dict lookup twice
-"""
 @inline function push_level!(pool::CategoricalPool{T, R}, level) where {T, R}
     x = convert(T, level)
     n = length(pool)
@@ -461,67 +449,8 @@ function reftype(sz::Int)
         return UInt64
     end
 end
-"""
-    CategoricalArray{T}(undef, dims::Dims; ordered::Bool=false)
-    CategoricalArray{T}(undef, dims::Int...; ordered::Bool=false)
-Construct an uninitialized `CategoricalArray` with levels of type `T` and dimensions `dim`.
-The `ordered` keyword argument determines whether the array values can be compared
-according to the ordering of levels or not (see [`isordered`](@ref)).
-    CategoricalArray{T, N, R}(undef, dims::Dims; ordered::Bool=false)
-    CategoricalArray{T, N, R}(undef, dims::Int...; ordered::Bool=false)
-Similar to definition above, but uses reference type `R` instead of the default type
-(`$DefaultRefType`).
-    CategoricalArray(A::AbstractArray; ordered::Bool=false)
-Construct a new `CategoricalArray` with the values from `A` and the same element type.
-If the element type supports it, levels are sorted in ascending order;
-else, they are kept in their order of appearance in `A`. The `ordered` keyword
-argument determines whether the array values can be compared according to the
-ordering of levels or not (see [`isordered`](@ref)).
-    CategoricalArray(A::CategoricalArray; ordered::Bool=false)
-If `A` is already a `CategoricalArray`, its levels are preserved;
-the same applies to the ordered property and the reference type unless
-explicitly overriden.
-"""
 function CategoricalArray end
-"""
-    CategoricalVector{T}(undef, m::Int; ordered::Bool=false)
-Construct an uninitialized `CategoricalVector` with levels of type `T` and dimensions `dim`.
-The `ordered` keyword argument determines whether the array values can be compared
-according to the ordering of levels or not (see [`isordered`](@ref)).
-    CategoricalVector{T, R}(undef, m::Int; ordered::Bool=false)
-Similar to definition above, but uses reference type `R` instead of the default type
-(`$DefaultRefType`).
-    CategoricalVector(A::AbstractVector; ordered::Bool=false)
-Construct a `CategoricalVector` with the values from `A` and the same element type.
-If the element type supports it, levels are sorted in ascending order;
-else, they are kept in their order of appearance in `A`. The `ordered` keyword
-argument determines whether the array values can be compared according to the
-ordering of levels or not (see [`isordered`](@ref)).
-    CategoricalVector(A::CategoricalVector; ordered::Bool=false)
-If `A` is already a `CategoricalVector`, its levels are preserved;
-the same applies to the ordered property and the reference type unless
-explicitly overriden.
-"""
 function CategoricalVector end
-"""
-    CategoricalMatrix{T}(undef, m::Int, n::Int; ordered::Bool=false)
-Construct an uninitialized `CategoricalMatrix` with levels of type `T` and dimensions `dim`.
-The `ordered` keyword argument determines whether the array values can be compared
-according to the ordering of levels or not (see [`isordered`](@ref)).
-    CategoricalMatrix{T, R}(undef, m::Int, n::Int; ordered::Bool=false)
-Similar to definition above, but uses reference type `R` instead of the default type
-(`$DefaultRefType`).
-    CategoricalMatrix(A::AbstractVector; ordered::Bool=false)
-Construct a `CategoricalMatrix` with the values from `A` and the same element type.
-If the element type supports it, levels are sorted in ascending order;
-else, they are kept in their order of appearance in `A`. The `ordered` keyword
-argument determines whether the array values can be compared according to the
-ordering of levels or not (see [`isordered`](@ref)).
-    CategoricalMatrix(A::CategoricalMatrix; ordered::Bool=isordered(A))
-If `A` is already a `CategoricalMatrix`, its levels are preserved;
-the same applies to the ordered property and the reference type unless
-explicitly overriden.
-"""
 function CategoricalMatrix end
 CategoricalArray(::UndefInitializer, dims::Int...; ordered=false) =
     CategoricalArray{String}(undef, dims, ordered=ordered)
@@ -832,25 +761,10 @@ similar(A::CategoricalArray{S, M, Q}, ::Type{T},
 similar(A::CategoricalArray{S, M, R}, ::Type{T},
         dims::NTuple{N, Int}) where {S, T<:Union{CatValue, Missing}, M, N, R} =
     CategoricalArray{Union{T, Missing}, N, R}(undef, dims)
-"""
-    compress(A::CategoricalArray)
-Return a copy of categorical array `A` using the smallest reference type able to hold the
-number of [`levels`](@ref) of `A`.
-While this will reduce memory use, this function is type-unstable, which can affect
-performance inside the function where the call is made. Therefore, use it with caution.
-"""
 function compress(A::CategoricalArray{T, N}) where {T, N}
     R = reftype(length(index(A.pool)))
     convert(CategoricalArray{T, N, R}, A)
 end
-"""
-    decompress(A::CategoricalArray)
-Return a copy of categorical array `A` using the default reference type ($DefaultRefType).
-If `A` is using a small reference type (such as `UInt8` or `UInt16`) the decompressed array
-will have room for more levels.
-To avoid the need to call decompress, ensure [`compress`](@ref) is not called when creating
-the categorical array.
-"""
 decompress(A::CategoricalArray{T, N}) where {T, N} =
     convert(CategoricalArray{T, N, DefaultRefType}, A)
 function vcat(A::CategoricalArray...)
@@ -882,23 +796,7 @@ end
 catvaluetype(::Type{T}) where {T <: CategoricalArray} = Missings.T(eltype(T))
 catvaluetype(A::CategoricalArray) = catvaluetype(typeof(A))
 leveltype(::Type{T}) where {T <: CategoricalArray} = leveltype(catvaluetype(T))
-"""
-    levels(A::CategoricalArray)
-Return the levels of categorical array `A`. This may include levels which do not actually appear
-in the data (see [`droplevels!`](@ref)).
-"""
 Missings.levels(A::CategoricalArray) = levels(A.pool)
-"""
-    levels!(A::CategoricalArray, newlevels::Vector; allow_missing::Bool=false)
-Set the levels categorical array `A`. The order of appearance of levels will be respected
-by [`levels`](@ref), which may affect display of results in some operations; if `A` is
-ordered (see [`isordered`](@ref)), it will also be used for order comparisons
-using `<`, `>` and similar operators. Reordering levels will never affect the values
-of entries in the array.
-If `A` accepts missing values (i.e. `eltype(A) >: Missing`) and `allow_missing=true`,
-entries corresponding to omitted levels will be set to `missing`.
-Else, `newlevels` must include all levels which appear in the data.
-"""
 function levels!(A::CategoricalArray{T}, newlevels::Vector; allow_missing=false) where {T}
     if !allunique(newlevels)
         throw(ArgumentError(string("duplicated levels found: ",
@@ -958,30 +856,9 @@ function _unique(::Type{S},
     end
     res
 end
-"""
-    unique(A::CategoricalArray)
-Return levels which appear in `A`, in the same order as [`levels`](@ref)
-(and not in their order of appearance). This function is significantly slower than
-[`levels`](@ref) since it needs to check whether levels are used or not.
-"""
 unique(A::CategoricalArray{T}) where {T} = _unique(T, A.refs, A.pool)
-"""
-    droplevels!(A::CategoricalArray)
-Drop levels which do not appear in categorical array `A` (so that they will no longer be
-returned by [`levels`](@ref)).
-"""
 droplevels!(A::CategoricalArray) = levels!(A, filter!(!ismissing, unique(A)))
-"""
-    isordered(A::CategoricalArray)
-Test whether entries in `A` can be compared using `<`, `>` and similar operators,
-using the ordering of levels.
-"""
 isordered(A::CategoricalArray) = isordered(A.pool)
-"""
-    ordered!(A::CategoricalArray, ordered::Bool)
-Set whether entries in `A` can be compared using `<`, `>` and similar operators,
-using the ordering of levels. Return the modified `A`.
-"""
 ordered!(A::CategoricalArray, ordered) = (ordered!(A.pool, ordered); return A)
 function Base.resize!(A::CategoricalVector, n::Integer)
     n_orig = length(A)
@@ -1012,23 +889,6 @@ function Base.reshape(A::CategoricalArray{T, N}, dims::Dims) where {T, N}
     res = CategoricalArray{T, ndims(x)}(x, A.pool)
     ordered!(res, isordered(res))
 end
-"""
-    categorical{T}(A::AbstractArray{T}[, compress::Bool]; ordered::Bool=false)
-Construct a categorical array with the values from `A`.
-If the element type supports it, levels are sorted in ascending order;
-else, they are kept in their order of appearance in `A`. The `ordered` keyword
-argument determines whether the array values can be compared according to the
-ordering of levels or not (see [`isordered`](@ref)).
-If `compress` is provided and set to `true`, the smallest reference type able to hold the
-number of unique values in `A` will be used. While this will reduce memory use, passing
-this parameter will also introduce a type instability which can affect performance inside
-the function where the call is made. Therefore, use this option with caution (the
-one-argument version does not suffer from this problem).
-    categorical{T}(A::CategoricalArray{T}[, compress::Bool]; ordered::Bool=isordered(A))
-If `A` is already a `CategoricalArray`, its levels are preserved;
-the same applies to the ordered property, and to the reference type
-unless `compress` is passed.
-"""
 function categorical end
 categorical(A::AbstractArray; ordered=_isordered(A)) = CategoricalArray(A, ordered=ordered)
 function categorical(A::AbstractArray{T, N}, compress; ordered=_isordered(A)) where {T, N}
@@ -1160,22 +1020,6 @@ function fill_refs!(refs::AbstractArray, X::AbstractArray{>: Missing},
         end
     end
 end
-"""
-    cut(x::AbstractArray, breaks::AbstractVector;
-        extend::Bool=false, labels::AbstractVector=[], allow_missing::Bool=false)
-Cut a numeric array into intervals and return an ordered `CategoricalArray` indicating
-the interval into which each entry falls. Intervals are of the form `[lower, upper)`,
-i.e. the lower bound is included and the upper bound is excluded.
-If `x` accepts missing values (i.e. `eltype(x) >: Missing`) the returned array will
-also accept them.
-* `extend::Bool=false`: when `false`, an error is raised if some values in `x` fall
-  outside of the breaks; when `true`, breaks are automatically added to include all
-  values in `x`, and the upper bound is included in the last interval.
-* `labels::AbstractVector=[]`: a vector of strings giving the names to use for the
-  intervals; if empty, default labels are used.
-* `allow_missing::Bool=true`: when `true`, values outside of breaks result in missing values.
-  only supported when `x` accepts missing values.
-"""
 function cut(x::AbstractArray{T, N}, breaks::AbstractVector;
              extend::Bool=false, labels::AbstractVector{U}=String[],
              allow_missing::Bool=false) where {T, N, U<:AbstractString}
@@ -1225,36 +1069,10 @@ function cut(x::AbstractArray{T, N}, breaks::AbstractVector;
     S = T >: Missing ? Union{String, Missing} : String
     CategoricalArray{S, N}(refs, pool)
 end
-"""
-    cut(x::AbstractArray, ngroups::Integer;
-        labels::AbstractVector=String[])
-Cut a numeric array into `ngroups` quantiles, determined using
-[`quantile`](@ref).
-"""
 cut(x::AbstractArray, ngroups::Integer;
     labels::AbstractVector{U}=String[]) where {U<:AbstractString} =
     cut(x, quantile(x, (1:ngroups-1)/ngroups); extend=true, labels=labels)
 const ≅ = isequal
-"""
-    recode!(dest::AbstractArray, src::AbstractArray[, default::Any], pairs::Pair...)
-Fill `dest` with elements from `src`, replacing those matching a key of `pairs`
-with the corresponding value.
-For each `Pair` in `pairs`, if the element is equal to (according to [`isequal`](@ref)))
-the key (first item of the pair) or to one of its entries if it is a collection,
-then the corresponding value (second item) is copied to `dest`.
-If the element matches no key and `default` is not provided or `nothing`, it is copied as-is;
-if `default` is specified, it is used in place of the original element.
-`dest` and `src` must be of the same length, but not necessarily of the same type.
-Elements of `src` as well as values from `pairs` will be `convert`ed when possible
-on assignment.
-If an element matches more than one key, the first match is used.
-    recode!(dest::CategoricalArray, src::AbstractArray[, default::Any], pairs::Pair...)
-If `dest` is a `CategoricalArray` then the ordering of resulting levels is determined
-by the order of passed `pairs` and `default` will be the last level if provided.
-    recode!(dest::AbstractArray, src::AbstractArray{>:Missing}[, default::Any], pairs::Pair...)
-If `src` contains missing values, they are never replaced with `default`:
-use `missing` in a pair to recode them.
-"""
 function recode! end
 recode!(dest::AbstractArray, src::AbstractArray, pairs::Pair...) =
     recode!(dest, src, nothing, pairs...)
@@ -1425,82 +1243,12 @@ function recode!(dest::CategoricalArray{T}, src::CategoricalArray, default::Any,
     end
     dest
 end
-"""
-    recode!(a::AbstractArray[, default::Any], pairs::Pair...)
-Convenience function for in-place recoding, equivalent to `recode!(a, a, ...)`.
-```jldoctest
-julia> using CategoricalArrays
-julia> x = collect(1:10);
-julia> recode!(x, 1=>100, 2:4=>0, [5; 9:10]=>-1);
-julia> x
-10-element Array{Int64,1}:
- 100
-   0
-   0
-   0
-  -1
-   6
-   7
-   8
-  -1
-  -1
-```
-"""
 recode!(a::AbstractArray, default::Any, pairs::Pair...) = recode!(a, a, default, pairs...)
 recode!(a::AbstractArray, pairs::Pair...) = recode!(a, a, nothing, pairs...)
 promote_valuetype(x::Pair{K, V}) where {K, V} = V
 promote_valuetype(x::Pair{K, V}, y::Pair...) where {K, V} = promote_type(V, promote_valuetype(y...))
 keytype_hasmissing(x::Pair{K}) where {K} = K === Missing
 keytype_hasmissing(x::Pair{K}, y::Pair...) where {K} = K === Missing || keytype_hasmissing(y...)
-"""
-    recode(a::AbstractArray[, default::Any], pairs::Pair...)
-Return a copy of `a`, replacing elements matching a key of `pairs` with the corresponding value.
-The type of the array is chosen so that it can
-hold all recoded elements (but not necessarily original elements from `a`).
-For each `Pair` in `pairs`, if the element is equal to (according to [`isequal`](@ref))
-or [`in`](@ref) the key (first item of the pair), then the corresponding value
-(second item) is used.
-If the element matches no key and `default` is not provided or `nothing`, it is copied as-is;
-if `default` is specified, it is used in place of the original element.
-If an element matches more than one key, the first match is used.
-    recode(a::CategoricalArray[, default::Any], pairs::Pair...)
-If `a` is a `CategoricalArray` then the ordering of resulting levels is determined
-by the order of passed `pairs` and `default` will be the last level if provided.
-```jldoctest
-julia> using CategoricalArrays
-julia> recode(1:10, 1=>100, 2:4=>0, [5; 9:10]=>-1)
-10-element Array{Int64,1}:
- 100
-   0
-   0
-   0
-  -1
-   6
-   7
-   8
-  -1
-  -1
-```
-     recode(a::AbstractArray{>:Missing}[, default::Any], pairs::Pair...)
-If `a` contains missing values, they are never replaced with `default`:
-use `missing` in a pair to recode them. If that's not the case, the returned array
-will accept missing values.
-```jldoctest
-julia> using CategoricalArrays, Missings
-julia> recode(1:10, 1=>100, 2:4=>0, [5; 9:10]=>-1, 6=>missing)
-10-element Array{Union{Int64, Missings.Missing},1}:
- 100    
-   0    
-   0    
-   0    
-  -1    
-    missing
-   7    
-   8    
-  -1    
-  -1    
-```
-"""
 function recode end
 recode(a::AbstractArray, pairs::Pair...) = recode(a, nothing, pairs...)
 function recode(a::AbstractArray, default::Any, pairs::Pair...)

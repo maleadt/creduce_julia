@@ -203,42 +203,8 @@ missings(::Type{T}, dims::Dims) where {T >: Missing} = fill!(Array{T}(undef, dim
 missings(::Type{T}, dims::Dims) where {T} = fill!(Array{Union{T, Missing}}(undef, dims), missing)
 missings(dims::Integer...) = missings(dims)
 missings(::Type{T}, dims::Integer...) where {T} = missings(T, dims)
-"""
-    allowmissing(x::AbstractArray)
-Return an array equal to `x` allowing for [`missing`](@ref) values,
-i.e. with an element type equal to `Union{eltype(x), Missing}`.
-When possible, the result will share memory with `x` (as with [`convert`](@ref)).
-See also: [`disallowmissing`](@ref)
-"""
 allowmissing(x::AbstractArray{T}) where {T} = convert(AbstractArray{Union{T, Missing}}, x)
-"""
-    disallowmissing(x::AbstractArray)
-Return an array equal to `x` not allowing for [`missing`](@ref) values,
-i.e. with an element type equal to `Missings.T(eltype(x))`.
-When possible, the result will share memory with `x` (as with [`convert`](@ref)).
-If `x` contains missing values, a `MethodError` is thrown.
-See also: [`allowmissing`](@ref)
-"""
 disallowmissing(x::AbstractArray{T}) where {T} = convert(AbstractArray{Missings.T(T)}, x)
-"""
-    Missings.replace(itr, replacement)
-Return an iterator wrapping iterable `itr` which replaces [`missing`](@ref) values with
-`replacement`. When applicable, the size of `itr` is preserved.
-If the type of `replacement` differs from the element type of `itr`,
-it will be converted.
-See also: [`skipmissing`](@ref), [`Missings.fail`](@ref)
-```jldoctest
-julia> collect(Missings.replace([1, missing, 2], 0))
-3-element Array{Int64,1}:
- 1
- 0
- 2
-julia> collect(Missings.replace([1 missing; 2 missing], 0))
-2×2 Array{Int64,2}:
- 1  0
- 2  0
-```
-"""
 replace(itr, replacement) = EachReplaceMissing(itr, convert(eltype(itr), replacement))
 struct EachReplaceMissing{T, U}
     x::T
@@ -259,24 +225,6 @@ Base.eltype(itr::EachReplaceMissing) = Missings.T(eltype(itr.x))
 end
 @static if !isdefined(Base, :skipmissing)
 export skipmissing
-"""
-    skipmissing(itr)
-Return an iterator wrapping iterable `itr` which skips [`missing`](@ref) values.
-Use [`collect`](@ref) to obtain an `Array` containing the non-`missing` values in
-`itr`. Note that even if `itr` is a multidimensional array, the result will always
-be a `Vector` since it is not possible to remove missings while preserving dimensions
-of the input.
-```jldoctest
-julia> collect(skipmissing([1, missing, 2]))
-2-element Array{Int64,1}:
- 1
- 2
-julia> collect(skipmissing([1 missing; 2 missing]))
-2-element Array{Int64,1}:
- 1
- 2
-```
-"""
 skipmissing(itr) = EachSkipMissing(itr)
 struct EachSkipMissing{T}
     x::T
@@ -322,23 +270,6 @@ end
     (v, _next_nonmissing_ind(itr.x, state))
 end
 end # isdefined
-"""
-    Missings.fail(itr)
-Return an iterator wrapping iterable `itr` which will throw a [`MissingException`](@ref)
-if a [`missing`](@ref) value is found.
-Use [`collect`](@ref) to obtain an `Array` containing the resulting values.
-If `itr` is an array, the resulting array will have the same dimensions.
-See also: [`skipmissing`](@ref), [`Missings.replace`](@ref)
-```jldoctest
-julia> collect(Missings.fail([1 2; 3 4]))
-2×2 Array{Int64,2}:
- 1  2
- 3  4
-julia> collect(Missings.fail([1, missing, 2]))
-ERROR: MissingException: missing value encountered by Missings.fail
-[...]
-```
-"""
 fail(itr) = EachFailMissing(itr)
 struct EachFailMissing{T}
     x::T
@@ -358,14 +289,6 @@ Base.eltype(itr::EachFailMissing) = Missings.T(eltype(itr.x))
     ismissing(v) && throw(MissingException("missing value encountered by Missings.fail"))
     (v::eltype(itr), s)
 end
-"""
-    levels(x)
-Return a vector of unique values which occur or could occur in collection `x`,
-omitting `missing` even if present. Values are returned in the preferred order
-for the collection, with the result of [`sort`](@ref) as a default.
-Contrary to [`unique`](@ref), this function may return values which do not
-actually occur in the data, and does not preserve their order of appearance in `x`.
-"""
 function levels(x)
     T = Missings.T(eltype(x))
     levs = convert(AbstractArray{T}, filter!(!ismissing, unique(x)))
