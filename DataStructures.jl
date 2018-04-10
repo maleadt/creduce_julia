@@ -1,7 +1,5 @@
 __precompile__()
-
 module DataStructures
-
     import Base: <, <=, ==, length, isempty, start, next, done, delete!,
                  show, dump, empty!, getindex, setindex!, get, get!,
                  in, haskey, keys, merge, copy, cat,
@@ -15,29 +13,21 @@ module DataStructures
                  isless,
                  union, intersect, symdiff, setdiff, issubset,
                  find, searchsortedfirst, searchsortedlast, endof, in
-
     using Compat: uninitialized, Nothing, Cvoid, AbstractDict
-
     export Deque, Stack, Queue, CircularDeque
     export deque, enqueue!, dequeue!, dequeue_pair!, update!, reverse_iter
     export capacity, num_blocks, front, back, top, top_with_handle, sizehint!
-
     export Accumulator, counter, reset!, inc!, dec!
-
     export ClassifiedCollections
     export classified_lists, classified_sets, classified_counters
-
     export IntDisjointSets, DisjointSets, num_groups, find_root, in_same_set, root_union!
-
     export AbstractHeap, compare, extract_all!
     export BinaryHeap, binary_minheap, binary_maxheap, nlargest, nsmallest
     export MutableBinaryHeap, mutable_binary_minheap, mutable_binary_maxheap
     export heapify!, heapify, heappop!, heappush!, isheap
-
     export OrderedDict, OrderedSet
     export DefaultDict, DefaultOrderedDict
     export Trie, subtrie, keys_with_prefix, path
-
     export LinkedList, Nil, Cons, nil, cons, head, tail, list, filter, cat,
            reverse
     export SortedDict, SortedMultiDict, SortedSet
@@ -49,28 +39,15 @@ module DataStructures
     export packcopy, packdeepcopy
     export exclusive, inclusive, semitokens
     export orderobject, ordtype, Lt, compare, onlysemitokens
-
     export MultiDict, enumerateall
-
     import Base: eachindex, keytype, valtype
-
-
-
-#
-# expanded from:     include("delegate.jl")
-#
-
-# by JMW
-
 function unquote(e::Expr)
     @assert e.head == :quote
     return e.args[1]
 end
-
 function unquote(e::QuoteNode)
     return e.value
 end
-
 macro delegate(source, targets)
     typename = esc(source.args[1])
     fieldname = unquote(source.args[2])
@@ -86,7 +63,6 @@ macro delegate(source, targets)
     end
     return Expr(:block, fdefs...)
 end
-
 macro delegate_return_parent(source, targets)
     typename = esc(source.args[1])
     fieldname = unquote(source.args[2])
@@ -102,20 +78,6 @@ macro delegate_return_parent(source, targets)
     end
     return Expr(:block, fdefs...)
 end
-
-
-
-#
-# expanded from:     include("deque.jl")
-#
-
-# Block-based deque
-#######################################
-#
-#  DequeBlock
-#
-#######################################
-
 mutable struct DequeBlock{T}
     data::Vector{T}  # only data[front:back] is valid
     capa::Int
@@ -123,7 +85,6 @@ mutable struct DequeBlock{T}
     back::Int
     prev::DequeBlock{T}  # ref to previous block
     next::DequeBlock{T}  # ref to next block
-
     function DequeBlock{T}(capa::Int, front::Int) where T
         data = Vector{T}(uninitialized, capa)
         blk = new{T}(data, capa, front, front-1)
@@ -132,72 +93,46 @@ mutable struct DequeBlock{T}
         blk
     end
 end
-
-# block at the rear of the chain, elements towards the front
 rear_deque_block(ty::Type{T}, n::Int) where {T} = DequeBlock{T}(n, 1)
-
-# block at the head of the train, elements towards the back
 head_deque_block(ty::Type{T}, n::Int) where {T} = DequeBlock{T}(n, n+1)
-
 capacity(blk::DequeBlock) = blk.capa
 length(blk::DequeBlock) = blk.back - blk.front + 1
 isempty(blk::DequeBlock) = blk.back < blk.front
 ishead(blk::DequeBlock) = blk.prev === blk
 isrear(blk::DequeBlock) =  blk.next === blk
-
-
-# reset the block to empty, and position
-
 function reset!(blk::DequeBlock{T}, front::Int) where T
     blk.front = front
     blk.back = front - 1
     blk.prev = blk
     blk.next = blk
 end
-
 function show(io::IO, blk::DequeBlock)  # avoids recursion into prev and next
     x = blk.data[blk.front:blk.back]
     print(io, "$(typeof(blk))(capa = $(blk.capa), front = $(blk.front), back = $(blk.back)): $x")
 end
-
-
-#######################################
-#
-#  Deque
-#
-#######################################
-
 const DEFAULT_DEQUEUE_BLOCKSIZE = 1024
-
 mutable struct Deque{T}
     nblocks::Int
     blksize::Int
     len::Int
     head::DequeBlock{T}
     rear::DequeBlock{T}
-
     function Deque{T}(blksize::Int) where T
         head = rear = rear_deque_block(T, blksize)
         new{T}(1, blksize, 0, head, rear)
     end
-
     Deque{T}() where {T} = Deque{T}(DEFAULT_DEQUEUE_BLOCKSIZE)
 end
-
 """
     deque(T)
-
 Create a deque of type `T`.
 """
 deque(::Type{T}) where {T} = Deque{T}()
-
 isempty(q::Deque) = q.len == 0
 length(q::Deque) = q.len
 num_blocks(q::Deque) = q.nblocks
-
 """
     front(q::Deque)
-
 Returns the first element of the deque `q`.
 """
 function front(q::Deque)
@@ -205,10 +140,8 @@ function front(q::Deque)
     blk = q.head
     blk.data[blk.front]
 end
-
 """
     back(q::Deque)
-
 Returns the last element of the deque `q`.
 """
 function back(q::Deque)
@@ -216,76 +149,49 @@ function back(q::Deque)
     blk = q.rear
     blk.data[blk.back]
 end
-
-
-# Iteration
-
 struct DequeIterator{T}
     q::Deque
 end
-
 start(qi::DequeIterator{T}) where {T} = (qi.q.head, qi.q.head.front)
-
 function next(qi::DequeIterator{T}, s) where T
     cb = s[1]
     i = s[2]
     x = cb.data[i]
-
     i += 1
     if i > cb.back && !isrear(cb)
         cb = cb.next
         i = 1
     end
-
     (x, (cb, i))
 end
-
 done(q::DequeIterator{T}, s) where {T} = (s[2] > s[1].back)
-
-# Backwards deque iteration
-
 struct ReverseDequeIterator{T}
     q::Deque
 end
-
 start(qi::ReverseDequeIterator{T}) where {T} = (qi.q.rear, qi.q.rear.back)
-
-# We're finished when our index is less than the first index
-# of the current block (which can only happen on the first block)
 done(qi::ReverseDequeIterator{T}, s) where {T} = (s[2] < s[1].front)
-
 function next(qi::ReverseDequeIterator{T}, s) where T
     cb = s[1]
     i = s[2]
     x = cb.data[i]
-
     i -= 1
     # If we're past the beginning of a block, go to the previous one
     if i < cb.front && !ishead(cb)
         cb = cb.prev
         i = cb.back
     end
-
     (x, (cb, i))
 end
-
 reverse_iter(q::Deque{T}) where {T} = ReverseDequeIterator{T}(q)
-
 start(q::Deque{T}) where {T} = start(DequeIterator{T}(q))
 next(q::Deque{T}, s) where {T} = next(DequeIterator{T}(q), s)
 done(q::Deque{T}, s) where {T} = done(DequeIterator{T}(q), s)
-
 Base.length(qi::DequeIterator{T}) where {T} = qi.q.len
 Base.length(qi::ReverseDequeIterator{T}) where {T} = qi.q.len
-
 Base.collect(q::Deque{T}) where {T} = T[x for x in q]
-
-# Showing
-
 function show(io::IO, q::Deque)
     print(io, "Deque [$(collect(q))]")
 end
-
 function dump(io::IO, q::Deque)
     println(io, "Deque (length = $(q.len), nblocks = $(q.nblocks))")
     cb::DequeBlock = q.head
@@ -297,7 +203,6 @@ function dump(io::IO, q::Deque)
             print(io, ' ')
         end
         println(io)
-
         cb_next::DequeBlock = cb.next
         if cb !== cb_next
             cb = cb_next
@@ -307,10 +212,6 @@ function dump(io::IO, q::Deque)
         end
     end
 end
-
-
-# Manipulation
-
 function empty!(q::Deque{T}) where T
     # release all blocks except the head
     if q.nblocks > 1
@@ -320,26 +221,20 @@ function empty!(q::Deque{T}) where T
             cb = cb.prev
         end
     end
-
     # clean the head block (but retain the block itself)
     reset!(q.head, 1)
-
     # reset queue fields
     q.nblocks = 1
     q.len = 0
     q.rear = q.head
     q
 end
-
-
 function push!(q::Deque{T}, x) where T  # push back
     rear = q.rear
-
     if isempty(rear)
         rear.front = 1
         rear.back = 0
     end
-
     if rear.back < rear.capa
         @inbounds rear.data[rear.back += 1] = convert(T, x)
     else
@@ -353,16 +248,13 @@ function push!(q::Deque{T}, x) where T  # push back
     q.len += 1
     q
 end
-
 function unshift!(q::Deque{T}, x) where T   # push front
     head = q.head
-
     if isempty(head)
         n = head.capa
         head.front = n + 1
         head.back = n
     end
-
     if head.front > 1
         @inbounds head.data[head.front -= 1] = convert(T, x)
     else
@@ -377,12 +269,10 @@ function unshift!(q::Deque{T}, x) where T   # push front
     q.len += 1
     q
 end
-
 function pop!(q::Deque{T}) where T   # pop back
     isempty(q) && throw(ArgumentError("Deque must be non-empty"))
     rear = q.rear
     @assert rear.back >= rear.front
-
     @inbounds x = rear.data[rear.back]
     rear.back -= 1
     if rear.back < rear.front
@@ -397,13 +287,10 @@ function pop!(q::Deque{T}) where T   # pop back
     q.len -= 1
     x
 end
-
-
 function shift!(q::Deque{T}) where T  # pop front
     isempty(q) && throw(ArgumentError("Deque must be non-empty"))
     head = q.head
     @assert head.back >= head.front
-
     @inbounds x = head.data[head.front]
     head.front += 1
     if head.back < head.front
@@ -418,7 +305,6 @@ function shift!(q::Deque{T}) where T  # pop front
     q.len -= 1
     x
 end
-
 const _deque_hashseed = UInt === UInt64 ? 0x950aa17a3246be82 : 0x4f26f881
 function hash(x::Deque, h::UInt)
     h += _deque_hashseed
@@ -427,7 +313,6 @@ function hash(x::Deque, h::UInt)
     end
     h
 end
-
 function ==(x::Deque, y::Deque)
     length(x) != length(y) && return false
     for (i, j) in zip(x, y)
@@ -435,15 +320,8 @@ function ==(x::Deque, y::Deque)
     end
     true
 end
-
-
-#
-# expanded from:     include("circ_deque.jl")
-#
-
 """
     CircularDeque{T}(n)
-
 Create a double-ended queue of maximum capacity `n`, implemented as a circular buffer. The element type is `T`.
 """
 mutable struct CircularDeque{T}
@@ -453,32 +331,25 @@ mutable struct CircularDeque{T}
     first::Int
     last::Int
 end
-
 CircularDeque{T}(n::Int) where {T} = CircularDeque(Vector{T}(uninitialized, n), n, 0, 1, n)
-
 Base.length(D::CircularDeque) = D.n
 Base.eltype(::Type{CircularDeque{T}}) where {T} = T
 capacity(D::CircularDeque) = D.capacity
-
 function Base.empty!(D::CircularDeque)
     D.n = 0
     D.first = 1
     D.last = D.capacity
     D
 end
-
 Base.isempty(D::CircularDeque) = D.n == 0
-
 @inline function front(D::CircularDeque)
     @boundscheck D.n > 0 || throw(BoundsError())
     D.buffer[D.first]
 end
-
 @inline function back(D::CircularDeque)
     @boundscheck D.n > 0 || throw(BoundsError())
     D.buffer[D.last]
 end
-
 @inline function Base.push!(D::CircularDeque, v)
     @boundscheck D.n < D.capacity || throw(BoundsError()) # prevent overflow
     D.n += 1
@@ -487,7 +358,6 @@ end
     @inbounds D.buffer[D.last] = v
     D
 end
-
 @inline function Base.pop!(D::CircularDeque)
     v = back(D)
     D.n -= 1
@@ -495,7 +365,6 @@ end
     D.last = ifelse(tmp < 1, D.capacity, tmp)
     v
 end
-
 @inline function Base.unshift!(D::CircularDeque, v)
     @boundscheck D.n < D.capacity || throw(BoundsError())
     D.n += 1
@@ -504,7 +373,6 @@ end
     @inbounds D.buffer[D.first] = v
     D
 end
-
 @inline function Base.shift!(D::CircularDeque)
     v = front(D)
     D.n -= 1
@@ -512,8 +380,6 @@ end
     D.first = ifelse(tmp > D.capacity, 1, tmp)
     v
 end
-
-# getindex sans bounds checking
 @inline function _unsafe_getindex(D::CircularDeque, i::Integer)
     j = D.first + i - 1
     if j > D.capacity
@@ -522,17 +388,13 @@ end
     @inbounds ret = D.buffer[j]
     return ret
 end
-
 @inline function Base.getindex(D::CircularDeque, i::Integer)
     @boundscheck 1 <= i <= D.n || throw(BoundsError())
     return _unsafe_getindex(D, i)
 end
-
-# Iteration via getindex
 @inline Base.start(d::CircularDeque) = 1
 @inline Base.next(d::CircularDeque, i) = (_unsafe_getindex(d, i), i+1)
 @inline Base.done(d::CircularDeque, i) = i == d.n + 1
-
 function Base.show(io::IO, D::CircularDeque{T}) where T
     print(io, "CircularDeque{$T}([")
     for i = 1:length(D)
@@ -541,110 +403,61 @@ function Base.show(io::IO, D::CircularDeque{T}) where T
     end
     print(io, "])")
 end
-
-
-#
-# expanded from:     include("stack.jl")
-#
-
-# stacks
-
 mutable struct Stack{T}
     store::Deque{T}
 end
-
 Stack(ty::Type{T}) where {T} = Stack(Deque{T}())
 Stack(ty::Type{T}, blksize::Integer) where {T} = Stack(Deque{T}(blksize))
-
 isempty(s::Stack) = isempty(s.store)
 length(s::Stack) = length(s.store)
-
 top(s::Stack) = back(s.store)
-
 function push!(s::Stack, x)
     push!(s.store, x)
     s
 end
-
 pop!(s::Stack) = pop!(s.store)
-
 start(st::Stack) = start(reverse_iter(st.store))
 next(st::Stack, s) = next(reverse_iter(st.store), s)
 done(st::Stack, s) = done(reverse_iter(st.store), s)
-
 reverse_iter(s::Stack{T}) where {T} = DequeIterator{T}(s.store)
-
-
-#
-# expanded from:     include("queue.jl")
-#
-
-# FIFO queue
-
 mutable struct Queue{T}
     store::Deque{T}
 end
-
 """
     Queue(T[, blksize::Integer=1024])
-
 Create a `Queue` object containing elements of type `T`.
 """
 Queue(ty::Type{T}) where {T} = Queue(Deque{T}())
 Queue(ty::Type{T}, blksize::Integer) where {T} = Queue(Deque{T}(blksize))
-
 isempty(s::Queue) = isempty(s.store)
 length(s::Queue) = length(s.store)
-
 front(s::Queue) = front(s.store)
 back(s::Queue) = back(s.store)
-
 """
     enqueue!(s::Queue, x)
-
 Inserts the value `x` to the end of the queue `s`.
 """
 function enqueue!(s::Queue, x)
     push!(s.store, x)
     s
 end
-
 """
     dequeue!(s::Queue)
-
 Removes an element from the front of the queue `s` and returns it.
 """
 dequeue!(s::Queue) = shift!(s.store)
-
-# Iterators
-
 start(q::Queue) = start(q.store)
 next(q::Queue, s) = next(q.store, s)
 done(q::Queue, s) = done(q.store, s)
-
 reverse_iter(q::Queue) = reverse_iter(q.store)
-
-
-#
-# expanded from:     include("accumulator.jl")
-#
-
-# A counter type
-
 struct Accumulator{T, V<:Number} <: AbstractDict{T,V}
     map::Dict{T,V}
 end
-
-## constructors
-
 Accumulator(::Type{T}, ::Type{V}) where {T,V<:Number} = Accumulator{T,V}(Dict{T,V}())
 counter(T::Type) = Accumulator(T,Int)
-
 counter(dct::Dict{T,V}) where {T,V<:Integer} = Accumulator{T,V}(copy(dct))
-
 """
     counter(seq)
-
 Returns an `Accumulator` object containing the elements from `seq`.
 """
 function counter(seq)
@@ -654,7 +467,6 @@ function counter(seq)
     end
     return ct
 end
-
 eltype_for_accumulator(seq::T) where T = eltype(T)
 function eltype_for_accumulator(seq::T) where {T<:Base.Generator}
     @static if VERSION < v"0.7.0-DEV.2104"
@@ -663,72 +475,35 @@ function eltype_for_accumulator(seq::T) where {T<:Base.Generator}
         Base.@default_eltype(T)
     end
 end
-
-
-
 copy(ct::Accumulator) = Accumulator(copy(ct.map))
-
 length(a::Accumulator) = length(a.map)
-
-## retrieval
-
 get(ct::Accumulator, x, default) = get(ct.map, x, default)
-# need to allow user specified default in order to
-# correctly implement "informal" AbstractDict interface
-
 getindex(ct::Accumulator{T,V}, x) where {T,V} = get(ct.map, x, zero(V))
-
 setindex!(ct::Accumulator, x, v) = setindex!(ct.map, x, v)
-
-
 haskey(ct::Accumulator, x) = haskey(ct.map, x)
-
 keys(ct::Accumulator) = keys(ct.map)
-
 values(ct::Accumulator) = values(ct.map)
-
 sum(ct::Accumulator) = sum(values(ct.map))
-
-## iteration
-
 start(ct::Accumulator) = start(ct.map)
 next(ct::Accumulator, state) = next(ct.map, state)
 done(ct::Accumulator, state) = done(ct.map, state)
-
-
-# manipulation
-
 """
     inc!(ct, x, [v=1])
-
 Increments the count for `x` by `v` (defaulting to one)
 """
 inc!(ct::Accumulator, x, a::Number) = (ct[x] += a)
 inc!(ct::Accumulator{T,V}, x) where {T,V} = inc!(ct, x, one(V))
-
-# inc! is preferred over push!, but we need to provide push! for the Bag interpreation
-# which is used by classified_collections.jl
 push!(ct::Accumulator, x) = inc!(ct, x)
 push!(ct::Accumulator, x, a::Number) = inc!(ct, x, a)
-
-# To remove ambiguities related to Accumulator now being a subtype of AbstractDict
 push!(ct::Accumulator, x::Pair)  = inc!(ct, x)
-
-
-
 """
     dec!(ct, x, [v=1])
-
 Decrements the count for `x` by `v` (defaulting to one)
 """
 dec!(ct::Accumulator, x, a::Number) = (ct[x] -= a)
 dec!(ct::Accumulator{T,V}, x) where {T,V} = dec!(ct, x, one(V))
-
-#TODO: once we are done deprecating `pop!` for `reset!` then add `pop!` as an alias for `dec!`
-
 """
     merge!(ct1, others...)
-
 Merges the other counters into `ctl`,
 summing the counts for all elements.
 """
@@ -738,91 +513,47 @@ function merge!(ct::Accumulator, other::Accumulator)
     end
     ct
 end
-
-
 function merge!(ct1::Accumulator, others::Accumulator...)
     for ct in others
         merge!(ct1,ct)
     end
     return ct1
 end
-
-
 """
      merge(counters...)
-
 Creates a new counter with total counts equal to the sum of the counts in the counters given as arguments.
-
 See also merge!
 """
 function merge(ct1::Accumulator, others::Accumulator...)
     ct = copy(ct1)
     merge!(ct,others...)
 end
-
 """
     reset!(ct::Accumulator, x)
-
 Resets the count of `x` to zero.
 Returns its former count.
 """
 reset!(ct::Accumulator, x) = pop!(ct.map, x)
-
-
-
-## Deprecations
 @deprecate pop!(ct::Accumulator, x) reset!(ct, x)
 @deprecate push!(ct1::Accumulator, ct2::Accumulator) merge!(ct1,ct2)
-
-
-
-
-#
-# expanded from:     include("classified_collections.jl")
-#
-
-# A Classified Collection is a map which associates a collection to each key
-#
-# The collection can be either an array or a set, a counter, or other data structures
-# that support the push! method
-#
-
 mutable struct ClassifiedCollections{K, Collection}
     map::Dict{K, Collection}
 end
-
-## constructors
-
 ClassifiedCollections(K::Type, C::Type) = ClassifiedCollections{K, C}(Dict{K,C}())
-
 classified_lists(K::Type, V::Type) = ClassifiedCollections(K, Vector{V})
 classified_sets(K::Type, V::Type) = ClassifiedCollections(K, Set{V})
 classified_counters(K::Type, T::Type) = ClassifiedCollections(K, Accumulator{T, Int})
-
 _create_empty(::Type{Vector{T}}) where {T} = Vector{T}()
 _create_empty(::Type{Set{T}}) where {T} = Set{T}()
 _create_empty(::Type{Accumulator{T,V}}) where {T,V} = Accumulator(T, V)
-
 copy(cc::ClassifiedCollections{K, C}) where {K, C} = ClassifiedCollections{K, C}(copy(cc.map))
-
 length(cc::ClassifiedCollections) = length(cc.map)
-
-## retrieval
-
 getindex(cc::ClassifiedCollections{T,C}, x::T) where {T,C} = cc.map[x]
-
 haskey(cc::ClassifiedCollections{T,C}, x::T) where {T,C} = haskey(cc.map, x)
-
 keys(cc::ClassifiedCollections) = keys(cc.map)
-
-## iteration
-
 start(cc::ClassifiedCollections) = start(cc.map)
 next(cc::ClassifiedCollections, state) = next(cc.map, state)
 done(cc::ClassifiedCollections, state) = done(cc.map, state)
-
-# manipulation
-
 function push!(cc::ClassifiedCollections{K, C}, key::K, e) where {K, C}
     c = get(cc.map, key, nothing)
     if c === nothing
@@ -831,46 +562,16 @@ function push!(cc::ClassifiedCollections{K, C}, key::K, e) where {K, C}
     end
     push!(c, e)
 end
-
 pop!(cc::ClassifiedCollections{K}, key::K) where {K} = pop!(cc.map, key)
-
-
-#
-# expanded from:     include("disjoint_set.jl")
-#
-
-# Disjoint sets
-
-############################################################
-#
-#   A forest of disjoint sets of integers
-#
-#   Since each element is an integer, we can use arrays
-#   instead of dictionary (for efficiency)
-#
-#   Disjoint sets over other key types can be implemented
-#   based on an IntDisjointSets through a map from the key
-#   to an integer index
-#
-############################################################
-
 mutable struct IntDisjointSets
     parents::Vector{Int}
     ranks::Vector{Int}
     ngroups::Int
-
     # creates a disjoint set comprised of n singletons
     IntDisjointSets(n::Integer) = new(collect(1:n), zeros(Int, n), n)
 end
-
 length(s::IntDisjointSets) = length(s.parents)
 num_groups(s::IntDisjointSets) = s.ngroups
-
-
-# find the root element of the subset that contains x
-# path compression is implemented here
-#
-
 function find_root_impl!(parents::Array{Int}, x::Integer)
     p = parents[x]
     @inbounds if parents[p] != p
@@ -878,8 +579,6 @@ function find_root_impl!(parents::Array{Int}, x::Integer)
     end
     p
 end
-
-# unsafe version of the above
 function _find_root_impl!(parents::Array{Int}, x::Integer)
     @inbounds p = parents[x]
     @inbounds if parents[p] != p
@@ -887,34 +586,23 @@ function _find_root_impl!(parents::Array{Int}, x::Integer)
     end
     p
 end
-
 find_root(s::IntDisjointSets, x::Integer) = find_root_impl!(s.parents, x)
-
 """
     in_same_set(s::IntDisjointSets, x::Integer, y::Integer)
-
 Returns `true` if `x` and `y` belong to the same subset in `s` and `false` otherwise.
 """
 in_same_set(s::IntDisjointSets, x::Integer, y::Integer) = find_root(s, x) == find_root(s, y)
-
-# merge the subset containing x and that containing y into one
-# and return the root of the new set.
 function union!(s::IntDisjointSets, x::Integer, y::Integer)
     parents = s.parents
     xroot = find_root_impl!(parents, x)
     yroot = find_root_impl!(parents, y)
     xroot != yroot ?  root_union!(s, xroot, yroot) : xroot
 end
-
-# form a new set that is the union of the two sets whose root elements are
-# x and y and return the root of the new set
-# assume x ≠ y (unsafe)
 function root_union!(s::IntDisjointSets, x::Integer, y::Integer)
     parents = s.parents
     rks = s.ranks
     @inbounds xrank = rks[x]
     @inbounds yrank = rks[y]
-
     if xrank < yrank
         x, y = y, x
     elseif xrank == yrank
@@ -924,10 +612,6 @@ function root_union!(s::IntDisjointSets, x::Integer, y::Integer)
     @inbounds s.ngroups -= 1
     x
 end
-
-# make a new subset with an automatically chosen new element x
-# returns the new element
-#
 function push!(s::IntDisjointSets)
     x = length(s) + 1
     push!(s.parents, x)
@@ -935,22 +619,10 @@ function push!(s::IntDisjointSets)
     s.ngroups += 1
     return x
 end
-
-
-############################################################
-#
-#  A forest of disjoint sets of arbitrary value type T
-#
-#  It is a wrapper of IntDisjointSets, which uses a
-#  dictionary to map the input value to an internal index
-#
-############################################################
-
 mutable struct DisjointSets{T}
     intmap::Dict{T,Int}
     revmap::Vector{T}
     internal::IntDisjointSets
-
     function DisjointSets{T}(xs) where T    # xs must be iterable
         imap = Dict{T,Int}()
         rmap = Vector{T}()
@@ -965,122 +637,36 @@ mutable struct DisjointSets{T}
         new{T}(imap, rmap, IntDisjointSets(n))
     end
 end
-
 length(s::DisjointSets) = length(s.internal)
 num_groups(s::DisjointSets) = num_groups(s.internal)
-
 """
     find_root{T}(s::DisjointSets{T}, x::T)
-
 Finds the root element of the subset in `s` which has the element `x` as a member.
 """
 find_root(s::DisjointSets{T}, x::T) where {T} = s.revmap[find_root(s.internal, s.intmap[x])]
-
 in_same_set(s::DisjointSets{T}, x::T, y::T) where {T} = in_same_set(s.internal, s.intmap[x], s.intmap[y])
-
 union!(s::DisjointSets{T}, x::T, y::T) where {T} = s.revmap[union!(s.internal, s.intmap[x], s.intmap[y])]
-
 root_union!(s::DisjointSets{T}, x::T, y::T) where {T} = s.revmap[root_union!(s.internal, s.intmap[x], s.intmap[y])]
-
 function push!(s::DisjointSets{T}, x::T) where T
     id = push!(s.internal)
     s.intmap[x] = id
     push!(s.revmap,x) # Note, this assumes invariant: length(s.revmap) == id
     x
 end
-
-
-#
-# expanded from:     include("heaps.jl")
-#
-
-# Various heap implementation
-
-###########################################################
-#
-#   Heap interface specification
-#
-#   Each heap is associated with a handle type (H), and
-#   a value type v.
-#
-#   Here, the value type must be comparable, and a handle
-#   is an object through which one can refer to a specific
-#   node of the heap and thus update its value.
-#
-#   Each heap type must implement all of the following
-#   functions. Here, let h be a heap, i be a handle, and
-#   v be a value.
-#
-#   - length(h)           returns the number of elements
-#
-#   - isempty(h)          returns whether the heap is
-#                         empty
-#
-#   - push!(h, v)         add a value to the heap
-#
-#   - sizehint!(h)         set size hint to a heap
-#
-#   - top(h)              return the top value of a heap
-#
-#   - pop!(h)             removes the top value, and
-#                         returns it
-#
-#  For mutable heaps, it should also support
-#
-#   - push!(h, v)         adds a value to the heap and
-#                         returns a handle to v
-#
-#   - update!(h, i, v)    updates the value of an element
-#                         (referred to by the handle i)
-#
-#   - top_with_handle(h)  return the top value of a heap
-#                         and its handle
-#
-#
-###########################################################
-
-# HT: handle type
-# VT: value type
-
 abstract type AbstractHeap{VT} end
-
 abstract type AbstractMutableHeap{VT,HT} <: AbstractHeap{VT} end
-
-# comparer
-
 struct LessThan
 end
-
 struct GreaterThan
 end
-
 compare(c::LessThan, x, y) = x < y
 compare(c::GreaterThan, x, y) = x > y
-
-# heap implementations
-
-
-
-#
-# expanded from: include("heaps/binary_heap.jl")
-#
-
-# Binary heap (non-mutable)
-
-#################################################
-#
-#   core implementation
-#
-#################################################
-
 function _heap_bubble_up!(comp::Comp, valtree::Array{T}, i::Int) where {Comp,T}
     i0::Int = i
     @inbounds v = valtree[i]
-
     while i > 1  # nd is not root
         p = i >> 1
         @inbounds vp = valtree[p]
-
         if compare(comp, v, vp)
             # move parent downward
             @inbounds valtree[i] = vp
@@ -1089,18 +675,15 @@ function _heap_bubble_up!(comp::Comp, valtree::Array{T}, i::Int) where {Comp,T}
             break
         end
     end
-
     if i != i0
         @inbounds valtree[i] = v
     end
 end
-
 function _heap_bubble_down!(comp::Comp, valtree::Array{T}, i::Int) where {Comp,T}
     @inbounds v::T = valtree[i]
     swapped = true
     n = length(valtree)
     last_parent = n >> 1
-
     while swapped && i <= last_parent
         lc = i << 1
         if lc < n   # contains both left and right children
@@ -1132,15 +715,11 @@ function _heap_bubble_down!(comp::Comp, valtree::Array{T}, i::Int) where {Comp,T
             end
         end
     end
-
     valtree[i] = v
 end
-
-
 function _binary_heap_pop!(comp::Comp, valtree::Array{T}) where {Comp,T}
     # extract root
     v = valtree[1]
-
     if length(valtree) == 1
         empty!(valtree)
     else
@@ -1151,8 +730,6 @@ function _binary_heap_pop!(comp::Comp, valtree::Array{T}) where {Comp,T}
     end
     v
 end
-
-
 function _make_binary_heap(comp::Comp, ty::Type{T}, xs) where {Comp,T}
     n = length(xs)
     valtree = copy(xs)
@@ -1161,94 +738,50 @@ function _make_binary_heap(comp::Comp, ty::Type{T}, xs) where {Comp,T}
     end
     valtree
 end
-
-
-#################################################
-#
-#   heap type and constructors
-#
-#################################################
-
 mutable struct BinaryHeap{T,Comp} <: AbstractHeap{T}
     comparer::Comp
     valtree::Vector{T}
-
     function BinaryHeap{T,Comp}(comp::Comp) where {T,Comp}
         new{T,Comp}(comp, Vector{T}())
     end
-
     function BinaryHeap{T,Comp}(comp::Comp, xs) where {T,Comp}  # xs is an iterable collection of values
         valtree = _make_binary_heap(comp, T, xs)
         new{T,Comp}(comp, valtree)
     end
 end
-
 function binary_minheap(ty::Type{T}) where T
     BinaryHeap{T,LessThan}(LessThan())
 end
-
 binary_maxheap(ty::Type{T}) where {T} = BinaryHeap{T,GreaterThan}(GreaterThan())
 binary_minheap(xs::AbstractVector{T}) where {T} = BinaryHeap{T,LessThan}(LessThan(), xs)
 binary_maxheap(xs::AbstractVector{T}) where {T} = BinaryHeap{T,GreaterThan}(GreaterThan(), xs)
-
-#################################################
-#
-#   interfaces
-#
-#################################################
-
 length(h::BinaryHeap) = length(h.valtree)
-
 isempty(h::BinaryHeap) = isempty(h.valtree)
-
 function push!(h::BinaryHeap{T}, v::T) where T
     valtree = h.valtree
     push!(valtree, v)
     _heap_bubble_up!(h.comparer, valtree, length(valtree))
     h
 end
-
-
 """
     top(h::BinaryHeap)
-
 Returns the element at the top of the heap `h`.
 """
 @inline top(h::BinaryHeap) = h.valtree[1]
-
 pop!(h::BinaryHeap{T}) where {T} = _binary_heap_pop!(h.comparer, h.valtree)
-
-
-#
-# expanded from: include("heaps/mutable_binary_heap.jl")
-#
-
-# Binary heap
-
 struct MutableBinaryHeapNode{T}
     value::T
     handle::Int
 end
-
-#################################################
-#
-#   core implementation
-#
-#################################################
-
 function _heap_bubble_up!(comp::Comp,
     nodes::Vector{MutableBinaryHeapNode{T}}, nodemap::Vector{Int}, nd_id::Int) where {Comp, T}
-
     @inbounds nd = nodes[nd_id]
     v::T = nd.value
-
     swapped = true  # whether swap happens at last step
     i = nd_id
-
     while swapped && i > 1  # nd is not root
         p = i >> 1
         @inbounds nd_p = nodes[p]
-
         if compare(comp, v, nd_p.value)
             # move parent downward
             @inbounds nodes[i] = nd_p
@@ -1258,35 +791,26 @@ function _heap_bubble_up!(comp::Comp,
             swapped = false
         end
     end
-
     if i != nd_id
         nodes[i] = nd
         nodemap[nd.handle] = i
     end
 end
-
 function _heap_bubble_down!(comp::Comp,
     nodes::Vector{MutableBinaryHeapNode{T}}, nodemap::Vector{Int}, nd_id::Int) where {Comp, T}
-
     @inbounds nd = nodes[nd_id]
     v::T = nd.value
-
     n = length(nodes)
     last_parent = n >> 1
-
     swapped = true
     i = nd_id
-
     while swapped && i <= last_parent
         il = i << 1
-
         if il < n   # contains both left and right children
             ir = il + 1
-
             # determine the better child
             @inbounds nd_l = nodes[il]
             @inbounds nd_r = nodes[ir]
-
             if compare(comp, nd_r.value, nd_l.value)
                 # consider right child
                 if compare(comp, nd_r.value, v)
@@ -1306,7 +830,6 @@ function _heap_bubble_down!(comp::Comp,
                     swapped = false
                 end
             end
-
         else  # contains only left child
             nd_l = nodes[il]
             if compare(comp, nd_l.value, v)
@@ -1318,21 +841,17 @@ function _heap_bubble_down!(comp::Comp,
             end
         end
     end
-
     if i != nd_id
         @inbounds nodes[i] = nd
         @inbounds nodemap[nd.handle] = i
     end
 end
-
 function _binary_heap_pop!(comp::Comp,
     nodes::Vector{MutableBinaryHeapNode{T}}, nodemap::Vector{Int}) where {Comp,T}
-
     # extract root node
     rt = nodes[1]
     v = rt.value
     @inbounds nodemap[rt.handle] = 0
-
     if length(nodes) == 1
         # clear
         empty!(nodes)
@@ -1340,64 +859,46 @@ function _binary_heap_pop!(comp::Comp,
         # place last node to root
         @inbounds nodes[1] = new_rt = pop!(nodes)
         @inbounds nodemap[new_rt.handle] = 1
-
         if length(nodes) > 1
             _heap_bubble_down!(comp, nodes, nodemap, 1)
         end
     end
     v
 end
-
 function _make_mutable_binary_heap(comp::Comp, ty::Type{T}, values) where {Comp,T}
     # make a static binary index tree from a list of values
-
     n = length(values)
     nodes = Vector{MutableBinaryHeapNode{T}}(uninitialized, n)
     nodemap = Vector{Int}(uninitialized, n)
-
     i::Int = 0
     for v in values
         i += 1
         @inbounds nodes[i] = MutableBinaryHeapNode{T}(v, i)
         @inbounds nodemap[i] = i
     end
-
     for i = 1 : n
         _heap_bubble_up!(comp, nodes, nodemap, i)
     end
     return nodes, nodemap
 end
-
-
-#################################################
-#
-#   Binary Heap type and constructors
-#
-#################################################
-
 mutable struct MutableBinaryHeap{VT, Comp} <: AbstractMutableHeap{VT,Int}
     comparer::Comp
     nodes::Vector{MutableBinaryHeapNode{VT}}
     node_map::Vector{Int}
-
     function MutableBinaryHeap{VT, Comp}(comp::Comp) where {VT, Comp}
         nodes = Vector{MutableBinaryHeapNode{VT}}()
         node_map = Vector{Int}()
         new{VT, Comp}(comp, nodes, node_map)
     end
-
     function MutableBinaryHeap{VT, Comp}(comp::Comp, xs) where {VT, Comp}  # xs is an iterable collection of values
         nodes, node_map = _make_mutable_binary_heap(comp, VT, xs)
         new{VT, Comp}(comp, nodes, node_map)
     end
 end
-
 mutable_binary_minheap(ty::Type{T}) where {T} = MutableBinaryHeap{T,LessThan}(LessThan())
 mutable_binary_maxheap(ty::Type{T}) where {T} = MutableBinaryHeap{T,GreaterThan}(GreaterThan())
-
 mutable_binary_minheap(xs::AbstractVector{T}) where {T} = MutableBinaryHeap{T,LessThan}(LessThan(), xs)
 mutable_binary_maxheap(xs::AbstractVector{T}) where {T} = MutableBinaryHeap{T,GreaterThan}(GreaterThan(), xs)
-
 function show(io::IO, h::MutableBinaryHeap)
     print(io, "MutableBinaryHeap(")
     nodes = h.nodes
@@ -1410,18 +911,8 @@ function show(io::IO, h::MutableBinaryHeap)
     end
     print(io, ")")
 end
-
-
-#################################################
-#
-#   interfaces
-#
-#################################################
-
 length(h::MutableBinaryHeap) = length(h.nodes)
-
 isempty(h::MutableBinaryHeap) = isempty(h.nodes)
-
 function push!(h::MutableBinaryHeap{T}, v::T) where T
     nodes = h.nodes
     nodemap = h.node_map
@@ -1432,24 +923,18 @@ function push!(h::MutableBinaryHeap{T}, v::T) where T
     _heap_bubble_up!(h.comparer, nodes, nodemap, nd_id)
     i
 end
-
 @inline top(h::MutableBinaryHeap) = h.nodes[1].value
-
 """
     top_with_handle(h::MutableBinaryHeap)
-
 Returns the element at the top of the heap `h` and its handle.
 """
 function top_with_handle(h::MutableBinaryHeap)
     el = h.nodes[1]
     return el.value, el.handle
 end
-
 pop!(h::MutableBinaryHeap{T}) where {T} = _binary_heap_pop!(h.comparer, h.nodes, h.node_map)
-
 """
     update!{T}(h::MutableBinaryHeap{T}, i::Int, v::T)
-
 Replace the element at index `i` in heap `h` with `v`.
 This is equivalent to `h[i]=v`.
 """
@@ -1457,7 +942,6 @@ function update!(h::MutableBinaryHeap{T}, i::Int, v::T) where T
     nodes = h.nodes
     nodemap = h.node_map
     comp = h.comparer
-
     nd_id = nodemap[i]
     v0 = nodes[nd_id].value
     nodes[nd_id] = MutableBinaryHeapNode(v, i)
@@ -1467,31 +951,12 @@ function update!(h::MutableBinaryHeap{T}, i::Int, v::T) where T
         _heap_bubble_down!(comp, nodes, nodemap, nd_id)
     end
 end
-
 setindex!(h::MutableBinaryHeap, v, i::Int) = update!(h, i, v)
 getindex(h::MutableBinaryHeap, i::Int) = h.nodes[h.node_map[i]].value
-
-
-#
-# expanded from: include("heaps/arrays_as_heaps.jl")
-#
-
-# This contains code that was formerly a part of Julia. License is MIT: http://julialang.org/license
-
 import Base.Order: Forward, Ordering, lt
-
-
-# Heap operations on flat arrays
-# ------------------------------
-
-
-# Binary heap indexing
 heapleft(i::Integer) = 2i
 heapright(i::Integer) = 2i + 1
 heapparent(i::Integer) = div(i, 2)
-
-
-# Binary min-heap percolate down.
 function percolate_down!(xs::AbstractArray, i::Integer, x=xs[i], o::Ordering=Forward, len::Integer=length(xs))
     @inbounds while (l = heapleft(i)) <= len
         r = heapright(i)
@@ -1505,11 +970,7 @@ function percolate_down!(xs::AbstractArray, i::Integer, x=xs[i], o::Ordering=For
     end
     xs[i] = x
 end
-
 percolate_down!(xs::AbstractArray, i::Integer, o::Ordering, len::Integer=length(xs)) = percolate_down!(xs, i, xs[i], o, len)
-
-
-# Binary min-heap percolate up.
 function percolate_up!(xs::AbstractArray, i::Integer, x=xs[i], o::Ordering=Forward)
     @inbounds while (j = heapparent(i)) >= 1
         if lt(o, x, xs[j])
@@ -1521,12 +982,9 @@ function percolate_up!(xs::AbstractArray, i::Integer, x=xs[i], o::Ordering=Forwa
     end
     xs[i] = x
 end
-
 percolate_up!(xs::AbstractArray{T}, i::Integer, o::Ordering) where {T} = percolate_up!(xs, i, xs[i], o)
-
 """
     heappop!(v, [ord])
-
 Given a binary heap-ordered array, remove and return the lowest ordered element.
 For efficiency, this function does not check that the array is indeed heap-ordered.
 """
@@ -1538,10 +996,8 @@ function heappop!(xs::AbstractArray, o::Ordering=Forward)
     end
     x
 end
-
 """
     heappush!(v, x, [ord])
-
 Given a binary heap-ordered array, push a new element `x`, preserving the heap property.
 For efficiency, this function does not check that the array is indeed heap-ordered.
 """
@@ -1550,12 +1006,8 @@ function heappush!(xs::AbstractArray, x, o::Ordering=Forward)
     percolate_up!(xs, length(xs), x, o)
     xs
 end
-
-
-# Turn an arbitrary array into a binary min-heap in linear time.
 """
     heapify!(v, ord::Ordering=Forward)
-
 In-place [`heapify`](@ref).
 """
 function heapify!(xs::AbstractArray, o::Ordering=Forward)
@@ -1564,14 +1016,11 @@ function heapify!(xs::AbstractArray, o::Ordering=Forward)
     end
     xs
 end
-
 """
     heapify(v, ord::Ordering=Forward)
-
 Returns a new vector in binary heap order, optionally using the given ordering.
 ```jldoctest
 julia> a = [1,3,4,5,2];
-
 julia> heapify(a)
 5-element Array{Int64,1}:
  1
@@ -1579,7 +1028,6 @@ julia> heapify(a)
  4
  5
  3
-
 julia> heapify(a, Base.Order.Reverse)
 5-element Array{Int64,1}:
  5
@@ -1590,22 +1038,17 @@ julia> heapify(a, Base.Order.Reverse)
 ```
 """
 heapify(xs::AbstractArray, o::Ordering=Forward) = heapify!(copy!(similar(xs), xs), o)
-
 """
     isheap(v, ord::Ordering=Forward)
-
 Return `true` if an array is heap-ordered according to the given order.
-
 ```jldoctest
 julia> a = [1,2,3]
 3-element Array{Int64,1}:
  1
  2
  3
-
 julia> isheap(a,Base.Order.Forward)
 true
-
 julia> isheap(a,Base.Order.Reverse)
 false
 ```
@@ -1619,9 +1062,6 @@ function isheap(xs::AbstractArray, o::Ordering=Forward)
     end
     true
 end
-
-# generic functions
-
 function extract_all!(h::AbstractHeap{VT}) where VT
     n = length(h)
     r = Vector{VT}(uninitialized, n)
@@ -1630,7 +1070,6 @@ function extract_all!(h::AbstractHeap{VT}) where VT
     end
     r
 end
-
 function extract_all_rev!(h::AbstractHeap{VT}) where VT
     n = length(h)
     r = Vector{VT}(uninitialized, n)
@@ -1639,23 +1078,17 @@ function extract_all_rev!(h::AbstractHeap{VT}) where VT
     end
     r
 end
-
-# Array functions using heaps
-
 function nextreme(comp::Comp, n::Int, arr::AbstractVector{T}) where {T, Comp}
     if n <= 0
         return T[] # sort(arr)[1:n] returns [] for n <= 0
     elseif n >= length(arr)
         return sort(arr, lt = (x, y) -> compare(comp, y, x))
     end
-
     buffer = BinaryHeap{T,Comp}(comp)
-
     for i = 1 : n
         @inbounds xi = arr[i]
         push!(buffer, xi)
     end
-
     for i = n + 1 : length(arr)
         @inbounds xi = arr[i]
         if compare(comp, top(buffer), xi)
@@ -1664,64 +1097,37 @@ function nextreme(comp::Comp, n::Int, arr::AbstractVector{T}) where {T, Comp}
             push!(buffer, xi)
         end
     end
-
     return extract_all_rev!(buffer)
 end
-
 @doc """
 Returns the `n` largest elements of `arr`.
-
 Equivalent to `sort(arr, lt = >)[1:min(n, end)]`
 """ ->
 function nlargest(n::Int, arr::AbstractVector{T}) where T
     return nextreme(LessThan(), n, arr)
 end
-
 @doc """
 Returns the `n` smallest elements of `arr`.
-
 Equivalent to `sort(arr, lt = <)[1:min(n, end)]`
 """ ->
 function nsmallest(n::Int, arr::AbstractVector{T}) where T
     return nextreme(GreaterThan(), n, arr)
 end
-
-
-
-#
-# expanded from:     include("dict_support.jl")
-#
-
-# support functions
-
-# _tablesz and hashindex are defined in Base, but are not exported,
-# so they are redefined here.
 _tablesz(x::Integer) = x < 16 ? 16 : one(x)<<((sizeof(x)<<3)-leading_zeros(x-1))
 hashindex(key, sz) = (reinterpret(Int,(hash(key))) & (sz-1)) + 1
-
 function not_iterator_of_pairs(kv)
     return any(x->isempty(methodswith(typeof(kv), x, true)),
                [start, next, done]) ||
            any(x->!isa(x, Union{Tuple,Pair}), kv)
 end
-
-
-#
-# expanded from:     include("ordered_dict.jl")
-#
-
-# OrderedDict
-
 import Base: haskey, get, get!, getkey, delete!, push!, pop!, empty!,
              setindex!, getindex, length, isempty, start,
              next, done, keys, values, setdiff, setdiff!,
              union, union!, intersect, filter, filter!,
              hash, eltype, ValueIterator, convert, copy,
              merge
-
 """
     OrderedDict
-
 `OrderedDict`s are  simply dictionaries  whose entries  have a  particular order.  The order
 refers to insertion order, which allows deterministic iteration over the dictionary or set.
 """
@@ -1731,7 +1137,6 @@ mutable struct OrderedDict{K,V} <: AbstractDict{K,V}
     vals::Array{V,1}
     ndel::Int
     dirty::Bool
-
     function OrderedDict{K,V}() where {K,V}
         new{K,V}(zeros(Int32,16), Vector{K}(), Vector{V}(), 0, false)
     end
@@ -1762,26 +1167,17 @@ end
 OrderedDict() = OrderedDict{Any,Any}()
 OrderedDict(kv::Tuple{}) = OrderedDict()
 copy(d::OrderedDict) = OrderedDict(d)
-
-
-# TODO: this can probably be simplified using `eltype` as a THT (Tim Holy trait)
-# OrderedDict{K,V}(kv::Tuple{Vararg{Tuple{K,V}}})          = OrderedDict{K,V}(kv)
-# OrderedDict{K  }(kv::Tuple{Vararg{Tuple{K,Any}}})        = OrderedDict{K,Any}(kv)
-# OrderedDict{V  }(kv::Tuple{Vararg{Tuple{Any,V}}})        = OrderedDict{Any,V}(kv)
 OrderedDict(kv::Tuple{Vararg{Pair{K,V}}}) where {K,V}       = OrderedDict{K,V}(kv)
 OrderedDict(kv::Tuple{Vararg{Pair{K}}}) where {K}           = OrderedDict{K,Any}(kv)
 OrderedDict(kv::Tuple{Vararg{Pair{K,V} where K}}) where {V} = OrderedDict{Any,V}(kv)
 OrderedDict(kv::Tuple{Vararg{Pair}})                        = OrderedDict{Any,Any}(kv)
-
 OrderedDict(kv::AbstractArray{Tuple{K,V}}) where {K,V} = OrderedDict{K,V}(kv)
 OrderedDict(kv::AbstractArray{Pair{K,V}}) where {K,V}  = OrderedDict{K,V}(kv)
 OrderedDict(kv::AbstractDict{K,V}) where {K,V}          = OrderedDict{K,V}(kv)
-
 OrderedDict(ps::Pair{K,V}...) where {K,V}          = OrderedDict{K,V}(ps)
 OrderedDict(ps::Pair{K}...,) where {K}             = OrderedDict{K,Any}(ps)
 OrderedDict(ps::(Pair{K,V} where K)...,) where {V} = OrderedDict{Any,V}(ps)
 OrderedDict(ps::Pair...)                           = OrderedDict{Any,Any}(ps)
-
 function OrderedDict(kv)
     try
         dict_with_eltype(kv, eltype(kv))
@@ -1794,26 +1190,19 @@ function OrderedDict(kv)
         end
     end
 end
-
 dict_with_eltype(kv, ::Type{Tuple{K,V}}) where {K,V} = OrderedDict{K,V}(kv)
 dict_with_eltype(kv, ::Type{Pair{K,V}}) where {K,V} = OrderedDict{K,V}(kv)
 dict_with_eltype(kv, t) = OrderedDict{Any,Any}(kv)
-
 similar(d::OrderedDict{K,V}) where {K,V} = OrderedDict{K,V}()
-
 length(d::OrderedDict) = length(d.keys) - d.ndel
 isempty(d::OrderedDict) = (length(d)==0)
-
 """
     isordered(::Type)
-
 Property of associative containers, that is `true` if the container type has a
 defined order (such as `OrderedDict` and `SortedDict`), and `false` otherwise.
 """
 isordered(::Type{T}) where {T<:AbstractDict} = false
 isordered(::Type{T}) where {T<:OrderedDict} = true
-
-# conversion between OrderedDict types
 function convert(::Type{OrderedDict{K,V}}, d::AbstractDict) where {K,V}
     if !isordered(typeof(d))
         Base.depwarn("Conversion to OrderedDict is deprecated for unordered associative containers (in this case, $(typeof(d))). Use an ordered or sorted associative type, such as SortedDict and OrderedDict.", :convert)
@@ -1830,7 +1219,6 @@ function convert(::Type{OrderedDict{K,V}}, d::AbstractDict) where {K,V}
     return h
 end
 convert(::Type{OrderedDict{K,V}},d::OrderedDict{K,V}) where {K,V} = d
-
 function rehash!(h::OrderedDict{K,V}, newsz = length(h.slots)) where {K,V}
     olds = h.slots
     keys = h.keys
@@ -1847,9 +1235,7 @@ function rehash!(h::OrderedDict{K,V}, newsz = length(h.slots)) where {K,V}
         h.ndel = 0
         return h
     end
-
     slots = zeros(Int32,newsz)
-
     if h.ndel > 0
         ndel0 = h.ndel
         ptrs = !isbits(K)
@@ -1910,11 +1296,9 @@ function rehash!(h::OrderedDict{K,V}, newsz = length(h.slots)) where {K,V}
             end
         end
     end
-
     h.slots = slots
     return h
 end
-
 function sizehint!(d::OrderedDict, newsz)
     slotsz = (newsz*3)>>1
     oldsz = length(d.slots)
@@ -1928,7 +1312,6 @@ function sizehint!(d::OrderedDict, newsz)
     slotsz = max(slotsz, (oldsz*5)>>2)
     rehash!(d, slotsz)
 end
-
 function empty!(h::OrderedDict{K,V}) where {K,V}
     fill!(h.slots, 0)
     empty!(h.keys)
@@ -1937,8 +1320,6 @@ function empty!(h::OrderedDict{K,V}) where {K,V}
     h.dirty = true
     return h
 end
-
-# get the index where a key is stored, or -1 if not present
 function ht_keyindex(h::OrderedDict{K,V}, key, direct) where {K,V}
     slots = h.slots
     sz = length(slots)
@@ -1946,24 +1327,17 @@ function ht_keyindex(h::OrderedDict{K,V}, key, direct) where {K,V}
     maxprobe = max(16, sz>>6)
     index = hashindex(key, sz)
     keys = h.keys
-
     @inbounds while iter <= maxprobe
         si = slots[index]
         si == 0 && break
         if si > 0 && isequal(key, keys[si])
             return ifelse(direct, oftype(index, si), index)
         end
-
         index = (index & (sz-1)) + 1
         iter+=1
     end
-
     return -1
 end
-
-# get the index where a key is stored, or -pos if not present
-# and the key would be inserted at pos
-# This version is for use by setindex! and get!
 function ht_keyindex2(h::OrderedDict{K,V}, key) where {K,V}
     slots = h.slots
     sz = length(slots)
@@ -1971,7 +1345,6 @@ function ht_keyindex2(h::OrderedDict{K,V}, key) where {K,V}
     maxprobe = max(16, sz>>6)
     index = hashindex(key, sz)
     keys = h.keys
-
     @inbounds while iter <= maxprobe
         si = slots[index]
         if si == 0
@@ -1979,16 +1352,12 @@ function ht_keyindex2(h::OrderedDict{K,V}, key) where {K,V}
         elseif si > 0 && isequal(key, keys[si])
             return oftype(index, si)
         end
-
         index = (index & (sz-1)) + 1
         iter+=1
     end
-
     rehash!(h, length(h) > 64000 ? sz*2 : sz*4)
-
     return ht_keyindex2(h, key)
 end
-
 function _setindex!(h::OrderedDict, v, key, index)
     hk, hv = h.keys, h.vals
     #push!(h.keys, key)
@@ -2000,7 +1369,6 @@ function _setindex!(h::OrderedDict, v, key, index)
     @inbounds hv[nk] = v
     @inbounds h.slots[index] = nk
     h.dirty = true
-
     sz = length(h.slots)
     cnt = nk - h.ndel
     # Rehash now if necessary
@@ -2009,51 +1377,39 @@ function _setindex!(h::OrderedDict, v, key, index)
         rehash!(h, cnt > 64000 ? cnt*2 : cnt*4)
     end
 end
-
 function setindex!(h::OrderedDict{K,V}, v0, key0) where {K,V}
     key = convert(K,key0)
     if !isequal(key,key0)
         throw(ArgumentError("$key0 is not a valid key for type $K"))
     end
     v = convert(V,  v0)
-
     index = ht_keyindex2(h, key)
-
     if index > 0
         @inbounds h.keys[index] = key
         @inbounds h.vals[index] = v
     else
         _setindex!(h, v, key, -index)
     end
-
     return h
 end
-
 function get!(h::OrderedDict{K,V}, key0, default) where {K,V}
     key = convert(K,key0)
     if !isequal(key,key0)
         throw(ArgumentError("$key0 is not a valid key for type $K"))
     end
-
     index = ht_keyindex2(h, key)
-
     index > 0 && return h.vals[index]
-
     v = convert(V,  default)
     _setindex!(h, v, key, -index)
     return v
 end
-
 function get!(default::Base.Callable, h::OrderedDict{K,V}, key0) where {K,V}
     key = convert(K,key0)
     if !isequal(key,key0)
         throw(ArgumentError("$key0 is not a valid key for type $K"))
     end
-
     index = ht_keyindex2(h, key)
-
     index > 0 && return h.vals[index]
-
     h.dirty = false
     v = convert(V,  default())
     if h.dirty
@@ -2067,57 +1423,47 @@ function get!(default::Base.Callable, h::OrderedDict{K,V}, key0) where {K,V}
     end
     return v
 end
-
 function getindex(h::OrderedDict{K,V}, key) where {K,V}
     index = ht_keyindex(h, key, true)
     return (index<0) ? throw(KeyError(key)) : h.vals[index]::V
 end
-
 function get(h::OrderedDict{K,V}, key, default) where {K,V}
     index = ht_keyindex(h, key, true)
     return (index<0) ? default : h.vals[index]::V
 end
-
 function get(default::Base.Callable, h::OrderedDict{K,V}, key) where {K,V}
     index = ht_keyindex(h, key, true)
     return (index<0) ? default() : h.vals[index]::V
 end
-
 haskey(h::OrderedDict, key) = (ht_keyindex(h, key, true) >= 0)
 if isdefined(Base, :KeySet) # 0.7.0-DEV.2722
     in(key, v::Base.KeySet{K,T}) where {K,T<:OrderedDict{K}} = (ht_keyindex(v.dict, key, true) >= 0)
 else
     in(key, v::Base.KeyIterator{T}) where {T<:OrderedDict} = (ht_keyindex(v.dict, key, true) >= 0)
 end
-
 function getkey(h::OrderedDict{K,V}, key, default) where {K,V}
     index = ht_keyindex(h, key, true)
     return (index<0) ? default : h.keys[index]::K
 end
-
 function _pop!(h::OrderedDict, index)
     @inbounds val = h.vals[h.slots[index]]
     _delete!(h, index)
     return val
 end
-
 function pop!(h::OrderedDict)
     h.ndel > 0 && rehash!(h)
     key = h.keys[end]
     index = ht_keyindex(h, key, false)
     key => _pop!(h, index)
 end
-
 function pop!(h::OrderedDict, key)
     index = ht_keyindex(h, key, false)
     index > 0 ? _pop!(h, index) : throw(KeyError(key))
 end
-
 function pop!(h::OrderedDict, key, default)
     index = ht_keyindex(h, key, false)
     index > 0 ? _pop!(h, index) : default
 end
-
 function _delete!(h::OrderedDict, index)
     @inbounds ki = h.slots[index]
     @inbounds h.slots[index] = -ki
@@ -2127,27 +1473,23 @@ function _delete!(h::OrderedDict, index)
     h.dirty = true
     h
 end
-
 function delete!(h::OrderedDict, key)
     index = ht_keyindex(h, key, false)
     if index > 0; _delete!(h, index); end
     h
 end
-
 function start(t::OrderedDict)
     t.ndel > 0 && rehash!(t)
     1
 end
 done(t::OrderedDict, i) = done(t.keys, i)
 next(t::OrderedDict, i) = (Pair(t.keys[i],t.vals[i]), i+1)
-
 if isdefined(Base, :KeySet) # 0.7.0-DEV.2722
     next(v::Base.KeySet{K,T}, i) where {K,T<:OrderedDict{K}} = (v.dict.keys[i], i+1)
 else
     next(v::Base.KeyIterator{T}, i) where {T<:OrderedDict} = (v.dict.keys[i], i+1)
 end
 next(v::ValueIterator{T}, i) where {T<:OrderedDict} = (v.dict.vals[i], i+1)
-
 function merge(d::OrderedDict, others::AbstractDict...)
     K, V = keytype(d), valtype(d)
     for other in others
@@ -2156,64 +1498,35 @@ function merge(d::OrderedDict, others::AbstractDict...)
     end
     merge!(OrderedDict{K,V}(), d, others...)
 end
-
-
-#
-# expanded from:     include("ordered_set.jl")
-#
-
-# ordered sets
-
-# This was largely copied and modified from Base
-
-# TODO: Most of these functions should be removed once AbstractSet is introduced there
-# (see https://github.com/JuliaLang/julia/issues/5533)
-
 struct OrderedSet{T}
     dict::OrderedDict{T,Nothing}
-
     OrderedSet{T}() where {T} = new{T}(OrderedDict{T,Nothing}())
     OrderedSet{T}(xs) where {T} = union!(new{T}(OrderedDict{T,Nothing}()), xs)
 end
 OrderedSet() = OrderedSet{Any}()
 OrderedSet(xs) = OrderedSet{eltype(xs)}(xs)
-
-
 show(io::IO, s::OrderedSet) = (show(io, typeof(s)); print(io, "("); !isempty(s) && Base.show_comma_array(io, s,'[',']'); print(io, ")"))
-
 @delegate OrderedSet.dict [isempty, length]
-
 sizehint!(s::OrderedSet, sz::Integer) = (sizehint!(s.dict, sz); s)
 eltype(s::OrderedSet{T}) where {T} = T
-
 in(x, s::OrderedSet) = haskey(s.dict, x)
-
 push!(s::OrderedSet, x) = (s.dict[x] = nothing; s)
 pop!(s::OrderedSet, x) = (pop!(s.dict, x); x)
 pop!(s::OrderedSet, x, deflt) = pop!(s.dict, x, deflt) == deflt ? deflt : x
 delete!(s::OrderedSet, x) = (delete!(s.dict, x); s)
-
 getindex(x::OrderedSet,i::Int) = x.dict.keys[i]
 endof(x::OrderedSet) = endof(x.dict.keys)
-# Needed on 0.7 to mimic array indexing.
 Base.nextind(::OrderedSet, i::Int) = i + 1
-
 union!(s::OrderedSet, xs) = (for x in xs; push!(s,x); end; s)
 setdiff!(s::OrderedSet, xs) = (for x in xs; delete!(s,x); end; s)
 setdiff!(s::Set, xs::OrderedSet) = (for x in xs; delete!(s,x); end; s)
-
 similar(s::OrderedSet{T}) where {T} = OrderedSet{T}()
 copy(s::OrderedSet) = union!(similar(s), s)
-
 empty!(s::OrderedSet{T}) where {T} = (empty!(s.dict); s)
-
 start(s::OrderedSet)       = start(s.dict)
 done(s::OrderedSet, state) = done(s.dict, state)
-# NOTE: manually optimized to take advantage of OrderedDict representation
 next(s::OrderedSet, i)     = (s.dict.keys[i], i+1)
-
 pop!(s::OrderedSet) = pop!(s.dict)[1]
-
 union(s::OrderedSet) = copy(s)
 function union(s::OrderedSet, sets...)
     u = OrderedSet{Base.promote_eltype(s, sets...)}()
@@ -2223,7 +1536,6 @@ function union(s::OrderedSet, sets...)
     end
     return u
 end
-
 intersect(s::OrderedSet) = copy(s)
 function intersect(s::OrderedSet, sets...)
     i = copy(s)
@@ -2237,7 +1549,6 @@ function intersect(s::OrderedSet, sets...)
     end
     return i
 end
-
 function setdiff(a::OrderedSet, b)
     d = similar(a)
     for x in a
@@ -2247,11 +1558,9 @@ function setdiff(a::OrderedSet, b)
     end
     d
 end
-
 ==(l::OrderedSet, r::OrderedSet) = (length(l) == length(r)) && (l <= r)
 <(l::OrderedSet, r::OrderedSet) = (length(l) < length(r)) && (l <= r)
 <=(l::OrderedSet, r::OrderedSet) = issubset(l, r)
-
 function filter!(f::Function, s::OrderedSet)
     for x in s
         if !f(x)
@@ -2261,78 +1570,36 @@ function filter!(f::Function, s::OrderedSet)
     return s
 end
 filter(f::Function, s::OrderedSet) = filter!(f, copy(s))
-
 const orderedset_seed = UInt === UInt64 ? 0x2114638a942a91a5 : 0xd86bdbf1
 function hash(s::OrderedSet, h::UInt)
     h = hash(orderedset_seed, h)
     s.dict.ndel > 0 && rehash!(s.dict)
     hash(s.dict.keys, h)
 end
-
-
-#
-# expanded from:     include("default_dict.jl")
-#
-
-# Dictionary which returns (and sets) a default value for a requested item not
-# already in to the dictionary
-
-# DefaultDictBase is the main class used to in Default*Dicts.
-#
-# Each related (immutable) Default*Dict class contains a single
-# DefaultDictBase object as a member, and delegates almost all
-# functions to this object.
-#
-# The main rationale for doing this instead of using type aliases is
-# that this way, we can have actual class names and constructors for
-# each of the DefaultDictBase "subclasses", in some sense getting
-# around the Julia limitation of not allowing concrete classes to be
-# subclassed.
-#
-
 struct DefaultDictBase{K,V,F,D} <: AbstractDict{K,V}
     default::F
     d::D
-
     check_D(D,K,V) = (D <: AbstractDict{K,V}) ||
         throw(ArgumentError("Default dict must be <: AbstractDict{$K,$V}"))
-
     DefaultDictBase{K,V,F,D}(x::F, kv::AbstractArray{Tuple{K,V}}) where {K,V,F,D} =
         (check_D(D,K,V); new{K,V,F,D}(x, D(kv)))
     DefaultDictBase{K,V,F,D}(x::F, ps::Pair{K,V}...) where {K,V,F,D} =
         (check_D(D,K,V); new{K,V,F,D}(x, D(ps...)))
-
     DefaultDictBase{K,V,F,D}(x::F, d::D) where {K,V,F,D<:DefaultDictBase} =
         (check_D(D,K,V); DefaultDictBase(x, d.d))
     DefaultDictBase{K,V,F,D}(x::F, d::D = D()) where {K,V,F,D} =
         (check_D(D,K,V); new{K,V,F,D}(x, d))
 end
-
-# Constructors
-
 DefaultDictBase() = throw(ArgumentError("no default specified"))
 DefaultDictBase(k,v) = throw(ArgumentError("no default specified"))
-
-# syntax entry points
 DefaultDictBase(default::F) where {F} = DefaultDictBase{Any,Any,F,Dict{Any,Any}}(default)
 DefaultDictBase(default::F, kv::AbstractArray{Tuple{K,V}}) where {K,V,F} = DefaultDictBase{K,V,F,Dict{K,V}}(default, kv)
 DefaultDictBase(default::F, ps::Pair{K,V}...) where {K,V,F} = DefaultDictBase{K,V,F,Dict{K,V}}(default, ps...)
 DefaultDictBase(default::F, d::D) where {F,D<:AbstractDict} = (K=keytype(d); V=valtype(d); DefaultDictBase{K,V,F,D}(default, d))
-
-# Constructor for DefaultDictBase{Int,Float64}(0.0)
 DefaultDictBase{K,V}(default::F) where {K,V,F} = DefaultDictBase{K,V,F,Dict{K,V}}(default)
-
-# Functions
-
-# most functions are simply delegated to the wrapped dictionary
 @delegate DefaultDictBase.d [ get, haskey, getkey, pop!,
                               start, done, next, isempty, length ]
-
-# Some functions are delegated, but then need to return the main dictionary
-# NOTE: push! is not included below, because the fallback version just
-#       calls setindex!
 @delegate_return_parent DefaultDictBase.d [ delete!, empty!, setindex!, sizehint! ]
-
 similar(d::DefaultDictBase{K,V,F}) where {K,V,F} = DefaultDictBase{K,V,F}(d.default)
 if isdefined(Base, :KeySet) # 0.7.0-DEV.2722
     in(key, v::Base.KeySet{K,T}) where {K,T<:DefaultDictBase{K}} = key in keys(v.dict.d)
@@ -2342,30 +1609,17 @@ else
     next(v::Base.KeyIterator{T}, i) where {T<:DefaultDictBase} = (v.dict.d.keys[i], Base.skip_deleted(v.dict.d,i+1))
 end
 next(v::Base.ValueIterator{T}, i) where {T<:DefaultDictBase} = (v.dict.d.vals[i], Base.skip_deleted(v.dict.d,i+1))
-
 getindex(d::DefaultDictBase, key) = get!(d.d, key, d.default)
-
 function getindex(d::DefaultDictBase{K,V,F}, key) where {K,V,F<:Base.Callable}
     return get!(d.d, key) do
         d.default()
     end
 end
-
-
-
-################
-
-# Here begins the actual definition of the DefaultDict and
-# DefaultOrderedDict classes.  As noted above, these are simply
-# wrappers around a DefaultDictBase object, and delegate all functions
-# to that object
-
 for _Dict in [:Dict, :OrderedDict]
     DefaultDict = Symbol("Default"*string(_Dict))
     @eval begin
         struct $DefaultDict{K,V,F} <: AbstractDict{K,V}
             d::DefaultDictBase{K,V,F,$_Dict{K,V}}
-
             $DefaultDict{K,V,F}(x, ps::Pair{K,V}...) where {K,V,F} =
                 new{K,V,F}(DefaultDictBase{K,V,F,$_Dict{K,V}}(x, ps...))
             $DefaultDict{K,V,F}(x, kv::AbstractArray{Tuple{K,V}}) where {K,V,F} =
@@ -2376,35 +1630,26 @@ for _Dict in [:Dict, :OrderedDict]
             $DefaultDict{K,V,F}(x) where {K,V,F} =
                 new{K,V,F}(DefaultDictBase{K,V,F,$_Dict{K,V}}(x))
         end
-
         ## Constructors
-
         $DefaultDict() = throw(ArgumentError("$DefaultDict: no default specified"))
         $DefaultDict(k,v) = throw(ArgumentError("$DefaultDict: no default specified"))
-
         # syntax entry points
         $DefaultDict(default::F) where {F} = $DefaultDict{Any,Any,F}(default)
         $DefaultDict(default::F, kv::AbstractArray{Tuple{K,V}}) where {K,V,F} = $DefaultDict{K,V,F}(default, kv)
         $DefaultDict(default::F, ps::Pair{K,V}...) where {K,V,F} = $DefaultDict{K,V,F}(default, ps...)
-
         $DefaultDict(default::F, d::AbstractDict) where {F} = ((K,V)= (Base.keytype(d), Base.valtype(d)); $DefaultDict{K,V,F}(default, $_Dict(d)))
-
         # Constructor syntax: DefaultDictBase{Int,Float64}(default)
         $DefaultDict{K,V}() where {K,V} = throw(ArgumentError("$DefaultDict: no default specified"))
         $DefaultDict{K,V}(default::F) where {K,V,F} = $DefaultDict{K,V,F}(default)
-
         ## Functions
-
         # Most functions are simply delegated to the wrapped DefaultDictBase object
         @delegate $DefaultDict.d [ getindex, get, get!, haskey,
                                    getkey, pop!, start, next,
                                    done, isempty, length ]
-
         # Some functions are delegated, but then need to return the main dictionary
         # NOTE: push! is not included below, because the fallback version just
         #       calls setindex!
         @delegate_return_parent $DefaultDict.d [ delete!, empty!, setindex!, sizehint! ]
-
         # NOTE: The second and third definition of push! below are only
         # necessary for disambiguating with the fourth, fifth, and sixth
         # definitions of push! below.
@@ -2413,11 +1658,9 @@ for _Dict in [:Dict, :OrderedDict]
         push!(d::$DefaultDict, p::Pair) = (setindex!(d.d, p.second, p.first); d)
         push!(d::$DefaultDict, p::Pair, q::Pair) = push!(push!(d, p), q)
         push!(d::$DefaultDict, p::Pair, q::Pair, r::Pair...) = push!(push!(push!(d, p), q), r...)
-
         push!(d::$DefaultDict, p) = (setindex!(d.d, p[2], p[1]); d)
         push!(d::$DefaultDict, p, q) = push!(push!(d, p), q)
         push!(d::$DefaultDict, p, q, r...) = push!(push!(push!(d, p), q), r...)
-
         similar(d::$DefaultDict{K,V,F}) where {K,V,F} = $DefaultDict{K,V,F}(d.d.default)
         if isdefined(Base, :KeySet) # 0.7.0-DEV.2722
             in(key, v::Base.KeySet{K,T}) where {K,T<:$DefaultDict{K}} = key in keys(v.dict.d.d)
@@ -2426,66 +1669,17 @@ for _Dict in [:Dict, :OrderedDict]
         end
     end
 end
-
 isordered(::Type{T}) where {T<:DefaultOrderedDict} = true
-
-## This should be uncommented to provide a DefaultSortedDict
-
-# struct DefaultSortedDict{K,V,F} <: AbstractDict{K,V}
-#     d::DefaultDictBase{K,V,F,SortedDict{K,V}}
-
-#     DefaultSortedDict(x, kv::AbstractArray{(K,V)}) = new(DefaultDictBase{K,V,F,SortedDict{K,V}}(x, kv))
-#     DefaultSortedDict(x, d::DefaultSortedDict) = DefaultSortedDict(x, d.d)
-#     DefaultSortedDict(x, d::SortedDict) = new(DefaultDictBase{K,V,F,SortedDict{K,V}}(x, d))
-#     DefaultSortedDict(x) = new(DefaultDictBase{K,V,F,SortedDict{K,V}}(x))
-#     DefaultSortedDict(x, ks, vs) = new(DefaultDictBase{K,V,F,SortedDict{K,V}}(x,ks,vs))
-# end
-
-## Constructors
-
-# DefaultSortedDict() = throw(ArgumentError("DefaultSortedDict: no default specified"))
-# DefaultSortedDict(k,v) = throw(ArgumentError("DefaultSortedDict: no default specified"))
-
-# # TODO: these mimic similar Dict constructors, but may not be needed
-# DefaultSortedDict{K,V,F}(default::F, ks::AbstractArray{K}, vs::AbstractArray{V}) = DefaultSortedDict{K,V,F}(default,ks,vs)
-# DefaultSortedDict{F}(default::F,ks,vs) = DefaultSortedDict{Any,Any,F}(default, ks, vs)
-
-# # syntax entry points
-# DefaultSortedDict{F}(default::F) = DefaultSortedDict{Any,Any,F}(default)
-# DefaultSortedDict{K,V,F}(::Type{K}, ::Type{V}, default::F) = DefaultSortedDict{K,V,F}(default)
-# DefaultSortedDict{K,V,F}(default::F, kv::AbstractArray{(K,V)}) = DefaultSortedDict{K,V,F}(default, kv)
-
-# DefaultSortedDict{F}(default::F, d::AbstractDict) = ((K,V)=eltype(d); DefaultSortedDict{K,V,F}(default, SortedDict(d)))
-
-## Functions
-
-## Most functions are simply delegated to the wrapped DefaultDictBase object
-
-# @delegate DefaultSortedDict.d [ getindex, get, get!, haskey,
-#                                 getkey, pop!, start, next,
-#                                 done, isempty, length]
-# @delegate_return_parent DefaultSortedDict.d [ delete!, empty!, setindex!, sizehint! ]
-
-# similar{K,V,F}(d::DefaultSortedDict{K,V,F}) = DefaultSortedDict{K,V,F}(d.d.default)
-# in{T<:DefaultSortedDict}(key, v::Base.KeySet{T}) = key in keys(v.dict.d.d)
-
-
-#
-# expanded from:     include("trie.jl")
-#
-
 mutable struct Trie{T}
     value::T
     children::Dict{Char,Trie{T}}
     is_key::Bool
-
     function Trie{T}() where T
         self = new{T}()
         self.children = Dict{Char,Trie{T}}()
         self.is_key = false
         self
     end
-
     function Trie{T}(ks, vs) where T
         t = Trie{T}()
         for (k, v) in zip(ks, vs)
@@ -2493,7 +1687,6 @@ mutable struct Trie{T}
         end
         return t
     end
-
     function Trie{T}(kv) where T
         t = Trie{T}()
         for (k,v) in kv
@@ -2502,13 +1695,11 @@ mutable struct Trie{T}
         return t
     end
 end
-
 Trie() = Trie{Any}()
 Trie(ks::AbstractVector{K}, vs::AbstractVector{V}) where {K<:AbstractString,V} = Trie{V}(ks, vs)
 Trie(kv::AbstractVector{Tuple{K,V}}) where {K<:AbstractString,V} = Trie{V}(kv)
 Trie(kv::AbstractDict{K,V}) where {K<:AbstractString,V} = Trie{V}(kv)
 Trie(ks::AbstractVector{K}) where {K<:AbstractString} = Trie{Nothing}(ks, similar(ks, Nothing))
-
 function setindex!(t::Trie{T}, val::T, key::AbstractString) where T
     node = t
     for char in key
@@ -2520,7 +1711,6 @@ function setindex!(t::Trie{T}, val::T, key::AbstractString) where T
     node.is_key = true
     node.value = val
 end
-
 function getindex(t::Trie, key::AbstractString)
     node = subtrie(t, key)
     if node != nothing && node.is_key
@@ -2528,7 +1718,6 @@ function getindex(t::Trie, key::AbstractString)
     end
     throw(KeyError("key not found: $key"))
 end
-
 function subtrie(t::Trie, prefix::AbstractString)
     node = t
     for char in prefix
@@ -2540,12 +1729,10 @@ function subtrie(t::Trie, prefix::AbstractString)
     end
     node
 end
-
 function haskey(t::Trie, key::AbstractString)
     node = subtrie(t, key)
     node != nothing && node.is_key
 end
-
 function get(t::Trie, key::AbstractString, notfound)
     node = subtrie(t, key)
     if node != nothing && node.is_key
@@ -2553,7 +1740,6 @@ function get(t::Trie, key::AbstractString, notfound)
     end
     notfound
 end
-
 function keys(t::Trie, prefix::AbstractString="", found=AbstractString[])
     if t.is_key
         push!(found, prefix)
@@ -2563,55 +1749,29 @@ function keys(t::Trie, prefix::AbstractString="", found=AbstractString[])
     end
     found
 end
-
 function keys_with_prefix(t::Trie, prefix::AbstractString)
     st = subtrie(t, prefix)
     st != nothing ? keys(st,prefix) : []
 end
-
-# The state of a TrieIterator is a pair (t::Trie, i::Int),
-# where t is the Trie which was the output of the previous iteration
-# and i is the index of the current character of the string.
-# The indexing is potentially confusing;
-# see the comments and implementation below for details.
 struct TrieIterator
     t::Trie
     str::AbstractString
 end
-
-# At the start, there is no previous iteration,
-# so the first element of the state is undefined.
-# We use a "dummy value" of it.t to keep the type of the state stable.
-# The second element is 0
-# since the root of the trie corresponds to a length 0 prefix of str.
 start(it::TrieIterator) = (it.t, 0)
-
 function next(it::TrieIterator, state)
     t, i = state
     i == 0 && return it.t, (it.t, 1)
-
     t = t.children[it.str[i]]
     return (t, (t, i + 1))
 end
-
 function done(it::TrieIterator, state)
     t, i = state
     i == 0 && return false
     i == length(it.str) + 1 && return true
     return !(it.str[i] in keys(t.children))
 end
-
 path(t::Trie, str::AbstractString) = TrieIterator(t, str)
 Base.iteratorsize(::Type{TrieIterator}) = Base.SizeUnknown()
-
-
-
-#
-# expanded from:     include("int_set.jl")
-#
-
-# This file was a part of Julia. License is MIT: http://julialang.org/license
-
 import Base: similar, copy, copy!, eltype, push!, pop!, delete!, shift!,
              empty!, isempty, union, union!, intersect, intersect!,
              setdiff, setdiff!, symdiff, symdiff!, in, start, next, done,
@@ -2622,14 +1782,12 @@ if !isdefined(Base, :complement)
 else
     import Base: complement, complement!
 end
-
 mutable struct IntSet
     bits::BitVector
     inverse::Bool
     IntSet() = new(falses(256), false)
 end
 IntSet(itr) = union!(IntSet(), itr)
-
 similar(s::IntSet) = IntSet()
 copy(s1::IntSet) = copy!(IntSet(), s1)
 function copy!(to::IntSet, from::IntSet)
@@ -2640,15 +1798,11 @@ function copy!(to::IntSet, from::IntSet)
 end
 eltype(s::IntSet) = Int
 sizehint!(s::IntSet, n::Integer) = (_resize0!(s.bits, n+1); s)
-
-# only required on 0.3:
 function first(itr::IntSet)
     state = start(itr)
     done(itr, state) && throw(ArgumentError("collection must be non-empty"))
     next(itr, state)[1]
 end
-
-# An internal function for setting the inclusion bit for a given integer n >= 0
 @inline function _setint!(s::IntSet, n::Integer, b::Bool)
     idx = n+1
     if idx > length(s.bits)
@@ -2659,33 +1813,24 @@ end
     unsafe_setindex!(s.bits, b, idx) # Use @inbounds once available
     s
 end
-
-# An internal function to resize a bitarray and ensure the newly allocated
-# elements are zeroed (will become unnecessary if this behavior changes)
 @inline function _resize0!(b::BitVector, newlen::Integer)
     len = length(b)
     resize!(b, newlen)
     len < newlen && unsafe_setindex!(b, false, len+1:newlen) # resize! gives dirty memory
     b
 end
-
-# An internal function that resizes a bitarray so it matches the length newlen
-# Returns a bitvector of the removed elements (empty if none were removed)
 function _matchlength!(b::BitArray, newlen::Integer)
     len = length(b)
     len > newlen && return splice!(b, newlen+1:len)
     len < newlen && _resize0!(b, newlen)
     return BitVector()
 end
-
 const _intset_bounds_err_msg = "elements of IntSet must be between 0 and typemax(Int)-1"
-
 function push!(s::IntSet, n::Integer)
     0 <= n < typemax(Int) || throw(ArgumentError(_intset_bounds_err_msg))
     _setint!(s, n, !s.inverse)
 end
 push!(s::IntSet, ns::Integer...) = (for n in ns; push!(s, n); end; s)
-
 function pop!(s::IntSet)
     s.inverse && throw(ArgumentError("cannot pop the last element of complement IntSet"))
     pop!(s, last(s))
@@ -2705,18 +1850,8 @@ end
 _delete!(s::IntSet, n::Integer) = _setint!(s, n, s.inverse)
 delete!(s::IntSet, n::Integer) = n < 0 ? s : _delete!(s, n)
 shift!(s::IntSet) = pop!(s, first(s))
-
 empty!(s::IntSet) = (fill!(s.bits, false); s.inverse = false; s)
 isempty(s::IntSet) = s.inverse ? length(s.bits) == typemax(Int) && all(s.bits) : !any(s.bits)
-
-# Mathematical set functions: union!, intersect!, setdiff!, symdiff!
-# When applied to two intsets, these all have a similar form:
-# - Reshape s1 to match s2, occasionally grabbing the bits that were removed
-# - Use map to apply some bitwise operation across the entire bitvector
-#   - These operations use functors to work on the bitvector chunks, so are
-#     very efficient... but a little untraditional. E.g., (p > q) => (p & ~q)
-# - If needed, append the removed bits back to s1 or invert the array
-
 union(s::IntSet, ns) = union!(copy(s), ns)
 union!(s::IntSet, ns) = (for n in ns; push!(s, n); end; s)
 function union!(s1::IntSet, s2::IntSet)
@@ -2728,7 +1863,6 @@ function union!(s1::IntSet, s2::IntSet)
     end
     s1
 end
-
 intersect(s1::IntSet) = copy(s1)
 intersect(s1::IntSet, ss...) = intersect(s1, intersect(ss...))
 function intersect(s1::IntSet, ns)
@@ -2748,7 +1882,6 @@ function intersect!(s1::IntSet, s2::IntSet)
     end
     s1
 end
-
 setdiff(s::IntSet, ns) = setdiff!(copy(s), ns)
 setdiff!(s::IntSet, ns) = (for n in ns; _delete!(s, n); end; s)
 function setdiff!(s1::IntSet, s2::IntSet)
@@ -2760,7 +1893,6 @@ function setdiff!(s1::IntSet, s2::IntSet)
     end
     s1
 end
-
 symdiff(s::IntSet, ns) = symdiff!(copy(s), ns)
 symdiff!(s::IntSet, ns) = (for n in ns; symdiff!(s, n); end; s)
 function symdiff!(s::IntSet, n::Integer)
@@ -2776,7 +1908,6 @@ function symdiff!(s1::IntSet, s2::IntSet)
     append!(s1.bits, e)
     s1
 end
-
 function in(n::Integer, s::IntSet)
     idx = n+1
     if 1 <= idx <= length(s.bits)
@@ -2785,8 +1916,6 @@ function in(n::Integer, s::IntSet)
         ifelse((idx <= 0) | (idx > typemax(Int)), false, s.inverse)
     end
 end
-
-# Use the next-set index as the state to prevent looking it up again in done
 start(s::IntSet) = next(s, 0)[2]
 function next(s::IntSet, i, invert=false)
     if s.inverse ⊻ invert
@@ -2800,10 +1929,7 @@ function next(s::IntSet, i, invert=false)
     (i-1, nextidx)
 end
 done(s::IntSet, i) = i <= 0
-
-# Nextnot iterates through elements *not* in the set
 nextnot(s::IntSet, i) = next(s, i, true)
-
 function last(s::IntSet)
     l = length(s.bits)
     if s.inverse
@@ -2813,12 +1939,9 @@ function last(s::IntSet)
     end
     idx == 0 ? throw(ArgumentError("collection must be non-empty")) : idx - 1
 end
-
 length(s::IntSet) = (n = sum(s.bits); ifelse(s.inverse, typemax(Int) - n, n))
-
 complement(s::IntSet) = complement!(copy(s))
 complement!(s::IntSet) = (s.inverse = !s.inverse; s)
-
 function show(io::IO, s::IntSet)
     print(io, "IntSet([")
     first = true
@@ -2833,12 +1956,10 @@ function show(io::IO, s::IntSet)
     end
     print(io, "])")
 end
-
 function ==(s1::IntSet, s2::IntSet)
     l1 = length(s1.bits)
     l2 = length(s2.bits)
     l1 < l2 && return ==(s2, s1) # Swap so s1 is always equal-length or longer
-
     # Try to do this without allocating memory or checking bit-by-bit
     if s1.inverse == s2.inverse
         # If the lengths are the same, simply punt to bitarray comparison
@@ -2854,7 +1975,6 @@ function ==(s1::IntSet, s2::IntSet)
                (l1 == l2 || all(unsafe_getindex(s1.bits, l2+1:l1)))
     end
 end
-
 const hashis_seed = UInt === UInt64 ? 0x88989f1fc7dea67d : 0xc7dea67d
 function hash(s::IntSet, h::UInt)
     # Only hash the bits array up to the last-set bit to prevent extra empty
@@ -2862,38 +1982,23 @@ function hash(s::IntSet, h::UInt)
     l = findprev(s.bits, length(s.bits))
     hash(unsafe_getindex(s.bits, 1:l), h) ⊻ hash(s.inverse) ⊻ hashis_seed
 end
-
 issubset(a::IntSet, b::IntSet) = isequal(a, intersect(a,b))
 <(a::IntSet, b::IntSet) = (a<=b) && !isequal(a,b)
 <=(a::IntSet, b::IntSet) = issubset(a, b)
-
-
-
-#
-# expanded from:     include("list.jl")
-#
-
 abstract type LinkedList{T} end
-
 mutable struct Nil{T} <: LinkedList{T}
 end
-
 mutable struct Cons{T} <: LinkedList{T}
     head::T
     tail::LinkedList{T}
 end
-
 cons(h, t::LinkedList{T}) where {T} = Cons{T}(h, t)
-
 nil(T) = Nil{T}()
 nil() = nil(Any)
-
 head(x::Cons) = x.head
 tail(x::Cons) = x.tail
-
 ==(x::Nil, y::Nil) = true
 ==(x::Cons, y::Cons) = (x.head == y.head) && (x.tail == y.tail)
-
 function show(io::IO, l::LinkedList{T}) where T
     if isa(l,Nil)
         if T === Any
@@ -2911,9 +2016,7 @@ function show(io::IO, l::LinkedList{T}) where T
         print(io, ")")
     end
 end
-
 list() = nil()
-
 function list(elts...)
     l = nil()
     for i=length(elts):-1:1
@@ -2921,7 +2024,6 @@ function list(elts...)
     end
     return l
 end
-
 function list(elts::T...) where T
     l = nil(T)
     for i=length(elts):-1:1
@@ -2929,9 +2031,7 @@ function list(elts::T...) where T
     end
     return l
 end
-
 length(l::Nil) = 0
-
 function length(l::Cons)
     n = 0
     for i in l
@@ -2939,9 +2039,7 @@ function length(l::Cons)
     end
     n
 end
-
 map(f::Base.Callable, l::Nil) = l
-
 function map(f::Base.Callable, l::Cons)
     first = f(l.head)
     l2 = cons(first, nil(typeof(first)))
@@ -2950,7 +2048,6 @@ function map(f::Base.Callable, l::Cons)
     end
     reverse(l2)
 end
-
 function filter(f::Function, l::LinkedList{T}) where T
     l2 = nil(T)
     for h in l
@@ -2960,7 +2057,6 @@ function filter(f::Function, l::LinkedList{T}) where T
     end
     reverse(l2)
 end
-
 function reverse(l::LinkedList{T}) where T
     l2 = nil(T)
     for h in l
@@ -2968,15 +2064,11 @@ function reverse(l::LinkedList{T}) where T
     end
     l2
 end
-
 copy(l::Nil) = l
-
 function copy(l::Cons)
     l2 = reverse(reverse(l))
 end
-
 cat(lst::LinkedList) = lst
-
 function cat(lst::LinkedList, lsts::LinkedList...)
     T = typeof(lst).parameters[1]
     n = length(lsts)
@@ -2984,59 +2076,22 @@ function cat(lst::LinkedList, lsts::LinkedList...)
         T2 = typeof(lsts[i]).parameters[1]
         T = typejoin(T, T2)
     end
-
     l2 = nil(T)
     for h in lst
         l2 = cons(h, l2)
     end
-
     for i = 1:n
         for h in lsts[i]
             l2 = cons(h, l2)
         end
     end
-
     reverse(l2)
 end
-
 start(l::Nil{T}) where {T} = l
 start(l::Cons{T}) where {T} = l
 done(l::Cons{T}, state::Cons{T}) where {T} = false
 done(l::LinkedList, state::Nil{T}) where {T} = true
 next(l::Cons{T}, state::Cons{T}) where {T} = (state.head, state.tail)
-
-
-#
-# expanded from:     include("balanced_tree.jl")
-#
-
-## This file implements 2-3 trees for sorted containers.
-## The types and functions in this file are not exported; they
-## are meant to be used by SortedDict, MultiMap and SortedSet.
-## A 2-3 tree is a rooted trees in which all leaves are at the same
-## depth (i.e., it is "balanced")
-## and in which each internal node of the tree has either 2 or 3
-## children.
-## All the internal tree
-## nodes are stored in an array of TreeNodes.  The bottom layer
-## of internal tree nodes,
-## called the "leaves" in this file, sit above one more layer
-## of data nodes, which are stored in a different array.
-
-
-## KDRec is one data node:
-##  k: the key of the node
-##  d: the data of the node
-##  parent: the tree leaf that is the parent of this
-##    node.  Parent pointers are needed in order
-##    to implement indices.
-##  There are two constructors, the standard one (first)
-##  and the incomplete one (second).  The incomplete constructor
-##  is needed because when the data structure is first created,
-##  there are no valid K or D values to store in the initial
-##  data nodes.
-
-
 struct KDRec{K,D}
     parent::Int
     k::K
@@ -3044,21 +2099,6 @@ struct KDRec{K,D}
     KDRec{K,D}(p::Int, k1::K, d1::D) where {K,D} = new{K,D}(p,k1,d1)
     KDRec{K,D}(p::Int) where {K,D} = new{K,D}(p)
 end
-
-## TreeNode is an internal node of the tree.
-## child1,child2,child3:
-##     These are the three children node numbers.
-##     If the node is a 2-node (rather than 3), then child3 == 0.
-##     If this is a leaf then child1,child2,child3 are subscripts
-##       of data nodes, else they are subscripts  of other tree nodes.
-## splitkey1:
-##    the minimum key of the subtree at child2.  If this is a leaf
-##    then it is the key of child2.
-## splitkey2:
-##    if child3 > 0 then splitkey2 is the minimum key of the subtree at child3.
-##    If this is a leaf, then it is the key of child3.
-## Again, there are two constructors for the same reason mentioned above.
-
 struct TreeNode{K}
     child1::Int
     child2::Int
@@ -3070,59 +2110,17 @@ struct TreeNode{K}
     TreeNode{K}(c1::Int, c2::Int, c3::Int, p::Int, sk1::K, sk2::K) where {K} =
         new{K}(c1, c2, c3, p, sk1, sk2)
 end
-
-
-## The next two functions are called to initialize the tree
-## by inserting a dummy tree node with two children, the before-start
-## marker whose index is 1 and the after-end marker whose index is 2.
-## These two markers live in dummy data nodes.
-
 function initializeTree!(tree::Array{TreeNode{K},1}) where K
     resize!(tree,1)
     tree[1] = TreeNode{K}(K, 1, 2, 0, 0)
     nothing
 end
-
 function initializeData!(data::Array{KDRec{K,D},1}) where {K,D}
     resize!(data, 2)
     data[1] = KDRec{K,D}(1)
     data[2] = KDRec{K,D}(1)
     nothing
 end
-
-
-## Type BalancedTree23{K,D,Ord} is 'base class' for
-## SortedDict.
-## K = key type, D = data type
-## Key type must support an ordering operation defined by Ordering
-## object Ord.
-## The default is Forward which implies that the ordering function
-## is isless (see ordering.jl)
-## The fields are as follows.
-## ord:: The ordering object.  Often the ordering type
-##   is a singleton type, so this field is empty, but it
-##   is still necessary to direct the multiple dispatch.
-## data: the (key,data) pairs of the tree.
-##   The first and second entries of the data array are dummy placeholders
-##   for the beginning and end of the sorted order of the keys
-## tree: the nodes of a 2-3 tree that sits above the data.
-## rootloc: the index of the entry of tree (i.e., a subscript to
-##   treenodes) that is the tree's root
-## depth: the depth of the tree, (number
-##    of tree levels, not counting the level of data at the bottom)
-##    depth==1 means that there is a single root node
-##      whose children are data nodes.
-## freetreeinds: Array of indices of free locations in the
-##    tree array (locations are freed due to deletion)
-## freedatainds: Array of indices of free locations in the
-##    data array (locations are freed due to deletion)
-## useddatacells: IntSet (i.e., bit vector) showing which
-##    data cells are taken.  The complementary positions are
-##    exactly those stored in freedatainds.  This array is
-##    used only for error checking (only present at debug level 1 and 2)
-## deletionchild and deletionleftkey are two work-arrays
-## for the delete function.
-
 mutable struct BalancedTree23{K, D, Ord <: Ordering}
     ord::Ord
     data::Array{KDRec{K,D}, 1}
@@ -3148,106 +2146,51 @@ mutable struct BalancedTree23{K, D, Ord <: Ordering}
                      Vector{Int}(uninitialized, 3), Vector{K}(uninitialized, 3))
     end
 end
-
-
-
-
-## Function cmp2 checks a tree node with two children
-## against a given key, and returns 1 if the given key is
-## less than the node's splitkey or 2 else.  Special case
-## if the node is a leaf and its right child is the end
-## of the sorted order.
-
 @inline function cmp2_nonleaf(o::Ordering,
                               treenode::TreeNode,
                               k)
     lt(o, k, treenode.splitkey1) ? 1 : 2
 end
-
-
-
 @inline function cmp2_leaf(o::Ordering,
                            treenode::TreeNode,
                            k)
     (treenode.child2 == 2) ||
     lt(o, k, treenode.splitkey1) ? 1 : 2
 end
-
-
-
-## Function cmp3 checks a tree node with three children
-## against a given key, and returns 1 if the given key is
-## less than the node's splitkey1, 2 if the key is greater than or
-## equal to splitkey1 but less than splitkey2, or 3 else.  Special case
-## if the node is a leaf and its right child is the end
-## of the sorted order.
-
 @inline function cmp3_nonleaf(o::Ordering,
                               treenode::TreeNode,
                               k)
     lt(o, k, treenode.splitkey1) ? 1 :
     lt(o, k, treenode.splitkey2) ? 2 : 3
 end
-
-
 @inline function cmp3_leaf(o::Ordering,
                            treenode::TreeNode,
                            k)
     lt(o, k, treenode.splitkey1) ?                           1 :
     (treenode.child3 == 2 || lt(o, k, treenode.splitkey2)) ? 2 : 3
 end
-
-
-
-## Function cmp2le checks a tree node with two children
-## against a given key, and returns 1 if the given key is
-## less than or equal to the node's splitkey or 2 else.  Special case
-## if the node is a leaf and its right child is the end
-## of the sorted order.
-
 @inline function cmp2le_nonleaf(o::Ordering,
                                 treenode::TreeNode,
                                 k)
     !lt(o,treenode.splitkey1,k) ? 1 : 2
 end
-
-
 @inline function cmp2le_leaf(o::Ordering,
                              treenode::TreeNode,
                              k)
     treenode.child2 == 2 || !lt(o,treenode.splitkey1,k) ? 1 : 2
 end
-
-
-
-
-## Function cmp3le checks a tree node with three children
-## against a given key, and returns 1 if the given key is
-## less than or equal to the node's splitkey1, 2 if less than or equal
-## to splitkey2, or
-## 3 else. Special case
-## if the node is a leaf and its right child is the end
-## of the sorted order.
-
 @inline function cmp3le_nonleaf(o::Ordering,
                                 treenode::TreeNode,
                                 k)
     !lt(o,treenode.splitkey1, k) ? 1 :
     !lt(o,treenode.splitkey2, k) ? 2 : 3
 end
-
 @inline function cmp3le_leaf(o::Ordering,
                              treenode::TreeNode,
                              k)
     !lt(o,treenode.splitkey1,k) ?                            1 :
     (treenode.child3 == 2 || !lt(o,treenode.splitkey2, k)) ? 2 : 3
 end
-
-
-
-## The empty! function deletes all data in the balanced tree.
-## Therefore, it invalidates all indices.
-
 function empty!(t::BalancedTree23)
     resize!(t.data,2)
     initializeData!(t.data)
@@ -3261,23 +2204,9 @@ function empty!(t::BalancedTree23)
     push!(t.useddatacells, 1, 2)
     nothing
 end
-
-## Default implementations of eq for Forward, Reverse
-## and default ordering
-
 eq(::ForwardOrdering, a, b) = isequal(a,b)
 eq(::ReverseOrdering{ForwardOrdering}, a, b) = isequal(a,b)
 eq(o::Ordering, a, b) = !lt(o, a, b) && !lt(o, b, a)
-
-
-## The findkey function finds the index of a (key,data) pair in the tree
-## where the given key lives (if it is present), or
-## if the key is not present, to the lower bound for the key,
-## i.e., the data item that comes immediately before it.
-## If there are multiple equal keys, then it finds the last one.
-## It returns the index of the key found and a boolean indicating
-## whether the exact key was found or not.
-
 function findkey(t::BalancedTree23, k)
     curnode = t.rootloc
     for depthcount = 1 : t.depth - 1
@@ -3296,13 +2225,6 @@ function findkey(t::BalancedTree23, k)
               cmp == 2 ? thisnode.child2 : thisnode.child3
     @inbounds return curnode, (curnode > 2 && eq(t.ord, t.data[curnode].k, k))
 end
-
-
-
-## The findkeyless function finds the index of a (key,data) pair in the tree that
-## with the greatest key that is less than the given key.  If there is no
-## key less than the given key, then it returns 1 (the before-start node).
-
 function findkeyless(t::BalancedTree23, k)
     curnode = t.rootloc
     for depthcount = 1 : t.depth - 1
@@ -3321,18 +2243,10 @@ function findkeyless(t::BalancedTree23, k)
               cmp == 2 ? thisnode.child2 : thisnode.child3
     curnode
 end
-
-
-
-## The following are helper routines for the insert! and delete! functions.
-## They replace the 'parent' field of either an internal tree node or
-## a data node at the bottom tree level.
-
 function replaceparent!(data::Array{KDRec{K,D},1}, whichind::Int, newparent::Int) where {K,D}
     data[whichind] = KDRec{K,D}(newparent, data[whichind].k, data[whichind].d)
     nothing
 end
-
 function replaceparent!(tree::Array{TreeNode{K},1}, whichind::Int, newparent::Int) where K
     tree[whichind] = TreeNode{K}(tree[whichind].child1, tree[whichind].child2,
                                  tree[whichind].child3, newparent,
@@ -3340,15 +2254,6 @@ function replaceparent!(tree::Array{TreeNode{K},1}, whichind::Int, newparent::In
                                  tree[whichind].splitkey2)
     nothing
 end
-
-
-
-
-## Helper function for either grabbing a brand new location in a
-## array (if there are no free locations) or else grabbing a free
-## location and marking it as used.  The return value is the
-## index of the data just inserted into the vector.
-
 function push_or_reuse!(a::Vector, freelocs::Array{Int,1}, item)
     if isempty(freelocs)
         push!(a, item)
@@ -3358,26 +2263,10 @@ function push_or_reuse!(a::Vector, freelocs::Array{Int,1}, item)
     a[loc] = item
     return loc
 end
-
-
-
-## Function insert! inserts a new data item into the tree.
-## The arguments are the (K,D) pair to insert.
-## The return values are a bool and an index.  The
-## bool indicates whether the insertion inserted a new record (true) or
-## whether it replaced an existing record (false).
-## The index returned is the subscript in t.data where the
-## inserted value sits.
-## "allowdups" (i.e., "allow duplicate keys") means that no check is
-## done whether the iterm
-## is already in the tree, so insertion of a new item always succeeds.
-
 function insert!(t::BalancedTree23{K,D,Ord}, k, d, allowdups::Bool) where {K,D,Ord <: Ordering}
-
     ## First we find the greatest data node that is <= k.
     leafind, exactfound = findkey(t, k)
     parent = t.data[leafind].parent
-
     ## The following code is necessary because in the case of a
     ## brand new tree, the initial tree and data entries were incompletely
     ## initialized by the constructor.  In this case, the call to insert!
@@ -3385,7 +2274,6 @@ function insert!(t::BalancedTree23{K,D,Ord}, k, d, allowdups::Bool) where {K,D,O
     ## valid K and D values, so these valid values may now be
     ## stored in the dummy placeholder nodes so that they no
     ## longer hold undefined references.
-
     if size(t.data,1) == 2
         # @assert(t.rootloc == 1 && t.depth == 1)
         t.tree[1] = TreeNode{K}(t.tree[1].child1, t.tree[1].child2,
@@ -3394,24 +2282,19 @@ function insert!(t::BalancedTree23{K,D,Ord}, k, d, allowdups::Bool) where {K,D,O
         t.data[1] = KDRec{K,D}(t.data[1].parent, k, d)
         t.data[2] = KDRec{K,D}(t.data[2].parent, k, d)
     end
-
     ## If we have found exactly k in the tree, then we
     ## replace the data associated with k and return.
-
     if exactfound && !allowdups
         t.data[leafind] = KDRec{K,D}(parent, k,d)
         return false, leafind
     end
-
     # We get here if k was not already found in the tree or
     # if duplicates are allowed.
     # In this case we insert a new node.
     depth = t.depth
     ord = t.ord
-
     ## Store the new data item in the tree's data array.  Later
     ## go back and fix the parent.
-
     newind = push_or_reuse!(t.data, t.freedatainds, KDRec{K,D}(0,k,d))
     p1 = parent
     oldchild = leafind
@@ -3419,7 +2302,6 @@ function insert!(t::BalancedTree23{K,D,Ord}, k, d, allowdups::Bool) where {K,D,O
     minkeynewchild = k
     splitroot = false
     curdepth = depth
-
     ## This loop ascends the tree (i.e., follows the path from a leaf to the root)
     ## starting from the parent p1 of
     ## where the new key k would go.  For each 3-node we encounter
@@ -3433,21 +2315,16 @@ function insert!(t::BalancedTree23{K,D,Ord}, k, d, allowdups::Bool) where {K,D,O
     ##          was already in the tree; newchild was just added to it.
     ##     minkeynewchild:  This is the key that is the minimum value in
     ##         the subtree rooted at newchild.
-
     while t.tree[p1].child3 > 0
         isleaf = (curdepth == depth)
         oldtreenode = t.tree[p1]
-
         ## Node p1 index a 3-node. There are three cases for how to
         ## insert new child.  All three cases involve splitting the
         ## existing node (oldtreenode, numbered p1) into
         ## two new nodes.  One keeps the index p1; the other has
         ## has a new index called newparentnum.
-
-
         cmp = isleaf ? cmp3_leaf(ord, oldtreenode, minkeynewchild) :
                       cmp3_nonleaf(ord, oldtreenode, minkeynewchild)
-
         if cmp == 1
             lefttreenodenew = TreeNode{K}(oldtreenode.child1, newchild, 0,
                                           oldtreenode.parent,
@@ -3505,22 +2382,17 @@ function insert!(t::BalancedTree23{K,D,Ord}, k, d, allowdups::Bool) where {K,D,O
         p1 = t.tree[oldchild].parent
         curdepth -= 1
     end
-
     ## big loop terminated either because a 2-node was reached
     ## (splitroot == false) or we went up the whole tree seeing
     ## only 3-nodes (splitroot == true).
     if !splitroot
-
         ## If our ascent reached a 2-node, then we convert it to
         ## a 3-node by giving it a child3 field that is >0.
         ## Encountering a 2-node halts the ascent up the tree.
-
         isleaf = curdepth == depth
         oldtreenode = t.tree[p1]
         cmpres = isleaf ? cmp2_leaf(ord, oldtreenode, minkeynewchild) :
                          cmp2_nonleaf(ord, oldtreenode, minkeynewchild)
-
-
         t.tree[p1] = cmpres == 1 ?
                          TreeNode{K}(oldtreenode.child1, newchild, oldtreenode.child2,
                                      oldtreenode.parent,
@@ -3536,7 +2408,6 @@ function insert!(t::BalancedTree23{K,D,Ord}, k, d, allowdups::Bool) where {K,D,O
         ## Splitroot is set if the ascent of the tree encountered only 3-nodes.
         ## In this case, the root itself was replaced by two nodes, so we need
         ## a new root above those two.
-
         newroot = TreeNode{K}(oldchild, newchild, 0, 0,
                               minkeynewchild, minkeynewchild)
         newrootloc = push_or_reuse!(t.tree, t.freetreeinds, newroot)
@@ -3547,16 +2418,6 @@ function insert!(t::BalancedTree23{K,D,Ord}, k, d, allowdups::Bool) where {K,D,O
     end
     true, newind
 end
-
-
-
-
-## nextloc0: returns the next item in the tree according to the
-## sort order, given an index i (subscript of t.data) of a current
-## item.
-## The routine returns 2 if there is no next item (i.e., we started
-## from the last one in the sorted order).
-
 function nextloc0(t, i::Int)
     ii = i
     # @assert(i != 2 && i in t.useddatacells)
@@ -3587,15 +2448,6 @@ function nextloc0(t, i::Int)
         depthp += 1
     end
 end
-
-
-## prevloc0: returns the previous item in the tree according to the
-## sort order, given an index i (subscript of t.data) of a current
-## item.
-## The routine returns 1 if there is no previous item (i.e., we started
-## from the first one in the sorted order).
-
-
 function prevloc0(t::BalancedTree23, i::Int)
     # @assert(i != 1 && i in t.useddatacells)
     ii = i
@@ -3627,13 +2479,6 @@ function prevloc0(t::BalancedTree23, i::Int)
         depthp += 1
     end
 end
-
-## This function takes two indices into t.data and checks which
-## one comes first in the sorted order by chasing them both
-## up the tree until a common ancestor is found.
-## The return value is -1 if i1 precedes i2, 0 if i1 == i2
-##, 1 if i2 precedes i1.
-
 function compareInd(t::BalancedTree23, i1::Int, i2::Int)
     @assert(i1 in t.useddatacells && i2 in t.useddatacells)
     if i1 == i2
@@ -3669,20 +2514,9 @@ function compareInd(t::BalancedTree23, i1::Int, i2::Int)
         curdepth -= 1
     end
 end
-
-
-## beginloc, endloc return the index (into t.data) of the first, last item in the
-## sorted order of the tree.  beginloc works by going to the before-start marker
-## (data node 1) and executing a next operation on it.  endloc is the opposite.
-
 beginloc(t::BalancedTree23) = nextloc0(t,1)
 endloc(t::BalancedTree23) = prevloc0(t,2)
-
-
-## delete! routine deletes an entry from the balanced tree.
-
 function delete!(t::BalancedTree23{K,D,Ord}, it::Int) where {K,D,Ord<:Ordering}
-
     ## Put the cell indexed by 'it' into the deletion list.
     ##
     ## Create the following data items maintained in the
@@ -3702,7 +2536,6 @@ function delete!(t::BalancedTree23{K,D,Ord}, it::Int) where {K,D,Ord<:Ordering}
     ## or used.
     ## The flag mustdeleteroot means that the tree has contracted
     ## enough that it loses a level.
-
     p = t.data[it].parent
     newchildcount = 0
     c1 = t.tree[p].child1
@@ -3732,14 +2565,12 @@ function delete!(t::BalancedTree23{K,D,Ord}, it::Int) where {K,D,Ord<:Ordering}
     curdepth = t.depth
     mustdeleteroot = false
     pparent = -1
-
     ## The following loop ascends the tree and contracts nodes (reduces their
     ## number of children) as
     ## needed.  If newchildcount == 2 or 3, then the ascent is terminated
     ## and a node is created with 2 or 3 children.
     ## If newchildcount == 1, then the ascent must continue since a tree
     ## node cannot have one child.
-
     while true
         pparent = t.tree[p].parent
         ## Simple cases when the new child count is 2 or 3
@@ -3747,7 +2578,6 @@ function delete!(t::BalancedTree23{K,D,Ord}, it::Int) where {K,D,Ord<:Ordering}
             t.tree[p] = TreeNode{K}(t.deletionchild[1],
                                     t.deletionchild[2], 0, pparent,
                                     t.deletionleftkey[2], defaultKey)
-
             break
         end
         if newchildcount == 3
@@ -3759,22 +2589,17 @@ function delete!(t::BalancedTree23{K,D,Ord}, it::Int) where {K,D,Ord<:Ordering}
         # @assert(newchildcount == 1)
         ## For the rest of this loop, we cover the case
         ## that p has one child.
-
         ## If newchildcount == 1 and curdepth==1, this means that
         ## the root of the tree has only one child.  In this case, we can
         ## delete the root and make its one child the new root (see below).
-
         if curdepth == 1
             mustdeleteroot = true
             break
         end
-
         ## We now branch on three cases depending on whether p is child1,
         ## child2 or child3 of its parent.
-
         if t.tree[pparent].child1 == p
             rightsib = t.tree[pparent].child2
-
             ## Here p is child1 and rightsib is child2.
             ## If rightsib has 2 children, then p and
             ## rightsib are merged into a single node
@@ -3782,7 +2607,6 @@ function delete!(t::BalancedTree23{K,D,Ord}, it::Int) where {K,D,Ord<:Ordering}
             ## If rightsib has 3 children, then p and
             ## rightsib are reformed so that each has
             ## two children.
-
             if t.tree[rightsib].child3 == 0
                 rc1 = t.tree[rightsib].child1
                 rc2 = t.tree[rightsib].child2
@@ -3824,10 +2648,8 @@ function delete!(t::BalancedTree23{K,D,Ord}, it::Int) where {K,D,Ord<:Ordering}
                 t.deletionchild[2] = rightsib
                 t.deletionleftkey[2] = sk1
             end
-
             ## If pparent had a third child (besides p and rightsib)
             ## then we add this to t.deletionchild
-
             c3 = t.tree[pparent].child3
             if c3 > 0
                 newchildcount += 1
@@ -3836,7 +2658,6 @@ function delete!(t::BalancedTree23{K,D,Ord}, it::Int) where {K,D,Ord<:Ordering}
             end
             p = pparent
         elseif t.tree[pparent].child2 == p
-
             ## Here p is child2 and leftsib is child1.
             ## If leftsib has 2 children, then p and
             ## leftsib are merged into a single node
@@ -3844,7 +2665,6 @@ function delete!(t::BalancedTree23{K,D,Ord}, it::Int) where {K,D,Ord<:Ordering}
             ## If leftsib has 3 children, then p and
             ## leftsib are reformed so that each has
             ## two children.
-
             leftsib = t.tree[pparent].child1
             lk = deletionleftkey1_valid ?
                       t.deletionleftkey[1] :
@@ -3887,10 +2707,8 @@ function delete!(t::BalancedTree23{K,D,Ord}, it::Int) where {K,D,Ord<:Ordering}
                 t.deletionchild[2] = p
                 t.deletionleftkey[2] = sk2
             end
-
             ## If pparent had a third child (besides p and leftsib)
             ## then we add this to t.deletionchild
-
             c3 = t.tree[pparent].child3
             if c3 > 0
                 newchildcount += 1
@@ -3907,7 +2725,6 @@ function delete!(t::BalancedTree23{K,D,Ord}, it::Int) where {K,D,Ord<:Ordering}
             ## If leftsib has 3 children, then p and
             ## leftsib are reformed so that each has
             ## two children.
-
             # @assert(t.tree[pparent].child3 == p)
             leftsib = t.tree[pparent].child2
             lk = deletionleftkey1_valid ?
@@ -3967,7 +2784,6 @@ function delete!(t::BalancedTree23{K,D,Ord}, it::Int) where {K,D,Ord<:Ordering}
         t.depth -= 1
         push!(t.freetreeinds, p)
     end
-
     ## If deletionleftkey1_valid, this means that the new
     ## min key of the deleted node and its right neighbors
     ## has never been stored in the tree.  It must be stored
@@ -3981,7 +2797,6 @@ function delete!(t::BalancedTree23{K,D,Ord}, it::Int) where {K,D,Ord<:Ordering}
     ## first children, since this would mean the deleted
     ## node is the leftmost placeholder, which
     ## cannot be deleted.
-
     if deletionleftkey1_valid
         while true
             pparentnode = t.tree[pparent]
@@ -4011,55 +2826,26 @@ function delete!(t::BalancedTree23{K,D,Ord}, it::Int) where {K,D,Ord<:Ordering}
     end
     nothing
 end
-
-
-#
-# expanded from:     include("tokens.jl")
-#
-
-## Token interface to a container.  A token is the address
-## of an item in a container.  The token has two parts: the
-## container and the item's address.  The address is of type
-## AbstractSemiToken.
-
-
 module Tokens
-
 abstract type AbstractSemiToken end
-
 struct IntSemiToken <: AbstractSemiToken
     address::Int
 end
-
 end
-
     import .Tokens: IntSemiToken
-
-
-
-#
-# expanded from:     include("multi_dict.jl")
-#
-
-#  multi-value dictionary (multidict)
-
 import Base: haskey, get, get!, getkey, delete!, pop!, empty!,
              insert!, getindex, length, isempty, start,
              next, done, keys, values, copy, similar,  push!,
              count, size, eltype
-
 struct MultiDict{K,V}
     d::Dict{K,Vector{V}}
-
     MultiDict{K,V}() where {K,V} = new{K,V}(Dict{K,Vector{V}}())
     MultiDict{K,V}(kvs) where {K,V} = new{K,V}(Dict{K,Vector{V}}(kvs))
     MultiDict{K,V}(ps::Pair{K,Vector{V}}...) where {K,V} = new{K,V}(Dict{K,Vector{V}}(ps...))
 end
-
 MultiDict() = MultiDict{Any,Any}()
 MultiDict(kv::Tuple{}) = MultiDict()
 MultiDict(kvs) = multi_dict_with_eltype(kvs, eltype(kvs))
-
 multi_dict_with_eltype(kvs, ::Type{Tuple{K,Vector{V}}}) where {K,V} = MultiDict{K,V}(kvs)
 function multi_dict_with_eltype(kvs, ::Type{Tuple{K,V}}) where {K,V}
     md = MultiDict{K,V}()
@@ -4069,7 +2855,6 @@ function multi_dict_with_eltype(kvs, ::Type{Tuple{K,V}}) where {K,V}
     return md
 end
 multi_dict_with_eltype(kvs, t) = MultiDict{Any,Any}(kvs)
-
 MultiDict(ps::Pair{K,V}...) where {K,V<:AbstractArray} = MultiDict{K, eltype(V)}(ps)
 MultiDict(kv::AbstractArray{Pair{K,V}}) where {K,V}  = MultiDict(kv...)
 function MultiDict(ps::Pair{K,V}...) where {K,V}
@@ -4079,22 +2864,15 @@ function MultiDict(ps::Pair{K,V}...) where {K,V}
     end
     return md
 end
-
-## Functions
-
-## Most functions are simply delegated to the wrapped Dict
-
 @delegate MultiDict.d [ haskey, get, get!, getkey,
                         getindex, length, isempty, eltype,
                         start, next, done, keys, values]
-
 sizehint!(d::MultiDict, sz::Integer) = (sizehint!(d.d, sz); d)
 copy(d::MultiDict) = MultiDict(d)
 similar(d::MultiDict{K,V}) where {K,V} = MultiDict{K,V}()
 ==(d1::MultiDict, d2::MultiDict) = d1.d == d2.d
 delete!(d::MultiDict, key) = (delete!(d.d, key); d)
 empty!(d::MultiDict) = (empty!(d.d); d)
-
 function insert!(d::MultiDict{K,V}, k, v) where {K,V}
     if !haskey(d.d, k)
         d.d[k] = isa(v, AbstractArray) ? eltype(v)[] : V[]
@@ -4106,13 +2884,11 @@ function insert!(d::MultiDict{K,V}, k, v) where {K,V}
     end
     return d
 end
-
 function in(pr::(Tuple{Any,Any}), d::MultiDict{K,V}) where {K,V}
     k = convert(K, pr[1])
     v = get(d,k,Base.secret_table_token)
     (v !== Base.secret_table_token) && (isa(pr[2], AbstractArray) ? v == pr[2] : pr[2] in v)
 end
-
 function pop!(d::MultiDict, key, default)
     vs = get(d, key, Base.secret_table_token)
     if vs === Base.secret_table_token
@@ -4127,37 +2903,24 @@ function pop!(d::MultiDict, key, default)
     return v
 end
 pop!(d::MultiDict, key) = pop!(d, key, Base.secret_table_token)
-
 push!(d::MultiDict, kv::Pair) = insert!(d, kv[1], kv[2])
-#push!(d::MultiDict, kv::Pair, kv2::Pair) = (push!(d.d, kv, kv2); d)
-#push!(d::MultiDict, kv::Pair, kv2::Pair, kv3::Pair...) = (push!(d.d, kv, kv2, kv3...); d)
-
 push!(d::MultiDict, kv) = insert!(d, kv[1], kv[2])
-#push!(d::MultiDict, kv, kv2...) = (push!(d.d, kv, kv2...); d)
-
 count(d::MultiDict) = length(keys(d)) == 0 ? 0 : mapreduce(k -> length(d[k]), +, keys(d))
 size(d::MultiDict) = (length(keys(d)), count(d::MultiDict))
-
-# enumerate
-
 struct EnumerateAll
     d::MultiDict
 end
 enumerateall(d::MultiDict) = EnumerateAll(d)
-
 length(e::EnumerateAll) = count(e.d)
-
 function start(e::EnumerateAll)
     V = eltype(eltype(values(e.d)))
     vs = V[]
     (start(e.d.d), nothing, vs, start(vs))
 end
-
 function done(e::EnumerateAll, s)
     dst, k, vs, vst = s
     done(vs, vst) && done(e.d.d, dst)
 end
-
 function next(e::EnumerateAll, s)
     dst, k, vs, vst = s
     while done(vs, vst)
@@ -4167,31 +2930,18 @@ function next(e::EnumerateAll, s)
     v, vst = next(vs, vst)
     ((k, v), (dst, k, vs, vst))
 end
-
-
-#
-# expanded from:     include("sorted_dict.jl")
-#
-
-## A SortedDict is a wrapper around balancedTree with
-## methods similiar to those of Julia container Dict.
-
 mutable struct SortedDict{K, D, Ord <: Ordering} <: AbstractDict{K,D}
     bt::BalancedTree23{K,D,Ord}
-
     ## Base constructors
     """
         SortedDict{K,V}(o=Forward)
-
     Construct an empty `SortedDict` with key type `K` and value type
     `V` with `o` ordering (default to forward ordering).
     """
     SortedDict{K,D,Ord}(o::Ord) where {K, D, Ord <: Ordering} =
         new{K,D,Ord}(BalancedTree23{K,D,Ord}(o))
-
     function SortedDict{K,D,Ord}(o::Ord, kv) where {K, D, Ord <: Ordering}
         s = new{K,D,Ord}(BalancedTree23{K,D,Ord}(o))
-
         if eltype(kv) <: Pair
             # It's (possibly?) more efficient to access the first and second
             # elements of Pairs directly, rather than destructure
@@ -4205,16 +2955,11 @@ mutable struct SortedDict{K, D, Ord <: Ordering} <: AbstractDict{K,D}
         end
         return s
     end
-
 end
-
-# Any-Any constructors
 """
     SortedDict()
-
 Construct an empty `SortedDict` with key type `Any` and value type
 `Any`. Ordering defaults to `Forward` ordering.
-
 **Note that a key type of `Any` or any other abstract type will lead
 to slow performance, as the values are stored boxed (i.e., as
 pointers), and insertion will require a run-time lookup of the
@@ -4223,15 +2968,12 @@ a concrete key type, or to use one of the constructors below in
 which the key type is inferred.**
 """
 SortedDict() = SortedDict{Any,Any,ForwardOrdering}(Forward)
-
 """
     SortedDict(o=Forward)
-
 Construct an empty `SortedDict` with key type `K` and value type
 `V`. If `K` and `V` are not specified, the dictionary defaults to a
 `SortedDict{Any,Any}`. Keys and values are converted to the given
 type upon insertion. Ordering `o` defaults to `Forward` ordering.
-
 **Note that a key type of `Any` or any other abstract type will lead
 to slow performance, as the values are stored boxed (i.e., as
 pointers), and insertion will require a run-time lookup of the
@@ -4240,13 +2982,9 @@ a concrete key type, or to use one of the constructors below in
 which the key type is inferred.**
 """
 SortedDict(o::Ord) where {Ord <: Ordering} = SortedDict{Any,Any,Ord}(o)
-
-# Construction from Pairs
-# TODO: fix SortedDict(1=>1, 2=>2.0)
 """
     SortedDict(k1=>v1, k2=>v2, ...)
 and `SortedDict{K,V}(k1=>v1, k2=>v2, ...)`
-
 Construct a `SortedDict` from the given key-value pairs. If `K` and
 `V` are not specified, key type and value type are inferred from the
 given key-value pairs, and ordering is assumed to be `Forward`
@@ -4254,38 +2992,25 @@ ordering.
 """
 SortedDict(ps::Pair...) = SortedDict(Forward, ps)
 SortedDict{K,D}(ps::Pair...) where {K,D} = SortedDict{K,D,ForwardOrdering}(Forward, ps)
-
 """
     SortedDict(o, k1=>v1, k2=>v2, ...)
-
 Construct a `SortedDict` from the given pairs with the specified
 ordering `o`. The key type and value type are inferred from the 
 given pairs.
 """
 SortedDict(o::Ordering, ps::Pair...) = SortedDict(o, ps)
-
 """
     SortedDict{K,V}(o, k1=>v1, k2=>v2, ...)
-
 Construct a `SortedDict` from the given pairs with the specified
 ordering `o`. If `K` and `V` are not specified, the key type and
 value type are inferred from the given pairs. See below for more
 information about ordering.
 """
 SortedDict{K,D}(o::Ord, ps::Pair...) where {K,D,Ord<:Ordering} = SortedDict{K,D,Ord}(o, ps)
-
-
-# Construction from AbstractDicts
 SortedDict(o::Ord, d::AbstractDict{K,D}) where {K,D,Ord<:Ordering} = SortedDict{K,D,Ord}(o, d)
-
-## Construction from iteratables of Pairs/Tuples
-
-# Construction specifying Key/Value types
-# e.g., SortedDict{Int,Float64}([1=>1, 2=>2.0])
 """
     SortedDict(iter, o=Forward)
 and `SortedDict{K,V}(iter, o=Forward)`
-
 Construct a `SortedDict` from an arbitrary iterable object of
 `key=>value` pairs. If `K` and `V` are not specified, the key type
 and value type are inferred from the given iterable. The ordering
@@ -4303,28 +3028,18 @@ function SortedDict{K,D}(o::Ord, kv) where {K,D,Ord<:Ordering}
         end
     end
 end
-
-# Construction inferring Key/Value types from input
-# e.g. SortedDict{}
-
 SortedDict(o1::Ordering, o2::Ordering) = throw(ArgumentError("SortedDict with two parameters must be called with an Ordering and an interable of pairs"))
-
-
 """
     SortedDict(d, o=Forward)
 and `SortedDict{K,V}(d, o=Forward)`
-
 Construct a `SortedDict` from an ordinary Julia dict `d` (or any
 associative type), e.g.:
-
 ```julia
 d = Dict("New York" => 1788, "Illinois" => 1818)
 c = SortedDict(d)
 ```
-
 In this example the key-type is deduced to be `String`, while the
 value-type is `Int`.
-
 If `K` and `V` are not specified, the key type and value type are
 inferred from the given dictionary. The ordering object `o` defaults
 to `Forward`.
@@ -4341,25 +3056,14 @@ function SortedDict(o::Ordering, kv)
         end
     end
 end
-
 _sorted_dict_with_eltype(o::Ord, ps, ::Type{Pair{K,D}}) where {K,D,Ord} = SortedDict{  K,  D,Ord}(o, ps)
 _sorted_dict_with_eltype(o::Ord, kv, ::Type{Tuple{K,D}}) where {K,D,Ord} = SortedDict{  K,  D,Ord}(o, kv)
 _sorted_dict_with_eltype(o::Ord, ps, ::Type{Pair{K}}  ) where {K,  Ord} = SortedDict{  K,Any,Ord}(o, ps)
 _sorted_dict_with_eltype(o::Ord, kv, ::Type            ) where {    Ord} = SortedDict{Any,Any,Ord}(o, kv)
-
-## TODO: It seems impossible (or at least very challenging) to create the eltype below.
-##       If deemed possible, please create a test and uncomment this definition.
-# _sorted_dict_with_eltype{  D,Ord}(o::Ord, ps, ::Type{Pair{K,D} where K}) = SortedDict{Any,  D,Ord}(o, ps)
-
 const SDSemiToken = IntSemiToken
-
 const SDToken = Tuple{SortedDict,IntSemiToken}
-
-## This function implements m[k]; it returns the
-## data item associated with key k.
 """
     v = sd[k]
-
 Argument `sd` is a SortedDict and `k` is a key. In an expression,
 this retrieves the value (`v`) associated with the key (or `KeyError` if
 none). On the left-hand side of an assignment, this assigns or
@@ -4371,13 +3075,8 @@ reassigning, see also `insert!` below.) Time: O(*c* log *n*)
     !exactfound && throw(KeyError(k_))
     return m.bt.data[i].d
 end
-
-
-## This function implements m[k]=d; it sets the
-## data item associated with key k equal to d.
 """
     sc[st] = v
-
 If `st` is a semitoken and `sc` is a SortedDict or SortedMultiDict,
 then `sc[st]` refers to the value field of the (key,value) pair that
 the full token `(sc,st)` refers to. This expression may occur on
@@ -4387,11 +3086,8 @@ either side of an assignment statement. Time: O(1)
     insert!(m.bt, convert(K,k_), convert(D,d_), false)
     m
 end
-
-## push! is an alternative to insert!; it returns the container.
 """
     push!(sc, k=>v)
-
 Argument `sc` is a SortedDict or SortedMultiDict and `k=>v` is a
 key-value pair. This inserts the key-value pair into the container.
 If the key is already present, this overwrites the old value. The
@@ -4401,17 +3097,8 @@ return value is `sc`. Time: O(*c* log *n*)
     insert!(m.bt, convert(K, pr[1]), convert(D, pr[2]), false)
     m
 end
-
-
-
-
-## This function looks up a key in the tree;
-## if not found, then it returns a marker for the
-## end of the tree.
-
 """
     find(sd, k)
-
 Argument `sd` is a SortedDict and argument `k` is a key. This
 function returns the semitoken that refers to the item whose key is
 `k`, or past-end semitoken if `k` is absent. Time: O(*c* log *n*)
@@ -4420,17 +3107,8 @@ function returns the semitoken that refers to the item whose key is
     ll, exactfound = findkey(m.bt, convert(keytype(m),k_))
     IntSemiToken(exactfound ? ll : 2)
 end
-
-## This function inserts an item into the tree.
-## Unlike m[k]=d, it also returns a bool and a token.
-## The bool is true if the inserted item is new.
-## It is false if there was already an item
-## with that key.
-## The token points to the newly inserted item.
-
 """
     insert!(sc, k)
-
 Argument `sc` is a SortedDict or SortedMultiDict, `k` is a key and
 `v` is the corresponding value. This inserts the `(k,v)` pair into
 the container. If the key is already present in a SortedDict, this
@@ -4447,20 +3125,16 @@ boolean). Time: O(*c* log *n*)
     b, i = insert!(m.bt, convert(K,k_), convert(D,d_), false)
     b, IntSemiToken(i)
 end
-
 """
     eltype(sc)
-
 Returns the (key,value) type (a 2-entry pair, i.e., `Pair{K,V}`) for
 SortedDict and SortedMultiDict. Returns the key type for SortedSet.
 This function may also be applied to the type itself. Time: O(1)
 """
 @inline eltype(m::SortedDict{K,D,Ord}) where {K,D,Ord <: Ordering} =  Pair{K,D}
 @inline eltype(::Type{SortedDict{K,D,Ord}}) where {K,D,Ord <: Ordering} =  Pair{K,D}
-
 """
     in(p, sc)
-
 Returns true if `p` is in `sc`. In the case that `sc` is a
 SortedDict or SortedMultiDict, `p` is a key=>value pair. In the
 case that `sc` is a SortedSet, `p` should be a key. Time: O(*c* log
@@ -4475,54 +3149,37 @@ an alternative should be considered.)
     i, exactfound = findkey(m.bt,convert(K,pr[1]))
     return exactfound && isequal(m.bt.data[i].d,convert(D,pr[2]))
 end
-
 @inline in(::Tuple{Any,Any}, ::SortedDict) =
     throw(ArgumentError("'(k,v) in sorteddict' not supported in Julia 0.4 or 0.5.  See documentation"))
-
 """
     keytype(sc)
-
 Returns the key type for SortedDict, SortedMultiDict and SortedSet.
 This function may also be applied to the type itself. Time: O(1)
 """
 @inline keytype(m::SortedDict{K,D,Ord}) where {K,D,Ord <: Ordering} = K
 @inline keytype(::Type{SortedDict{K,D,Ord}}) where {K,D,Ord <: Ordering} = K
-
 """
     valtype(sc)
-
 Returns the value type for SortedDict and SortedMultiDict. This
 function may also be applied to the type itself. Time: O(1)
 """
 @inline valtype(m::SortedDict{K,D,Ord}) where {K,D,Ord <: Ordering} = D
 @inline valtype(::Type{SortedDict{K,D,Ord}}) where {K,D,Ord <: Ordering} = D
-
 """
     ordtype(sc)
-
 Returns the order type for SortedDict, SortedMultiDict and
 SortedSet. This function may also be applied to the type itself.
 Time: O(1)
 """
 @inline ordtype(m::SortedDict{K,D,Ord}) where {K,D,Ord <: Ordering} = Ord
 @inline ordtype(::Type{SortedDict{K,D,Ord}}) where {K,D,Ord <: Ordering} = Ord
-
-
 """
     orderobject(sc)
-
 Returns the order object used to construct the container. Time: O(1)
 """
 @inline orderobject(m::SortedDict) = m.bt.ord
-
-
-## First and last return the first and last (key,data) pairs
-## in the SortedDict.  It is an error to invoke them on an
-## empty SortedDict.
-
 """
     first(sc)
-
 Argument `sc` is a SortedDict, SortedMultiDict or SortedSet. This
 function returns the first item (a `k=>v` pair for SortedDict and
 SortedMultiDict or a key for SortedSet) according to the sorted
@@ -4535,10 +3192,8 @@ an empty container. Time: O(log *n*)
     i == 2 && throw(BoundsError())
     return Pair(m.bt.data[i].k, m.bt.data[i].d)
 end
-
 """
     last(sc)
-
 Argument `sc` is a SortedDict, SortedMultiDict or SortedSet. This
 function returns the last item (a `k=>v` pair for SortedDict and
 SortedMultiDict or a key for SortedSet) according to the sorted
@@ -4551,10 +3206,8 @@ empty container. Time: O(log *n*)
     i == 1 && throw(BoundsError())
     return Pair(m.bt.data[i].k, m.bt.data[i].d)
 end
-
 """
     haskey(sc,k)
-
 Returns true if key `k` is present for SortedDict, SortedMultiDict
 or SortedSet `sc`. For SortedSet, `haskey(sc,k)` is a synonym for
 `in(k,sc)`. For SortedDict and SortedMultiDict, `haskey(sc,k)` is
@@ -4564,10 +3217,8 @@ equivalent to `in(k,keys(sc))`. Time: O(*c* log *n*)
     i, exactfound = findkey(m.bt, convert(keytype(m), k_))
     exactfound
 end
-
 """
     get(sd,k,v)
-
 Returns the value associated with key `k` where `sd` is a
 SortedDict, or else returns `v` if `k` is not in `sd`. Time: O(*c*
 log *n*)
@@ -4576,9 +3227,7 @@ function get(default_::Union{Function,Type}, m::SortedDict{K,D}, k_) where {K,D}
     i, exactfound = findkey(m.bt, convert(K, k_))
     return exactfound ? m.bt.data[i].d : convert(D, default_())
 end
-
 get(m::SortedDict, k_, default_) = get(()->default_, m, k_)
-
 """
     get!(sd,k,v)
 Returns the value associated with key `k` where `sd` is a
@@ -4596,12 +3245,9 @@ function get!(default_::Union{Function,Type}, m::SortedDict{K,D}, k_) where {K,D
         return default
     end
 end
-
 get!(m::SortedDict, k_, default_) = get!(()->default_, m, k_)
-
 """
     getkey(sd,k,defaultk)
-
 Returns key `k` where `sd` is a SortedDict, if `k` is in `sd` else
 it returns `defaultk`. If the container uses in its ordering an `eq`
 method different from isequal (e.g., case-insensitive ASCII strings
@@ -4617,12 +3263,8 @@ function getkey(m::SortedDict{K,D,Ord}, k_, default_) where {K,D,Ord <: Ordering
     i, exactfound = findkey(m.bt, convert(K, k_))
     exactfound ? m.bt.data[i].k : convert(K, default_)
 end
-
-## Function delete! deletes an item at a given
-## key
 """
     delete!(sc, k)
-
 Argument `sc` is a SortedDict or SortedSet and `k` is a key. This
 operation deletes the item whose key is `k`. It is a `KeyError` if
 `k` is not a key of an item in the container. After this operation
@@ -4635,10 +3277,8 @@ Returns `sc`. Time: O(*c* log *n*)
     delete!(m.bt, i)
     m
 end
-
 """
     pop!(sc, k)
-
 Deletes the item with key `k` in SortedDict or SortedSet `sc` and
 returns the value that was associated with `k` in the case of
 SortedDict or `k` itself in the case of SortedSet. A `KeyError`
@@ -4651,14 +3291,8 @@ results if `k` is not in `sc`. Time: O(*c* log *n*)
     delete!(m.bt, i)
     d
 end
-
-
-## Check if two SortedDicts are equal in the sense of containing
-## the same (K,D) pairs.  This sense of equality does not mean
-## that semitokens valid for one are also valid for the other.
 """
     isequal(sc1,sc2)
-
 Checks if two containers are equal in the sense that they contain
 the same items; the keys are compared using the `eq` method, while
 the values are compared with the `isequal` function. In the case of
@@ -4694,18 +3328,14 @@ function isequal(m1::SortedDict, m2::SortedDict)
         p2 = advance((m2,p2))
     end
 end
-
-
 function mergetwo!(m::SortedDict{K,D,Ord},
                    m2::AbstractDict{K,D}) where {K,D,Ord <: Ordering}
     for (k,v) in m2
         m[convert(K,k)] = convert(D,v)
     end
 end
-
 """
     packcopy(sc)
-
 This returns a copy of `sc` in which the data is packed. When
 deletions take place, the previously allocated memory is not
 returned. This function can be used to reclaim memory after many
@@ -4716,10 +3346,8 @@ function packcopy(m::SortedDict{K,D,Ord}) where {K,D,Ord <: Ordering}
     mergetwo!(w,m)
     w
 end
-
 """
     packdeepcopy(sc)
-
 This returns a packed copy of `sc` in which the keys and values are
 deep-copied. This function can be used to reclaim memory after many
 deletions. Time: O(*cn* log *n*)
@@ -4733,10 +3361,8 @@ function packdeepcopy(m::SortedDict{K,D,Ord}) where {K,D,Ord <: Ordering}
     end
     w
 end
-
 """
     merge!(sc, sc1...)
-
 This updates `sc` by merging SortedDicts or SortedMultiDicts `sc1`,
 etc. into `sc`. These must all must have the same key-value types.
 In the case of keys duplicated among the arguments, the rightmost
@@ -4753,10 +3379,8 @@ function merge!(m::SortedDict{K,D,Ord},
         mergetwo!(m,o)
     end
 end
-
 """
     merge(sc1, sc2...)
-
 This returns a SortedDict or SortedMultiDict that results from
 merging SortedDicts or SortedMultiDicts `sc1`, `sc2`, etc., which
 all must have the same key-value-ordering types. In the case of keys
@@ -4774,37 +3398,20 @@ function merge(m::SortedDict{K,D,Ord},
     merge!(result, others...)
     result
 end
-
-
 """
     similar(sc)
-
 Returns a new SortedDict, SortedMultiDict, or SortedSet of the same
 type and with the same ordering as `sc` but with no entries (i.e.,
 empty). Time: O(1)
 """
 similar(m::SortedDict{K,D,Ord}) where {K,D,Ord<:Ordering} =
     SortedDict{K,D,Ord}(orderobject(m))
-
 isordered(::Type{T}) where {T<:SortedDict} = true
-
-
-#
-# expanded from:     include("sorted_multi_dict.jl")
-#
-
-# A SortedMultiDict is a wrapper around balancedTree.
-## Unlike SortedDict, a key in SortedMultiDict can
-## refer to multiple data entries.
-
 mutable struct SortedMultiDict{K, D, Ord <: Ordering}
     bt::BalancedTree23{K,D,Ord}
-
     ## Base constructors
-
     """
         SortedMultiDict{K,V,Ord}(o)
-
     Construct an empty sorted multidict in which type parameters are
     explicitly listed; ordering object is explicitly specified. (See
     below for discussion of ordering.) An empty SortedMultiDict may also
@@ -4814,7 +3421,6 @@ mutable struct SortedMultiDict{K, D, Ord <: Ordering}
     SortedMultiDict{K,D,Ord}(o::Ord) where {K,D,Ord} = new{K,D,Ord}(BalancedTree23{K,D,Ord}(o))
     function SortedMultiDict{K,D,Ord}(o::Ord, kv) where {K,D,Ord}
         smd = new{K,D,Ord}(BalancedTree23{K,D,Ord}(o))
-
         if eltype(kv) <: Pair
             # It's (possibly?) more efficient to access the first and second
             # elements of Pairs directly, rather than destructure
@@ -4827,46 +3433,33 @@ mutable struct SortedMultiDict{K, D, Ord <: Ordering}
             end
         end
         return smd
-
     end
 end
-
 """
     SortedMultiDict()
-
 Construct an empty `SortedMultiDict` with key type `Any` and value type
 `Any`. Ordering defaults to `Forward` ordering.
-
 **Note that a key type of `Any` or any other abstract type will lead
 to slow performance.**
 """
 SortedMultiDict() = SortedMultiDict{Any,Any,ForwardOrdering}(Forward)
-
-
 """
     SortedMultiDict(o)
-
 Construct an empty `SortedMultiDict` with key type `Any` and value type
 `Any`, ordered using `o`.
-
 **Note that a key type of `Any` or any other abstract type will lead
 to slow performance.**
 """
 SortedMultiDict(o::O) where {O<:Ordering} = SortedMultiDict{Any,Any,O}(o)
-
-# Construction from Pairs
 """
     SortedMultiDict(k1=>v1, k2=>v2, ...)
-
 Arguments are key-value pairs for insertion into the multidict. The
 keys must be of the same type as one another; the values must also
 be of one type.
 """
 SortedMultiDict(ps::Pair...) = SortedMultiDict(Forward, ps)
-
 """
     SortedMultiDict(o, k1=>v1, k2=>v2, ...)
-
 The first argument `o` is an ordering object. The remaining
 arguments are key-value pairs for insertion into the multidict. The
 keys must be of the same type as one another; the values must also
@@ -4875,25 +3468,15 @@ be of one type.
 SortedMultiDict(o::Ordering, ps::Pair...) = SortedMultiDict(o, ps)
 SortedMultiDict{K,D}(ps::Pair...) where {K,D} = SortedMultiDict{K,D,ForwardOrdering}(Forward, ps)
 SortedMultiDict{K,D}(o::Ord, ps::Pair...) where {K,D,Ord<:Ordering} = SortedMultiDict{K,D,Ord}(o, ps)
-
-# Construction from AbstractDicts
 SortedMultiDict(o::Ord, d::AbstractDict{K,D}) where {K,D,Ord<:Ordering} = SortedMultiDict{K,D,Ord}(o, d)
-
-## Construction from iteratables of Pairs/Tuples
-
-# Construction specifying Key/Value types
-# e.g., SortedMultiDict{Int,Float64}([1=>1, 2=>2.0])
 """
     SortedMultiDict{K,D}(iter)
-
 Takes an arbitrary iterable object of key=>value pairs with
 key type `K` and value type `D`. The default Forward ordering is used.
 """
 SortedMultiDict{K,D}(kv) where {K,D} = SortedMultiDict{K,D}(Forward, kv)
-
 """
     SortedMultiDict{K,D}(o, iter)
-
 Takes an arbitrary iterable object of key=>value pairs with
 key type `K` and value type `D`. The ordering object `o` is explicitly given.
 """
@@ -4908,10 +3491,6 @@ function SortedMultiDict{K,D}(o::Ord, kv) where {K,D,Ord<:Ordering}
         end
     end
 end
-
-# Construction inferring Key/Value types from input
-# e.g. SortedMultiDict{}
-
 SortedMultiDict(o1::Ordering, o2::Ordering) = throw(ArgumentError("SortedMultiDict with two parameters must be called with an Ordering and an interable of pairs"))
 SortedMultiDict(kv, o::Ordering=Forward) = SortedMultiDict(o, kv)
 function SortedMultiDict(o::Ordering, kv)
@@ -4925,28 +3504,14 @@ function SortedMultiDict(o::Ordering, kv)
         end
     end
 end
-
 _sorted_multidict_with_eltype(o::Ord, ps, ::Type{Pair{K,D}}) where {K,D,Ord} = SortedMultiDict{  K,  D,Ord}(o, ps)
 _sorted_multidict_with_eltype(o::Ord, kv, ::Type{Tuple{K,D}}) where {K,D,Ord} = SortedMultiDict{  K,  D,Ord}(o, kv)
 _sorted_multidict_with_eltype(o::Ord, ps, ::Type{Pair{K}}  ) where {K,  Ord} = SortedMultiDict{  K,Any,Ord}(o, ps)
 _sorted_multidict_with_eltype(o::Ord, kv, ::Type            ) where {    Ord} = SortedMultiDict{Any,Any,Ord}(o, kv)
-
-## TODO: It seems impossible (or at least very challenging) to create the eltype below.
-##       If deemed possible, please create a test and uncomment this definition.
-# _sorted_multi_dict_with_eltype{  D,Ord}(o::Ord, ps, ::Type{Pair{K,D} where K}) = SortedMultiDict{Any,  D,Ord}(o, ps)
-
 const SMDSemiToken = IntSemiToken
-
 const SMDToken = Tuple{SortedMultiDict, IntSemiToken}
-
-
-## This function inserts an item into the tree.
-## It returns a token that
-## points to the newly inserted item.
-
 """
     insert!(sc, k)
-
 Argument `sc` is a SortedDict or SortedMultiDict, `k` is a key and
 `v` is the corresponding value. This inserts the `(k,v)` pair into
 the container. If the key is already present in a SortedDict, this
@@ -4963,11 +3528,8 @@ boolean). Time: O(*c* log *n*)
     b, i = insert!(m.bt, convert(K,k_), convert(D,d_), true)
     IntSemiToken(i)
 end
-
-## push! is an alternative to insert!; it returns the container.
 """
     push!(sc, k=>v)
-
 Argument `sc` is a SortedDict or SortedMultiDict and `k=>v` is a
 key-value pair. This inserts the key-value pair into the container.
 If the key is already present, this overwrites the old value. The
@@ -4977,16 +3539,8 @@ return value is `sc`. Time: O(*c* log *n*)
     insert!(m.bt, convert(K,pr[1]), convert(D,pr[2]), true)
     m
 end
-
-
-
-## First and last return the first and last (key,data) pairs
-## in the SortedMultiDict.  It is an error to invoke them on an
-## empty SortedMultiDict.
-
 """
     first(sc)
-
 Argument `sc` is a SortedDict, SortedMultiDict or SortedSet. This
 function returns the first item (a `k=>v` pair for SortedDict and
 SortedMultiDict or a key for SortedSet) according to the sorted
@@ -4999,10 +3553,8 @@ an empty container. Time: O(log *n*)
     i == 2 && throw(BoundsError())
     return Pair(m.bt.data[i].k, m.bt.data[i].d)
 end
-
 """
     last(sc)
-
 Argument `sc` is a SortedDict, SortedMultiDict or SortedSet. This
 function returns the last item (a `k=>v` pair for SortedDict and
 SortedMultiDict or a key for SortedSet) according to the sorted
@@ -5015,8 +3567,6 @@ empty container. Time: O(log *n*)
     i == 1 && throw(BoundsError())
     return Pair(m.bt.data[i].k, m.bt.data[i].d)
 end
-
-
 function searchequalrange(m::SortedMultiDict, k_)
     k = convert(keytype(m),k_)
     i1 = findkeyless(m.bt, k)
@@ -5028,14 +3578,6 @@ function searchequalrange(m::SortedMultiDict, k_)
         return IntSemiToken(2), IntSemiToken(1)
     end
 end
-
-
-
-## '(k,d) in m' checks whether a key-data pair is in
-## a sorted multidict.  This requires a loop over
-## all data items whose key is equal to k.
-
-
 function in_(k_, d_, m::SortedMultiDict)
     k = convert(keytype(m), k_)
     d = convert(valtype(m), d_)
@@ -5050,20 +3592,16 @@ function in_(k_, d_, m::SortedMultiDict)
         i1 == i2 && return false
     end
 end
-
 """
     eltype(sc)
-
 Returns the (key,value) type (a 2-entry pair, i.e., `Pair{K,V}`) for
 SortedDict and SortedMultiDict. Returns the key type for SortedSet.
 This function may also be applied to the type itself. Time: O(1)
 """
 @inline eltype(m::SortedMultiDict{K,D,Ord}) where {K,D,Ord <: Ordering} =  Pair{K,D}
 @inline eltype(::Type{SortedMultiDict{K,D,Ord}}) where {K,D,Ord <: Ordering} =  Pair{K,D}
-
 """
     in(p, sc)
-
 Returns true if `p` is in `sc`. In the case that `sc` is a
 SortedDict or SortedMultiDict, `p` is a key=>value pair. In the
 case that `sc` is a SortedSet, `p` should be a key. Time: O(*c* log
@@ -5078,45 +3616,35 @@ an alternative should be considered.)
     in_(pr[1], pr[2], m)
 @inline in(::Tuple{Any,Any}, ::SortedMultiDict) =
     throw(ArgumentError("'(k,v) in sortedmultidict' not supported in Julia 0.4 or 0.5.  See documentation"))
-
 """
     keytype(sc)
-
 Returns the key type for SortedDict, SortedMultiDict and SortedSet.
 This function may also be applied to the type itself. Time: O(1)
 """
 @inline keytype(m::SortedMultiDict{K,D,Ord}) where {K,D,Ord <: Ordering} = K
 @inline keytype(::Type{SortedMultiDict{K,D,Ord}}) where {K,D,Ord <: Ordering} = K
-
 """
     valtype(sc)
-
 Returns the value type for SortedDict and SortedMultiDict. This
 function may also be applied to the type itself. Time: O(1)
 """
 @inline valtype(m::SortedMultiDict{K,D,Ord}) where {K,D,Ord <: Ordering} = D
 @inline valtype(::Type{SortedMultiDict{K,D,Ord}}) where {K,D,Ord <: Ordering} = D
-
 """
     ordtype(sc)
-
 Returns the order type for SortedDict, SortedMultiDict and
 SortedSet. This function may also be applied to the type itself.
 Time: O(1)
 """
 @inline ordtype(m::SortedMultiDict{K,D,Ord}) where {K,D,Ord <: Ordering} = Ord
 @inline ordtype(::Type{SortedMultiDict{K,D,Ord}}) where {K,D,Ord <: Ordering} = Ord
-
 """
     orderobject(sc)
-
 Returns the order object used to construct the container. Time: O(1)
 """
 @inline orderobject(m::SortedMultiDict) = m.bt.ord
-
 """
     haskey(sc,k)
-
 Returns true if key `k` is present for SortedDict, SortedMultiDict
 or SortedSet `sc`. For SortedSet, `haskey(sc,k)` is a synonym for
 `in(k,sc)`. For SortedDict and SortedMultiDict, `haskey(sc,k)` is
@@ -5126,15 +3654,8 @@ equivalent to `in(k,keys(sc))`. Time: O(*c* log *n*)
     i, exactfound = findkey(m.bt,convert(keytype(m),k_))
     exactfound
 end
-
-
-
-## Check if two SortedMultiDicts are equal in the sense of containing
-## the same (K,D) pairs in the same order.  This sense of equality does not mean
-## that semitokens valid for one are also valid for the other.
 """
     isequal(sc1,sc2)
-
 Checks if two containers are equal in the sense that they contain
 the same items; the keys are compared using the `eq` method, while
 the values are compared with the `isequal` function. In the case of
@@ -5170,19 +3691,15 @@ function isequal(m1::SortedMultiDict, m2::SortedMultiDict)
         p2 = advance((m2,p2))
     end
 end
-
 const SDorAbstractDict = Union{AbstractDict,SortedMultiDict}
-
 function mergetwo!(m::SortedMultiDict{K,D,Ord},
                    m2::SDorAbstractDict) where {K,D,Ord <: Ordering}
     for (k,v) in m2
         insert!(m.bt, convert(K,k), convert(D,v), true)
     end
 end
-
 """
     packcopy(sc)
-
 This returns a copy of `sc` in which the data is packed. When
 deletions take place, the previously allocated memory is not
 returned. This function can be used to reclaim memory after many
@@ -5193,10 +3710,8 @@ function packcopy(m::SortedMultiDict{K,D,Ord}) where {K,D,Ord <: Ordering}
     mergetwo!(w,m)
     w
 end
-
 """
     packdeepcopy(sc)
-
 This returns a packed copy of `sc` in which the keys and values are
 deep-copied. This function can be used to reclaim memory after many
 deletions. Time: O(*cn* log *n*)
@@ -5208,10 +3723,8 @@ function packdeepcopy(m::SortedMultiDict{K,D,Ord}) where {K,D,Ord <: Ordering}
     end
     w
 end
-
 """
     merge!(sc, sc1...)
-
 This updates `sc` by merging SortedDicts or SortedMultiDicts `sc1`,
 etc. into `sc`. These must all must have the same key-value types.
 In the case of keys duplicated among the arguments, the rightmost
@@ -5228,10 +3741,8 @@ function merge!(m::SortedMultiDict{K,D,Ord},
         mergetwo!(m,o)
     end
 end
-
 """
     merge(sc1, sc2...)
-
 This returns a SortedDict or SortedMultiDict that results from
 merging SortedDicts or SortedMultiDicts `sc1`, `sc2`, etc., which
 all must have the same key-value-ordering types. In the case of keys
@@ -5249,7 +3760,6 @@ function merge(m::SortedMultiDict{K,D,Ord},
     merge!(result, others...)
     result
 end
-
 function Base.show(io::IO, m::SortedMultiDict{K,D,Ord}) where {K,D,Ord <: Ordering}
     print(io, "SortedMultiDict(")
     print(io, orderobject(m), ",")
@@ -5262,28 +3772,15 @@ function Base.show(io::IO, m::SortedMultiDict{K,D,Ord}) where {K,D,Ord <: Orderi
     end
     print(io, ")")
 end
-
 """
     similar(sc)
-
 Returns a new SortedDict, SortedMultiDict, or SortedSet of the same
 type and with the same ordering as `sc` but with no entries (i.e.,
 empty). Time: O(1)
 """
 similar(m::SortedMultiDict{K,D,Ord}) where {K,D,Ord<:Ordering} =
    SortedMultiDict{K,D}(orderobject(m))
-
 isordered(::Type{T}) where {T<:SortedMultiDict} = true
-
-
-#
-# expanded from:     include("sorted_set.jl")
-#
-
-## A SortedSet is a wrapper around balancedTree with
-## methods similiar to those of the julia Set.
-
-
 """
     SortedSet(iter, o=Forward)
 and
@@ -5292,99 +3789,61 @@ and
     `SortedSet(o, iter)`
 and
     `SortedSet{K}(o, iter)`
-
 Construct a SortedSet using keys given by iterable `iter` (e.g., an
 array) and ordering object `o`. The ordering object defaults to
 `Forward` if not specified.
 """
 mutable struct SortedSet{K, Ord <: Ordering}
     bt::BalancedTree23{K,Nothing,Ord}
-
     function SortedSet{K,Ord}(o::Ord=Forward, iter=[]) where {K,Ord<:Ordering}
         sorted_set = new{K,Ord}(BalancedTree23{K,Nothing,Ord}(o))
-
         for item in iter
             push!(sorted_set, item)
         end
-
         sorted_set
     end
 end
-
 """
     SortedSet()
-
 Construct a `SortedSet{Any}` with `Forward` ordering.
-
 **Note that a key type of `Any` or any other abstract type will lead
 to slow performance.**
 """
 SortedSet() = SortedSet{Any,ForwardOrdering}(Forward)
-
 """
     SortedSet(o)
-
 Construct a `SortedSet{Any}` with `o` ordering.
-
 **Note that a key type of `Any` or any other abstract type will lead
 to slow performance.**
 """
 SortedSet(o::O) where {O<:Ordering} = SortedSet{Any,O}(o)
-
-# To address ambiguity warnings on Julia v0.4
 SortedSet(o1::Ordering,o2::Ordering) =
     throw(ArgumentError("SortedSet with two parameters must be called with an Ordering and an interable"))
 SortedSet(o::Ordering, iter) = sortedset_with_eltype(o, iter, eltype(iter))
 SortedSet(iter, o::Ordering=Forward) = sortedset_with_eltype(o, iter, eltype(iter))
-
 """
     SortedSet{K}()
-
 Construct a `SortedSet` of keys of type `K` with `Forward` ordering.
 """
 SortedSet{K}() where {K} = SortedSet{K,ForwardOrdering}(Forward)
-
 """
     SortedSet{K}(o)
-
 Construct a `SortedSet` of keys of type `K` with ordering given according 
 `o` parameter.
 """
 SortedSet{K}(o::O) where {K,O<:Ordering} = SortedSet{K,O}(o)
-
-# To address ambiguity warnings on Julia v0.4
 SortedSet{K}(o1::Ordering,o2::Ordering) where {K} =
     throw(ArgumentError("SortedSet with two parameters must be called with an Ordering and an interable"))
 SortedSet{K}(o::Ordering, iter) where {K} = sortedset_with_eltype(o, iter, K)
 SortedSet{K}(iter, o::Ordering=Forward) where {K} = sortedset_with_eltype(o, iter, K)
-
 sortedset_with_eltype(o::Ord, iter, ::Type{K}) where {K,Ord} = SortedSet{K,Ord}(o, iter)
-
 const SetSemiToken = IntSemiToken
-
-# The following definition was moved to tokens2.jl
-# const SetToken = Tuple{SortedSet, IntSemiToken}
-
-## This function looks up a key in the tree;
-## if not found, then it returns a marker for the
-## end of the tree.
-
 @inline function find(m::SortedSet, k_)
     ll, exactfound = findkey(m.bt, convert(keytype(m),k_))
     IntSemiToken(exactfound ? ll : 2)
 end
-
-
-## This function inserts an item into the tree.
-## It returns a bool and a token.
-## The bool is true if the inserted item is new.
-## It is false if there was already an item
-## with that key.
-## The token points to the newly inserted item.
-
 """
     insert!(sc, k)
-
 Argument `sc` is a SortedSet and `k` is a key. This inserts the key
 into the container. If the key is already present, this overwrites
 the old value. (This is not necessarily a no-op; see below for
@@ -5397,11 +3856,8 @@ second entry is the semitoken of the new entry. Time: O(*c* log *n*)
     b, i = insert!(m.bt, convert(keytype(m),k_), nothing, false)
     b, IntSemiToken(i)
 end
-
-## push! is similar to insert but returns the set
 """
     push!(sc, k)
-
 Argument `sc` is a SortedSet and `k` is a key. This inserts the key
 into the container. If the key is already present, this overwrites
 the old value. (This is not necessarily a no-op; see below for
@@ -5412,15 +3868,8 @@ remarks about the customizing the sort order.) The return value is
     b, i = insert!(m.bt, convert(keytype(m),k_), nothing, false)
     m
 end
-
-
-## First and last return the first and last (key,data) pairs
-## in the SortedDict.  It is an error to invoke them on an
-## empty SortedDict.
-
 """
     first(sc)
-
 Argument `sc` is a SortedDict, SortedMultiDict or SortedSet. This
 function returns the first item (a `k=>v` pair for SortedDict and
 SortedMultiDict or a key for SortedSet) according to the sorted
@@ -5433,10 +3882,8 @@ an empty container. Time: O(log *n*)
     i == 2 && throw(BoundsError())
     return m.bt.data[i].k
 end
-
 """
     last(sc)
-
 Argument `sc` is a SortedDict, SortedMultiDict or SortedSet. This
 function returns the last item (a `k=>v` pair for SortedDict and
 SortedMultiDict or a key for SortedSet) according to the sorted
@@ -5449,61 +3896,47 @@ empty container. Time: O(log *n*)
     i == 1 && throw(BoundsError())
     return m.bt.data[i].k
 end
-
-
 @inline function in(k_, m::SortedSet)
     i, exactfound = findkey(m.bt, convert(keytype(m),k_))
     return exactfound
 end
-
 """
     eltype(sc)
-
 Returns the key type for SortedSet.
 This function may also be applied to the type itself. Time: O(1)
 """
 @inline eltype(m::SortedSet{K,Ord}) where {K,Ord <: Ordering} = K
 @inline eltype(::Type{SortedSet{K,Ord}}) where {K,Ord <: Ordering} = K
-
 """
     keytype(sc)
-
 Returns the key type for SortedDict, SortedMultiDict and SortedSet.
 This function may also be applied to the type itself. Time: O(1)
 """
 @inline keytype(m::SortedSet{K,Ord}) where {K,Ord <: Ordering} = K
 @inline keytype(::Type{SortedSet{K,Ord}}) where {K,Ord <: Ordering} = K
-
 """
     ordtype(sc)
-
 Returns the order type for SortedDict, SortedMultiDict and
 SortedSet. This function may also be applied to the type itself.
 Time: O(1)
 """
 @inline ordtype(m::SortedSet{K,Ord}) where {K,Ord <: Ordering} = Ord
 @inline ordtype(::Type{SortedSet{K,Ord}}) where {K,Ord <: Ordering} = Ord
-
 """
     orderobject(sc)
-
 Returns the order object used to construct the container. Time: O(1)
 """
 @inline orderobject(m::SortedSet) = m.bt.ord
-
 """
     haskey(sc,k)
-
 Returns true if key `k` is present for SortedDict, SortedMultiDict
 or SortedSet `sc`. For SortedSet, `haskey(sc,k)` is a synonym for
 `in(k,sc)`. For SortedDict and SortedMultiDict, `haskey(sc,k)` is
 equivalent to `in(k,keys(sc))`. Time: O(*c* log *n*)
 """
 haskey(m::SortedSet, k_) = in(k_, m)
-
 """
     delete!(sc, k)
-
 Argument `sc` is a SortedDict or SortedSet and `k` is a key. This
 operation deletes the item whose key is `k`. It is a `KeyError` if
 `k` is not a key of an item in the container. After this operation
@@ -5516,11 +3949,8 @@ Returns `sc`. Time: O(*c* log *n*)
     delete!(m.bt, i)
     m
 end
-
-
 """
     pop!(sc, k)
-
 Deletes the item with key `k` in SortedDict or SortedSet `sc` and
 returns the value that was associated with `k` in the case of
 SortedDict or `k` itself in the case of SortedSet. A `KeyError`
@@ -5534,10 +3964,8 @@ results if `k` is not in `sc`. Time: O(*c* log *n*)
     delete!(m.bt, i)
     k
 end
-
 """
     pop!(ss)
-
 Deletes the item with first key in SortedSet `ss` and returns the
 key. A `BoundsError` results if `ss` is empty. Time: O(*c* log *n*)
 """
@@ -5548,15 +3976,8 @@ key. A `BoundsError` results if `ss` is empty. Time: O(*c* log *n*)
     delete!(m.bt, i)
     k
 end
-
-
-
-## Check if two SortedSets are equal in the sense of containing
-## the same K entries.  This sense of equality does not mean
-## that semitokens valid for one are also valid for the other.
 """
     isequal(sc1,sc2)
-
 Checks if two containers are equal in the sense that they contain
 the same items; the keys are compared using the `eq` method, while
 the values are compared with the `isequal` function. In the case of
@@ -5592,10 +4013,8 @@ function isequal(m1::SortedSet, m2::SortedSet)
         p2 = advance((m2,p2))
     end
 end
-
 """
     union!(ss, iterable)
-
 This function inserts each item from the second argument (which must
 iterable) into the SortedSet `ss`. The items must be convertible to
 the key-type of `ss`. Time: O(*ci* log *n*) where *i* is the number
@@ -5607,10 +4026,8 @@ function union!(m1::SortedSet{K,Ord}, iterable_item) where {K, Ord <: Ordering}
     end
     m1
 end
-
 """
     union(ss, iterable...)
-
 This function creates a new SortedSet (the return argument) and
 inserts each item from `ss` and each item from each iterable
 argument into the returned SortedSet. Time: O(*cn* log *n*) where
@@ -5623,7 +4040,6 @@ function union(m1::SortedSet, others...)
     end
     mr
 end
-
 function intersect2(m1::SortedSet{K, Ord}, m2::SortedSet{K, Ord}) where {K, Ord <: Ordering}
     ord = orderobject(m1)
     mi = SortedSet(K[], ord)
@@ -5646,10 +4062,8 @@ function intersect2(m1::SortedSet{K, Ord}, m2::SortedSet{K, Ord}) where {K, Ord 
         end
     end
 end
-
 """
     intersect(ss, others...)
-
 Each argument is a SortedSet with the same key and order type. The
 return variable is a new SortedSet that is the intersection of all
 the sets that are input. Time: O(*cn* log *n*), where *n* is the
@@ -5672,10 +4086,8 @@ function intersect(m1::SortedSet{K,Ord}, others::SortedSet{K,Ord}...) where {K, 
         return mi
     end
 end
-
 """
     symdiff(ss1, ss2)
-
 The two argument are sorted sets with the same key and order type.
 This operation computes the symmetric difference, i.e., a sorted set
 containing entries that are in one of `ss1`, `ss2` but not both.
@@ -5717,10 +4129,8 @@ function symdiff(m1::SortedSet{K,Ord}, m2::SortedSet{K,Ord}) where {K, Ord <: Or
         end
     end
 end
-
 """
     setdiff(ss1, ss2)
-
 The two arguments are sorted sets with the same key and order type.
 This operation computes the difference, i.e., a sorted set
 containing entries that in are in `ss1` but not `ss2`. Time: O(*cn*
@@ -5755,10 +4165,8 @@ function setdiff(m1::SortedSet{K,Ord}, m2::SortedSet{K,Ord}) where {K, Ord <: Or
         end
     end
 end
-
 """
     setdiff!(ss, iterable)
-
 This function deletes items in `ss` that appear in the second
 argument. The second argument must be iterable and its entries must
 be convertible to the key type of m1. Time: O(*cm* log *n*), where
@@ -5773,10 +4181,8 @@ function setdiff!(m1::SortedSet, iterable)
         end
     end
 end
-
 """
     issubset(iterable, ss)
-
 This function checks whether each item of the first argument is an
 element of the SortedSet `ss`. The entries must be convertible to
 the key-type of `ss`. Time: O(*cm* log *n*), where *n* is the sizes
@@ -5790,10 +4196,8 @@ function issubset(iterable, m2::SortedSet)
     end
     return true
 end
-
 """
     packcopy(sc)
-
 This returns a copy of `sc` in which the data is packed. When
 deletions take place, the previously allocated memory is not
 returned. This function can be used to reclaim memory after many
@@ -5806,10 +4210,8 @@ function packcopy(m::SortedSet{K,Ord}) where {K,Ord <: Ordering}
     end
     w
 end
-
 """
     packdeepcopy(sc)
-
 This returns a packed copy of `sc` in which the keys and values are
 deep-copied. This function can be used to reclaim memory after many
 deletions. Time: O(*cn* log *n*)
@@ -5822,9 +4224,6 @@ function packdeepcopy(m::SortedSet{K,Ord}) where {K, Ord <: Ordering}
     end
     w
 end
-
-
-
 function Base.show(io::IO, m::SortedSet{K,Ord}) where {K,Ord <: Ordering}
     print(io, "SortedSet(")
     keys = K[]
@@ -5836,93 +4235,45 @@ function Base.show(io::IO, m::SortedSet{K,Ord}) where {K,Ord <: Ordering}
     print(io, orderobject(m))
     print(io, ")")
 end
-
 """
     similar(sc)
-
 Returns a new SortedDict, SortedMultiDict, or SortedSet of the same
 type and with the same ordering as `sc` but with no entries (i.e.,
 empty). Time: O(1)
 """
 similar(m::SortedSet{K,Ord}) where {K,Ord<:Ordering} =
 SortedSet{K,Ord}(orderobject(m))
-
-
-#
-# expanded from:     include("tokens2.jl")
-#
-
 import Base.isless
 import Base.isequal
 import Base.colon
 import Base.endof
-
 const SDMContainer = Union{SortedDict, SortedMultiDict}
 const SAContainer = Union{SDMContainer, SortedSet}
-
 const Token = Tuple{SAContainer, IntSemiToken}
 const SDMToken = Tuple{SDMContainer, IntSemiToken}
 const SetToken = Tuple{SortedSet, IntSemiToken}
-
-
-## Function startof returns the semitoken that points
-## to the first sorted order of the tree.  It returns
-## the past-end token if the tree is empty.
-
 @inline startof(m::SAContainer) = IntSemiToken(beginloc(m.bt))
-
-## Function endof returns the semitoken that points
-## to the last item in the sorted order,
-## or the before-start marker if the tree is empty.
-
 @inline endof(m::SAContainer) = IntSemiToken(endloc(m.bt))
-
-## Function pastendsemitoken returns the token past the end of the data.
-
 @inline pastendsemitoken(::SAContainer) = IntSemiToken(2)
-
-## Function beforestarttoken returns the token before the start of the data.
-
 @inline beforestartsemitoken(::SAContainer) = IntSemiToken(1)
-
-## delete! deletes an item given a token.
-
 @inline function delete!(ii::Token)
     has_data(ii)
     delete!(ii[1].bt, ii[2].address)
 end
-
-## Function advances takes a token and returns the
-## next token in the sorted order.
-
 @inline function advance(ii::Token)
     not_pastend(ii)
     IntSemiToken(nextloc0(ii[1].bt, ii[2].address))
 end
-
-
-## Function regresss takes a token and returns the
-## previous token in the sorted order.
-
 @inline function regress(ii::Token)
     not_beforestart(ii)
     IntSemiToken(prevloc0(ii[1].bt, ii[2].address))
 end
-
-
-## status of a token is 0 if the token is invalid, 1 if it points to
-## ordinary data, 2 if it points to the before-start location and 3 if
-## it points to the past-end location.
-
-
 @inline status(ii::Token) =
        !(ii[2].address in ii[1].bt.useddatacells) ? 0 :
          ii[2].address == 1 ?                       2 :
          ii[2].address == 2 ?                       3 : 1
-
 """
     compare(m::SAContainer, s::IntSemiToken, t::IntSemiToken)
-
 Determines the  relative positions of the  data items indexed
 by `(m,s)` and  `(m,t)` in the sorted order. The  return value is `-1`
 if `(m,s)` precedes `(m,t)`, `0` if they are equal, and `1` if `(m,s)`
@@ -5930,46 +4281,32 @@ succeeds `(m,t)`. `s`  and `t`  are semitokens  for the  same container `m`.
 """
 @inline compare(m::SAContainer, s::IntSemiToken, t::IntSemiToken) =
       compareInd(m.bt, s.address, t.address)
-
-
 @inline function deref(ii::SDMToken)
     has_data(ii)
     return Pair(ii[1].bt.data[ii[2].address].k, ii[1].bt.data[ii[2].address].d)
 end
-
 @inline function deref(ii::SetToken)
     has_data(ii)
     return ii[1].bt.data[ii[2].address].k
 end
-
 @inline function deref_key(ii::SDMToken)
     has_data(ii)
     return ii[1].bt.data[ii[2].address].k
 end
-
 @inline function deref_value(ii::SDMToken)
     has_data(ii)
     return ii[1].bt.data[ii[2].address].d
 end
-
-
-
-## Functions setindex! and getindex for semitokens.
-## Note that we can't use SDMContainer here; we have
-## to spell it out otherwise there is an ambiguity.
-
 @inline function getindex(m::SortedDict,
                           i::IntSemiToken)
     has_data((m,i))
     return m.bt.data[i.address].d
 end
-
 @inline function getindex(m::SortedMultiDict,
                           i::IntSemiToken)
     has_data((m,i))
     return m.bt.data[i.address].d
 end
-
 @inline function setindex!(m::SortedDict,
                            d_,
                            i::IntSemiToken)
@@ -5979,7 +4316,6 @@ end
                                                          convert(valtype(m),d_))
     m
 end
-
 @inline function setindex!(m::SortedMultiDict,
                            d_,
                            i::IntSemiToken)
@@ -5989,200 +4325,104 @@ end
                                                          convert(valtype(m),d_))
     m
 end
-
-
-## This function takes a key and returns the token
-## of the first item in the tree that is >= the given
-## key in the sorted order.  It returns the past-end marker
-## if there is none.
-
 @inline function searchsortedfirst(m::SAContainer, k_)
     i = findkeyless(m.bt, convert(keytype(m), k_))
     IntSemiToken(nextloc0(m.bt, i))
 end
-
-## This function takes a key and returns a token
-## to the first item in the tree that is > the given
-## key in the sorted order.  It returns the past-end marker
-## if there is none.
-
-
 @inline function searchsortedafter(m::SAContainer, k_)
     i, exactfound = findkey(m.bt, convert(keytype(m), k_))
     IntSemiToken(nextloc0(m.bt, i))
 end
-
-## This function takes a key and returns a token
-## to the last item in the tree that is <= the given
-## key in the sorted order.  It returns the before-start marker
-## if there is none.
-
 @inline function searchsortedlast(m::SAContainer, k_)
     i, exactfound = findkey(m.bt, convert(keytype(m),k_))
     IntSemiToken(i)
 end
-
-
-## The next four are correctness-checking routines.  They are
-## not exported.
-
-
 @inline not_beforestart(i::Token) =
     (!(i[2].address in i[1].bt.useddatacells) ||
      i[2].address == 1) && throw(BoundsError())
-
 @inline not_pastend(i::Token) =
     (!(i[2].address in i[1].bt.useddatacells) ||
      i[2].address == 2) && throw(BoundsError())
-
-
 @inline has_data(i::Token) =
     (!(i[2].address in i[1].bt.useddatacells) ||
      i[2].address < 3) && throw(BoundsError())
-
-
-#
-# expanded from:     include("container_loops.jl")
-#
-
 import Base.keys
 import Base.values
-
-## These are the containers that can be looped over
-## The prefix SDM is for SortedDict and SortedMultiDict
-## The prefix SS is for SortedSet.  The prefix SA
-## is for all sorted containers.
-## The following two definitions now appear in tokens2.jl
-
-# const SDMContainer = Union{SortedDict, SortedMultiDict}
-# const SAContainer = Union{SDMContainer, SortedSet}
-
 @inline extractcontainer(s::SAContainer) = s
-
-## This holds an object describing an exclude-last
-## iteration.
-
-
 abstract type AbstractExcludeLast{ContainerType <: SAContainer} end
-
 struct SDMExcludeLast{ContainerType <: SDMContainer} <:
                               AbstractExcludeLast{ContainerType}
     m::ContainerType
     first::Int
     pastlast::Int
 end
-
 struct SSExcludeLast{ContainerType <: SortedSet} <:
                               AbstractExcludeLast{ContainerType}
     m::ContainerType
     first::Int
     pastlast::Int
 end
-
 @inline extractcontainer(s::AbstractExcludeLast) = s.m
 eltype(s::AbstractExcludeLast) = eltype(s.m)
-
-## This holds an object describing an include-last
-## iteration.
-
 abstract type AbstractIncludeLast{ContainerType <: SAContainer} end
-
-
-
 struct SDMIncludeLast{ContainerType <: SDMContainer} <:
                                AbstractIncludeLast{ContainerType}
     m::ContainerType
     first::Int
     last::Int
 end
-
-
 struct SSIncludeLast{ContainerType <: SortedSet} <:
                                AbstractIncludeLast{ContainerType}
     m::ContainerType
     first::Int
     last::Int
 end
-
 @inline extractcontainer(s::AbstractIncludeLast) = s.m
 eltype(s::AbstractIncludeLast) = eltype(s.m)
-
-
-## The basic iterations are either over the whole sorted container, an
-## exclude-last object or include-last object.
-
 const SDMIterableTypesBase = Union{SDMContainer,
                                    SDMExcludeLast,
                                    SDMIncludeLast}
-
 const SSIterableTypesBase = Union{SortedSet,
                                   SSExcludeLast,
                                   SSIncludeLast}
-
-
 const SAIterableTypesBase = Union{SAContainer,
                                   AbstractExcludeLast,
                                   AbstractIncludeLast}
-
-
-## The compound iterations are obtained by applying keys(..) or values(..)
-## to the basic iterations of the SDM.. type.
-## Furthermore, semitokens(..) can be applied
-## to either a basic iteration or a keys/values iteration.
-
 struct SDMKeyIteration{T <: SDMIterableTypesBase}
     base::T
 end
-
 eltype(s::SDMKeyIteration) = keytype(extractcontainer(s.base))
 length(s::SDMKeyIteration) = length(extractcontainer(s.base))
-
-
 struct SDMValIteration{T <: SDMIterableTypesBase}
     base::T
 end
-
 eltype(s::SDMValIteration) = valtype(extractcontainer(s.base))
 length(s::SDMValIteration) = length(extractcontainer(s.base))
-
-
 struct SDMSemiTokenIteration{T <: SDMIterableTypesBase}
     base::T
 end
-
 eltype(s::SDMSemiTokenIteration) = Tuple{IntSemiToken,
                                          keytype(extractcontainer(s.base)),
                                          valtype(extractcontainer(s.base))}
-
 struct SSSemiTokenIteration{T <: SSIterableTypesBase}
     base::T
 end
-
 eltype(s::SSSemiTokenIteration) = Tuple{IntSemiToken,
                                         eltype(extractcontainer(s.base))}
-
-
 struct SDMSemiTokenKeyIteration{T <: SDMIterableTypesBase}
     base::T
 end
-
 eltype(s::SDMSemiTokenKeyIteration) = Tuple{IntSemiToken,
                                             keytype(extractcontainer(s.base))}
-
 struct SAOnlySemiTokensIteration{T <: SAIterableTypesBase}
     base::T
 end
-
 eltype(::SAOnlySemiTokensIteration) = IntSemiToken
-
-
 struct SDMSemiTokenValIteration{T <: SDMIterableTypesBase}
     base::T
 end
-
 eltype(s::SDMSemiTokenValIteration) = Tuple{IntSemiToken,
                                             valtype(extractcontainer(s.base))}
-
 const SACompoundIterable = Union{SDMKeyIteration,
                                  SDMValIteration,
                                  SDMSemiTokenIteration,
@@ -6190,62 +4430,31 @@ const SACompoundIterable = Union{SDMKeyIteration,
                                  SDMSemiTokenKeyIteration,
                                  SDMSemiTokenValIteration,
                                  SAOnlySemiTokensIteration}
-
 @inline extractcontainer(s::SACompoundIterable) = extractcontainer(s.base)
-
-
 const SAIterable = Union{SAIterableTypesBase, SACompoundIterable}
-
-
-## All the loops maintain a state which is an object of the
-## following type.
-
 struct SAIterationState
     next::Int
     final::Int
 end
-
-
-## All the loops have the same method for 'done'
-
 @inline done(::SAIterable, state::SAIterationState) = state.next == state.final
-
-
 @inline exclusive(m::T, ii::(Tuple{IntSemiToken,IntSemiToken})) where {T <: SDMContainer} =
     SDMExcludeLast(m, ii[1].address, ii[2].address)
-
 @inline exclusive(m::T, ii::(Tuple{IntSemiToken,IntSemiToken})) where {T <: SortedSet} =
     SSExcludeLast(m, ii[1].address, ii[2].address)
-
 @inline exclusive(m::T, i1::IntSemiToken, i2::IntSemiToken) where {T <: SAContainer} =
     exclusive(m, (i1,i2))
-
 @inline inclusive(m::T, ii::(Tuple{IntSemiToken,IntSemiToken})) where {T <: SDMContainer} =
     SDMIncludeLast(m, ii[1].address, ii[2].address)
-
 @inline inclusive(m::T, ii::(Tuple{IntSemiToken,IntSemiToken})) where {T <: SortedSet} =
     SSIncludeLast(m, ii[1].address, ii[2].address)
-
 @inline inclusive(m::T, i1::IntSemiToken, i2::IntSemiToken) where {T <: SAContainer} =
     inclusive(m, (i1,i2))
-
-
-
-# Next definition needed to break ambiguity with keys(AbstractDict) from Dict.jl
-
 @inline keys(ba::SortedDict{K,D,Ord}) where {K, D, Ord <: Ordering} = SDMKeyIteration(ba)
 @inline keys(ba::T) where {T <: SDMIterableTypesBase} = SDMKeyIteration(ba)
-
-
 in(k, keyit::SDMKeyIteration{SortedDict{K,D,Ord}}) where {K,D,Ord <: Ordering} =
     haskey(extractcontainer(keyit.base), k)
-
 in(k, keyit::SDMKeyIteration{SortedMultiDict{K,D,Ord}}) where {K,D,Ord <: Ordering} =
     haskey(extractcontainer(keyit.base), k)
-
-
-
-# Next definition needed to break ambiguity with values(AbstractDict) from Dict.jl
 @inline values(ba::SortedDict{K,D,Ord}) where {K, D, Ord <: Ordering} = SDMValIteration(ba)
 @inline values(ba::T) where {T <: SDMIterableTypesBase} = SDMValIteration(ba)
 @inline semitokens(ba::T) where {T <: SDMIterableTypesBase} = SDMSemiTokenIteration(ba)
@@ -6255,12 +4464,8 @@ in(k, keyit::SDMKeyIteration{SortedMultiDict{K,D,Ord}}) where {K,D,Ord <: Orderi
 @inline semitokens(vi::SDMValIteration{T}) where {T <: SDMIterableTypesBase} =
                    SDMSemiTokenValIteration(vi.base)
 @inline onlysemitokens(ba::T) where {T <: SAIterableTypesBase} = SAOnlySemiTokensIteration(ba)
-
-
-
 @inline start(m::SAContainer) = SAIterationState(nextloc0(m.bt,1), 2)
 @inline start(e::SACompoundIterable) = start(e.base)
-
 function start(e::AbstractExcludeLast)
     (!(e.first in e.m.bt.useddatacells) || e.first == 1 ||
         !(e.pastlast in e.m.bt.useddatacells)) &&
@@ -6271,7 +4476,6 @@ function start(e::AbstractExcludeLast)
         return SAIterationState(2, 2)
     end
 end
-
 function start(e::AbstractIncludeLast)
     (!(e.first in e.m.bt.useddatacells) || e.first == 1 ||
         !(e.last in e.m.bt.useddatacells) || e.last == 2) &&
@@ -6282,78 +4486,50 @@ function start(e::AbstractIncludeLast)
         return SAIterationState(2, 2)
     end
 end
-
-
-## The 'next' function returns different objects depending on whether
-## it is a basic iteration, a key iteration, a values iterations,
-## a semitokens/basic iteration, a semitokens/key iteration, or semitokens/values
-## iteration.
-
 @inline function next(u::SAOnlySemiTokensIteration, state::SAIterationState)
     sn = state.next
     (sn < 3 || !(sn in extractcontainer(u).bt.useddatacells)) && throw(BoundsError())
     IntSemiToken(sn),
     SAIterationState(nextloc0(extractcontainer(u).bt, sn), state.final)
 end
-
-
 @inline function nexthelper(u, state::SAIterationState)
     sn = state.next
     (sn < 3 || !(sn in extractcontainer(u).bt.useddatacells)) && throw(BoundsError())
     extractcontainer(u).bt.data[sn], sn,
     SAIterationState(nextloc0(extractcontainer(u).bt, sn), state.final)
 end
-
-
-
-
-
 @inline function next(u::SDMIterableTypesBase, state::SAIterationState)
     dt, t, ni = nexthelper(u, state)
     (dt.k => dt.d), ni
 end
-
-
 @inline function next(u::SSIterableTypesBase, state::SAIterationState)
     dt, t, ni = nexthelper(u, state)
     dt.k, ni
 end
-
-
 @inline function next(u::SDMKeyIteration, state::SAIterationState)
     dt, t, ni = nexthelper(u, state)
     dt.k, ni
 end
-
 @inline function next(u::SDMValIteration, state::SAIterationState)
     dt, t, ni = nexthelper(u, state)
     dt.d, ni
 end
-
-
 @inline function next(u::SDMSemiTokenIteration, state::SAIterationState)
     dt, t, ni = nexthelper(u, state)
     (IntSemiToken(t), dt.k, dt.d), ni
 end
-
-
 @inline function next(u::SSSemiTokenIteration, state::SAIterationState)
     dt, t, ni = nexthelper(u, state)
     (IntSemiToken(t), dt.k), ni
 end
-
 @inline function next(u::SDMSemiTokenKeyIteration, state::SAIterationState)
     dt, t, ni = nexthelper(u, state)
     (IntSemiToken(t), dt.k), ni
 end
-
-
 @inline function next(u::SDMSemiTokenValIteration, state::SAIterationState)
     dt, t, ni = nexthelper(u, state)
     (IntSemiToken(t), dt.d), ni
 end
-
-
 eachindex(sd::SortedDict) = keys(sd)
 eachindex(sdm::SortedMultiDict) = onlysemitokens(sdm)
 eachindex(ss::SortedSet) = onlysemitokens(ss)
@@ -6365,60 +4541,33 @@ eachindex(sd::SDMIncludeLast{SortedDict{K,D,Ord}}) where {K,D,Ord <: Ordering} =
 eachindex(smd::SDMIncludeLast{SortedMultiDict{K,D,Ord}}) where {K,D,Ord <: Ordering} =
      onlysemitokens(smd)
 eachindex(ss::SSIncludeLast) = onlysemitokens(ss)
-
-
 empty!(m::SAContainer) =  empty!(m.bt)
 @inline length(m::SAContainer) = length(m.bt.data) - length(m.bt.freedatainds) - 2
 @inline isempty(m::SAContainer) = length(m) == 0
-
-
-
-#
-# expanded from:     include("dict_sorting.jl")
-#
-
-# Sort for dicts
 import Base: sort, sort!
-
 function sort!(d::OrderedDict; byvalue::Bool=false, args...)
     if d.ndel > 0
         rehash!(d)
     end
-
     if byvalue
         p = sortperm(d.vals; args...)
     else
         p = sortperm(d.keys; args...)
     end
-
     for (i,key) in enumerate(d.keys)
         idx = ht_keyindex(d, key, false)
         d.slots[idx] = p[i]
     end
-
     d.keys = d.keys[p]
     d.vals = d.vals[p]
-
     return d
 end
-
 sort(d::OrderedDict; args...) = sort!(copy(d); args...)
 sort(d::Dict; args...) = sort!(OrderedDict(d); args...)
-## Uncomment these after #224 is merged
-# sort!(d::DefaultOrderedDict; args...) = (sort!(d.d.d; args...); d)
-# sort(d::DefaultDict; args...) = DefaultOrderedDict(d.d.default, sort(d.d.d; args...))
-# sort(d::DefaultOrderedDict; args...) = DefaultOrderedDict(d.d.default, sort!(copy(d.d.d); args...))
-
     export
         CircularBuffer,
         capacity,
         isfull
-
-
-#
-# expanded from:     include("circular_buffer.jl")
-#
-
 """
 New items are pushed to the back of the list, overwriting values in a circular fashion.
 """
@@ -6426,15 +4575,12 @@ mutable struct CircularBuffer{T} <: AbstractVector{T}
     capacity::Int
     first::Int
     buffer::Vector{T}
-
     CircularBuffer{T}(capacity::Int) where {T} = new{T}(capacity, 1, T[])
 end
-
 function Base.empty!(cb::CircularBuffer)
     cb.first = 1
     empty!(cb.buffer)
 end
-
 function _buffer_index(cb::CircularBuffer, i::Int)
     n = length(cb)
     if i < 1 || i > n
@@ -6447,16 +4593,13 @@ function _buffer_index(cb::CircularBuffer, i::Int)
         idx
     end
 end
-
 function Base.getindex(cb::CircularBuffer, i::Int)
     cb.buffer[_buffer_index(cb, i)]
 end
-
 function Base.setindex!(cb::CircularBuffer, data, i::Int)
     cb.buffer[_buffer_index(cb, i)] = data
     cb
 end
-
 function Base.push!(cb::CircularBuffer, data)
     # if full, increment and overwrite, otherwise push
     if length(cb) == cb.capacity
@@ -6467,7 +4610,6 @@ function Base.push!(cb::CircularBuffer, data)
     end
     cb
 end
-
 function Base.unshift!(cb::CircularBuffer, data)
     # if full, decrement and overwrite, otherwise unshift
     if length(cb) == cb.capacity
@@ -6478,7 +4620,6 @@ function Base.unshift!(cb::CircularBuffer, data)
     end
     cb
 end
-
 function Base.append!(cb::CircularBuffer, datavec::AbstractVector)
     # push at most last `capacity` items
     n = length(datavec)
@@ -6487,43 +4628,24 @@ function Base.append!(cb::CircularBuffer, datavec::AbstractVector)
     end
     cb
 end
-
 Base.length(cb::CircularBuffer) = length(cb.buffer)
 Base.size(cb::CircularBuffer) = (length(cb),)
 Base.convert(::Type{Array}, cb::CircularBuffer{T}) where {T} = T[x for x in cb]
 Base.isempty(cb::CircularBuffer) = isempty(cb.buffer)
-
 capacity(cb::CircularBuffer) = cb.capacity
 isfull(cb::CircularBuffer) = length(cb) == cb.capacity
-
     export status
     export deref_key, deref_value, deref, advance, regress
-
     export PriorityQueue, peek
-
-
-
-#
-# expanded from:     include("priorityqueue.jl")
-#
-
-# This file contains code that was formerly a part of Julia. License is MIT: http://julialang.org/license
-
-# PriorityQueue
-# -------------
-
 """
     PriorityQueue(K, V, [ord])
-
 Construct a new [`PriorityQueue`](@ref), with keys of type
 `K` and values/priorites of type `V`.
 If an order is not given, the priority queue is min-ordered using
 the default comparison for `V`.
-
 A `PriorityQueue` acts like a `Dict`, mapping values to their
 priorities, with the addition of a `dequeue!` function to remove the
 lowest priority element.
-
 ```jldoctest
 julia> a = PriorityQueue(["a","b","c"],[2,3,1],Base.Order.Forward)
 PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 3 entries:
@@ -6536,14 +4658,11 @@ mutable struct PriorityQueue{K,V,O<:Ordering} <: AbstractDict{K,V}
     # Binary heap of (element, priority) pairs.
     xs::Array{Pair{K,V}, 1}
     o::O
-
     # Map elements to their index in xs
     index::Dict{K, Int}
-
     function PriorityQueue{K,V,O}(o::O) where {K,V,O<:Ordering}
         new{K,V,O}(Vector{Pair{K,V}}(), o, Dict{K, Int}())
     end
-
     function PriorityQueue{K,V,O}(o::O, itr) where {K,V,O<:Ordering}
         xs = Vector{Pair{K,V}}(uninitialized, length(itr))
         index = Dict{K, Int}()
@@ -6555,27 +4674,18 @@ mutable struct PriorityQueue{K,V,O<:Ordering} <: AbstractDict{K,V}
             index[k] = i
         end
         pq = new{K,V,O}(xs, o, index)
-
         # heapify
         for i in heapparent(length(pq.xs)):-1:1
             percolate_down!(pq, i)
         end
-
         pq
     end
 end
-
-# Any-Any constructors
 PriorityQueue(o::Ordering=Forward) = PriorityQueue{Any,Any,typeof(o)}(o)
-
-# Construction from Pairs
 PriorityQueue(ps::Pair...) = PriorityQueue(Forward, ps)
 PriorityQueue(o::Ordering, ps::Pair...) = PriorityQueue(o, ps)
 PriorityQueue{K,V}(ps::Pair...) where {K,V} = PriorityQueue{K,V,ForwardOrdering}(Forward, ps)
 PriorityQueue{K,V}(o::Ord, ps::Pair...) where {K,V,Ord<:Ordering} = PriorityQueue{K,V,Ord}(o, ps)
-
-# Construction specifying Key/Value types
-# e.g., PriorityQueue{Int,Float64}([1=>1, 2=>2.0])
 PriorityQueue{K,V}(kv) where {K,V} = PriorityQueue{K,V}(Forward, kv)
 function PriorityQueue{K,V}(o::Ord, kv) where {K,V,Ord<:Ordering}
     try
@@ -6588,10 +4698,6 @@ function PriorityQueue{K,V}(o::Ord, kv) where {K,V,Ord<:Ordering}
         end
     end
 end
-
-# Construction inferring Key/Value types from input
-# e.g. PriorityQueue{}
-
 PriorityQueue(o1::Ordering, o2::Ordering) = throw(ArgumentError("PriorityQueue with two parameters must be called with an Ordering and an interable of pairs"))
 PriorityQueue(kv, o::Ordering=Forward) = PriorityQueue(o, kv)
 function PriorityQueue(o::Ordering, kv)
@@ -6605,28 +4711,19 @@ function PriorityQueue(o::Ordering, kv)
         end
     end
 end
-
 _priority_queue_with_eltype(o::Ord, ps, ::Type{Pair{K,V}} ) where {K,V,Ord} = PriorityQueue{  K,  V,Ord}(o, ps)
 _priority_queue_with_eltype(o::Ord, kv, ::Type{Tuple{K,V}}) where {K,V,Ord} = PriorityQueue{  K,  V,Ord}(o, kv)
 _priority_queue_with_eltype(o::Ord, ps, ::Type{Pair{K}}   ) where {K,  Ord} = PriorityQueue{  K,Any,Ord}(o, ps)
 _priority_queue_with_eltype(o::Ord, kv, ::Type            ) where {    Ord} = PriorityQueue{Any,Any,Ord}(o, kv)
-
-## TODO: It seems impossible (or at least very challenging) to create the eltype below.
-##       If deemed possible, please create a test and uncomment this definition.
-# _priority_queue_with_eltype{  D,Ord}(o::Ord, ps, ::Type{Pair{K,V} where K}) = PriorityQueue{Any,  D,Ord}(o, ps)
-
 length(pq::PriorityQueue) = length(pq.xs)
 isempty(pq::PriorityQueue) = isempty(pq.xs)
 haskey(pq::PriorityQueue, key) = haskey(pq.index, key)
-
 """
     peek(pq)
-
 Return the lowest priority key from a priority queue without removing that
 key from the queue.
 """
 peek(pq::PriorityQueue) = pq.xs[1]
-
 function percolate_down!(pq::PriorityQueue, i::Integer)
     x = pq.xs[i]
     @inbounds while (l = heapleft(i)) <= length(pq)
@@ -6643,8 +4740,6 @@ function percolate_down!(pq::PriorityQueue, i::Integer)
     pq.index[x.first] = i
     pq.xs[i] = x
 end
-
-
 function percolate_up!(pq::PriorityQueue, i::Integer)
     x = pq.xs[i]
     @inbounds while i > 1
@@ -6660,8 +4755,6 @@ function percolate_up!(pq::PriorityQueue, i::Integer)
     pq.index[x.first] = i
     pq.xs[i] = x
 end
-
-# Equivalent to percolate_up! with an element having lower priority than any other
 function force_up!(pq::PriorityQueue, i::Integer)
     x = pq.xs[i]
     @inbounds while i > 1
@@ -6673,19 +4766,13 @@ function force_up!(pq::PriorityQueue, i::Integer)
     pq.index[x.first] = i
     pq.xs[i] = x
 end
-
 function getindex(pq::PriorityQueue{K,V}, key) where {K,V}
     pq.xs[pq.index[key]].second
 end
-
-
 function get(pq::PriorityQueue{K,V}, key, deflt) where {K,V}
     i = get(pq.index, key, 0)
     i == 0 ? deflt : pq.xs[i].second
 end
-
-
-# Change the priority of an existing element, or equeue it if it isn't present.
 function setindex!(pq::PriorityQueue{K, V}, value, key) where {K,V}
     if haskey(pq, key)
         i = pq.index[key]
@@ -6701,19 +4788,15 @@ function setindex!(pq::PriorityQueue{K, V}, value, key) where {K,V}
     end
     value
 end
-
 """
     enqueue!(pq, k=>v)
-
 Insert the a key `k` into a priority queue `pq` with priority `v`.
-
 ```jldoctest
 julia> a = PriorityQueue(PriorityQueue("a"=>1, "b"=>2, "c"=>3))
 PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 3 entries:
   "c" => 3
   "b" => 2
   "a" => 1
-
 julia> enqueue!(a, "d"=>4)
 PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 4 entries:
   "c" => 3
@@ -6730,34 +4813,25 @@ function enqueue!(pq::PriorityQueue{K,V}, pair::Pair{K,V}) where {K,V}
     push!(pq.xs, pair)
     pq.index[key] = length(pq)
     percolate_up!(pq, length(pq))
-
     return pq
 end
-
 """
 enqueue!(pq, k, v)
-
 Insert the a key `k` into a priority queue `pq` with priority `v`.
-
 """
 enqueue!(pq::PriorityQueue, key, value) = enqueue!(pq, key=>value)
 enqueue!(pq::PriorityQueue{K,V}, kv) where {K,V} = enqueue!(pq, Pair{K,V}(kv.first, kv.second))
-
 """
     dequeue!(pq)
-
 Remove and return the lowest priority key from a priority queue.
-
 ```jldoctest
 julia> a = PriorityQueue(["a","b","c"],[2,3,1],Base.Order.Forward)
 PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 3 entries:
   "c" => 1
   "b" => 3
   "a" => 2
-
 julia> dequeue!(a)
 "c"
-
 julia> a
 PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 2 entries:
   "b" => 3
@@ -6775,29 +4849,23 @@ function dequeue!(pq::PriorityQueue)
     delete!(pq.index, x.first)
     x.first
 end
-
 function dequeue!(pq::PriorityQueue, key)
     idx = pq.index[key]
     force_up!(pq, idx)
     dequeue!(pq)
     key
 end
-
 """
     dequeue_pair!(pq)
-
 Remove and return a the lowest priority key and value from a priority queue as a pair.
-
 ```jldoctest
 julia> a = PriorityQueue(["a","b","c"],[2,3,1],Base.Order.Forward)
 PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 3 entries:
   "c" => 1
   "b" => 3
   "a" => 2
-
 julia> dequeue_pair!(a)
 "c" => 1
-
 julia> a
 PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 2 entries:
   "b" => 3
@@ -6815,37 +4883,26 @@ function dequeue_pair!(pq::PriorityQueue)
     delete!(pq.index, x.first)
     x
 end
-
 function dequeue_pair!(pq::PriorityQueue, key)
     idx = pq.index[key]
     force_up!(pq, idx)
     dequeue_pair!(pq)
 end
-
-
-# Unordered iteration through key value pairs in a PriorityQueue
 start(pq::PriorityQueue) = start(pq.index)
-
 done(pq::PriorityQueue, i) = done(pq.index, i)
-
 function next(pq::PriorityQueue{K,V}, i) where {K,V}
     (k, idx), i = next(pq.index, i)
     return (pq.xs[idx], i)
 end
-
     # Deprecations
-
     # Remove when Julia 0.7 (or whatever version is after v0.6) is released
     @deprecate DefaultDictBase(default, ks::AbstractArray, vs::AbstractArray) DefaultDictBase(default, zip(ks, vs))
     @deprecate DefaultDictBase(default, ks, vs) DefaultDictBase(default, zip(ks, vs))
     @deprecate DefaultDictBase(::Type{K}, ::Type{V}, default) where {K,V} DefaultDictBase{K,V}(default)
-
     @deprecate DefaultDict(default, ks, vs) DefaultDict(default, zip(ks, vs))
     @deprecate DefaultDict(::Type{K}, ::Type{V}, default) where {K,V} DefaultDict{K,V}(default)
-
     @deprecate DefaultOrderedDict(default, ks, vs) DefaultOrderedDict(default, zip(ks, vs))
     @deprecate DefaultOrderedDict(::Type{K}, ::Type{V}, default) where {K,V} DefaultOrderedDict{K,V}(default)
-
     function SortedMultiDict(ks::AbstractVector{K},
                              vs::AbstractVector{V},
                              o::Ordering=Forward) where {K,V}
@@ -6855,11 +4912,9 @@ end
         end
         SortedMultiDict(o, zip(ks,vs))
     end
-
     @deprecate PriorityQueue(::Type{K}, ::Type{V}) where {K,V} PriorityQueue{K,V}()
     @deprecate PriorityQueue(::Type{K}, ::Type{V}, o::Ordering) where {K,V} PriorityQueue{K,V,typeof(o)}(o)
     @deprecate (PriorityQueue{K,V,ForwardOrdering}() where {K,V}) PriorityQueue{K,V}()
-
     function PriorityQueue(ks::AbstractVector{K},
                            vs::AbstractVector{V},
                            o::Ordering=Forward) where {K,V}
@@ -6869,5 +4924,4 @@ end
         end
         PriorityQueue(o, zip(ks,vs))
     end
-
 end

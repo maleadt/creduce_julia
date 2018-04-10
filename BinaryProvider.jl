@@ -1,24 +1,12 @@
 __precompile__()
 module BinaryProvider
-
 if VERSION >= v"0.7.0-DEV.3382"
     import Libdl
 end
-
 using Compat
-
-# Utilities for controlling verbosity
-
-
-#
-# expanded from: include("LoggingUtils.jl")
-#
-
 print_cache = Dict()
-
 """
     info_onchange(msg, key, location)
-
 This macro is used to gate verbose messages within a function; within functions
 such as `verify()`, we want to print out that we successfully verified a file
 only once per session, so we keep track of which log message we printed within
@@ -38,29 +26,15 @@ function info_onchange(msg, key, location)
         print_cache[key] = location
     end
 end
-# Include our subprocess running functionality
-
-
-#
-# expanded from: include("OutputCollector.jl")
-#
-
-# In this file, we define a helper class that will run subprocesses, collecting
-# the stdout and stderr, timestamped such that we can merge the two streams
-# intelligently after the fact, or keep them separate for proper analysis.
 import Base: wait, merge
-
 export OutputCollector, merge, collect_stdout, collect_stderr, tail, tee
-
 struct LineStream
     pipe::Pipe
     lines::Vector{Tuple{Float64,String}}
     task::Task
 end
-
 """
     readuntil_many(s::IO, delims)
-
 Given a collection of delimiter characters, read from `s` until one of those
 delimiters is reached, or we reach the end of `s`.
 """
@@ -75,10 +49,8 @@ function readuntil_many(s::IO, delims)
     end
     return String(take!(out))
 end
-
 """
     LineStream(pipe::Pipe)
-
 Given a `Pipe` that has been initialized by `spawn()`, create an async Task to
 read in lines as they come in and annotate the time the line was captured for
 later replay/merging with other simultaneously captured streams.
@@ -87,7 +59,6 @@ function LineStream(pipe::Pipe, event::Condition)
     # We always have to close() the input half of the stream before we can
     # read() from it.  I don't know why, and this is honestly kind of annoying
     close(pipe.in)
-
     lines = Tuple{Float64,String}[]
     task = @async begin
         # Read lines in until we can't anymore.
@@ -101,7 +72,6 @@ function LineStream(pipe::Pipe, event::Condition)
             notify(event)
         end
     end
-
     # Create a second task that runs after the first just to notify()
     # This ensures that anybody that's listening to the event but gated on our
     # being alive (e.g. `tee()`) can die alongside us gracefully as well.
@@ -111,21 +81,16 @@ function LineStream(pipe::Pipe, event::Condition)
     end
     return LineStream(pipe, lines, task)
 end
-
 """
     alive(s::LineStream)
-
 Returns `true`` if the task owned by this `LineStream` is still processing
 output from an underlying `Pipe`.
 """
 function alive(s::LineStream)
     return !(s.task.state in [:done, :failed])
 end
-
-
 """
     OutputCollector
-
 A `run()` wrapper class that captures subprocess `stdout` and `stderr` streams
 independently, resynthesizing and colorizing the streams appropriately.
 """
@@ -138,20 +103,16 @@ mutable struct OutputCollector
     tee_stream::IO
     verbose::Bool
     tail_error::Bool
-
     done::Bool
     extra_tasks::Vector{Task}
-
     function OutputCollector(cmd, P, out_ls, err_ls, event, tee_stream,
                              verbose, tail_error)
         return new(cmd, P, out_ls, err_ls, event, tee_stream, verbose,
                    tail_error, false, Task[])
     end
 end
-
 """
     OutputCollector(cmd::AbstractCmd; verbose::Bool = false)
-
 Run `cmd`, and collect the output such that `stdout` and `stderr` are captured
 independently, but with the time of each line recorded such that they can be
 stored/analyzed independently, but replayed synchronously.
@@ -171,28 +132,22 @@ function OutputCollector(cmd::Base.AbstractCmd; verbose::Bool=false,
         Compat.@warn("Could not spawn $(cmd)")
         rethrow()
     end
-
     # Next, start siphoning off the first couple lines of output and error
     event = Condition()
     out_ls = LineStream(out_pipe, event)
     err_ls = LineStream(err_pipe, event)
-
     # Finally, wrap this up in an object so that we can merge stdout and stderr
     # back together again at the end
     self = OutputCollector(cmd, P, out_ls, err_ls, event, tee_stream,
                            verbose, tail_error)
-
     # If we're set as verbose, then start reading ourselves out to stdout
     if verbose
         tee(self; stream = tee_stream)
     end
-
     return self
 end
-
 """
     wait(collector::OutputCollector)
-
 Wait for the command and all line streams within an `OutputCollector` to finish
 their respective tasks and be ready for full merging.  Return the success of
 the underlying process.  Prints out the last 10 lines of the process if it does
@@ -204,15 +159,12 @@ function wait(collector::OutputCollector)
         wait(collector.P)
         wait(collector.stdout_linestream.task)
         wait(collector.stderr_linestream.task)
-
         # Also fetch on any extra tasks we've jimmied onto the end of this guy
         for t in collector.extra_tasks
             wait(t)
         end
-
         # From this point on, we are actually done!
         collector.done = true
-
         # If we failed, print out the tail of the output, unless we've been
         # tee()'ing it out this whole time, but only if the user said it's okay.
         if !success(collector.P) && !collector.verbose && collector.tail_error
@@ -220,14 +172,11 @@ function wait(collector::OutputCollector)
             print(collector.tee_stream, our_tail)
         end
     end
-    
     # Shout to the world how we've done
     return success(collector.P)
 end
-
 """
     merge(collector::OutputCollector; colored::Bool = false)
-
 Merge the stdout and stderr streams of the `OutputCollector` on a per-line
 basis, returning a single string containing all collected lines, interleaved by
 capture time.  If `colored` is set to true, embeds terminal color codes to
@@ -236,12 +185,10 @@ print `stderr` in red.
 function merge(collector::OutputCollector; colored::Bool = false)
     # First, wait for things to be done.  No incomplete mergings here yet.
     wait(collector)
-
     # We copy here so that you can `merge()` more than once, if you want.
     stdout_lines = copy(collector.stdout_linestream.lines)
     stderr_lines = copy(collector.stderr_linestream.lines)
     output = IOBuffer()
-
     # Write out an stdout line, optionally with color, and pop off that line
     function write_line(lines, should_color, color)
         if should_color && colored
@@ -250,12 +197,10 @@ function merge(collector::OutputCollector; colored::Bool = false)
         t, line = popfirst!(lines)
         print(output, line)
     end
-
     # These help us keep track of colorizing the output
     out_color = Base.text_colors[:default]
     err_color = Base.text_colors[:red]
     last_line_stderr = false
-
     # Merge stdout and stderr    
     while !isempty(stdout_lines) && !isempty(stderr_lines)
         # Figure out if stdout's timestamp is earlier than stderr's
@@ -267,7 +212,6 @@ function merge(collector::OutputCollector; colored::Bool = false)
             last_line_stderr = true
         end
     end
-
     # Now drain whichever one still has data within it
     while !isempty(stdout_lines)
         write_line(stdout_lines, last_line_stderr, out_color)
@@ -277,43 +221,34 @@ function merge(collector::OutputCollector; colored::Bool = false)
         write_line(stderr_lines, !last_line_stderr, err_color)
         last_line_stderr = true
     end
-
     # Clear text colors at the end, if we need to
     if last_line_stderr && colored
         print(output, Base.text_colors[:default])
     end
-
     # Return our ill-gotten goods
     return String(take!(output))
 end
-
 """
     collect_stdout(collector::OutputCollector)
-
 Returns all stdout lines collected by this collector so far.
 """
 function collect_stdout(collector::OutputCollector)
     return join([l[2] for l in collector.stdout_linestream.lines], "")
 end
-
 """
     collect_stderr(collector::OutputCollector)
-
 Returns all stderr lines collected by this collector so far.
 """
 function collect_stderr(collector::OutputCollector)
     return join([l[2] for l in collector.stderr_linestream.lines], "")
 end
-
 """
     tail(collector::OutputCollector; len::Int = 100, colored::Bool = false)
-
 Write out the last `len` lines, optionally writing colored lines.
 """
 function tail(collector::OutputCollector; len::Int = 100,
               colored::Bool = false)
     out = merge(collector; colored=colored)
-
     idx = length(out)
     for line_idx in 1:len
         # We can run into UnicodeError's here
@@ -328,13 +263,10 @@ function tail(collector::OutputCollector; len::Int = 100,
             break
         end
     end
-
     return out[idx+1:end]
 end
-
 """
     tee(c::OutputCollector; colored::Bool = false, stream::IO = stdout)
-
 Spawn a background task to incrementally output lines from `collector` to the
 standard output, optionally colored.
 """
@@ -345,7 +277,6 @@ function tee(c::OutputCollector; colored::Bool=Base.have_color,
         err_idx = 1
         out_lines = c.stdout_linestream.lines
         err_lines = c.stderr_linestream.lines
-
         # Helper function to print out the next line of stdout/stderr
         function print_next_line()
             timestr = Libc.strftime("[%T] ", time())
@@ -378,11 +309,9 @@ function tee(c::OutputCollector; colored::Bool=Base.have_color,
                 err_idx += 1
             end
         end
-
         # First thing, wait for some input.  This avoids us trying to inspect
         # the liveliness of the linestreams before they've even started.
         wait(c.event)
-
         while alive(c.stdout_linestream) || alive(c.stderr_linestream)
             if length(out_lines) >= out_idx || length(err_lines) >= err_idx
                 # If we have data to output, then do so
@@ -392,111 +321,76 @@ function tee(c::OutputCollector; colored::Bool=Base.have_color,
                 wait(c.event)
             end
         end
-
         # Drain the rest of stdout and stderr
         while length(out_lines) >= out_idx || length(err_lines) >= err_idx
             print_next_line()
         end
     end
-
     # Let the collector know that he might have to wait on this `tee()` to
     # finish its business as well.
     push!(c.extra_tasks, tee_task)
-
     return tee_task
 end
-# External utilities such as downloading/decompressing tarballs
-
-
-#
-# expanded from: include("PlatformEngines.jl")
-#
-
-# In this file, we setup the `gen_download_cmd()`, `gen_unpack_cmd()` and
-# `gen_package_cmd()` functions by providing methods to probe the environment
-# and determine the most appropriate platform binaries to call.
-
 export gen_download_cmd, gen_unpack_cmd, gen_package_cmd, gen_list_tarball_cmd,
        parse_tarball_listing, gen_sh_cmd, parse_7z_list, parse_tar_list,
        download_verify_unpack, download_verify, unpack
-
 """
     gen_download_cmd(url::AbstractString, out_path::AbstractString)
-
 Return a `Cmd` that will download resource located at `url` and store it at
 the location given by `out_path`.
-
 This method is initialized by `probe_platform_engines()`, which should be
 automatically called upon first import of `BinaryProvider`.
 """
 gen_download_cmd = (url::AbstractString, out_path::AbstractString) ->
     error("Call `probe_platform_engines()` before `gen_download_cmd()`")
-
 """
     gen_unpack_cmd(tarball_path::AbstractString, out_path::AbstractString)
-
 Return a `Cmd` that will unpack the given `tarball_path` into the given
 `out_path`.  If `out_path` is not already a directory, it will be created.
-
 This method is initialized by `probe_platform_engines()`, which should be
 automatically called upon first import of `BinaryProvider`.
 """
 gen_unpack_cmd = (tarball_path::AbstractString, out_path::AbstractString) ->
     error("Call `probe_platform_engines()` before `gen_unpack_cmd()`")
-
 """
     gen_package_cmd(in_path::AbstractString, tarball_path::AbstractString)
-
 Return a `Cmd` that will package up the given `in_path` directory into a
 tarball located at `tarball_path`.
-
 This method is initialized by `probe_platform_engines()`, which should be
 automatically called upon first import of `BinaryProvider`.
 """
 gen_package_cmd = (in_path::AbstractString, tarball_path::AbstractString) ->
     error("Call `probe_platform_engines()` before `gen_package_cmd()`")
-
 """
     gen_list_tarball_cmd(tarball_path::AbstractString)
-
 Return a `Cmd` that will list the files contained within the tarball located at
 `tarball_path`.  The list will not include directories contained within the
 tarball.
-
 This method is initialized by `probe_platform_engines()`, which should be
 automatically called upon first import of `BinaryProvider`.
 """
 gen_list_tarball_cmd = (tarball_path::AbstractString) ->
     error("Call `probe_platform_engines()` before `gen_list_tarball_cmd()`")
-
 """
     parse_tarball_listing(output::AbstractString)
-
 Parses the result of `gen_list_tarball_cmd()` into something useful.
-
 This method is initialized by `probe_platform_engines()`, which should be
 automatically called upon first import of `BinaryProvider`.
 """
 parse_tarball_listing = (output::AbstractString) ->
     error("Call `probe_platform_engines()` before `parse_tarball_listing()`")
-
 """
     gen_sh_cmd(cmd::Cmd)
-
 Runs a command using `sh`.  On Unices, this will default to the first `sh`
 found on the `PATH`, however on Windows if that is not found it will fall back
 to the `sh` provided by the `busybox.exe` shipped with Julia.
-
 This method is initialized by `probe_platform_engines()`, which should be
 automatically called upon first import of `BinaryProvider`.
 """
 gen_sh_cmd = (cmd::Cmd) ->
     error("Call `probe_platform_engines()` before `gen_sh_cmd()`")
-
-
 """
     probe_cmd(cmd::Cmd; verbose::Bool = false)
-
 Returns `true` if the given command executes successfully, `false` otherwise.
 """
 function probe_cmd(cmd::Cmd; verbose::Bool = false)
@@ -513,10 +407,8 @@ function probe_cmd(cmd::Cmd; verbose::Bool = false)
         return false
     end
 end
-
 """
     probe_platform_engines!(;verbose::Bool = false)
-
 Searches the environment for various tools needed to download, unpack, and
 package up binaries.  Searches for a download engine to be used by
 `gen_download_cmd()` and a compression engine to be used by `gen_unpack_cmd()`,
@@ -524,30 +416,24 @@ package up binaries.  Searches for a download engine to be used by
 well as a `sh` execution engine for `gen_sh_cmd()`.  Running this function
 will set the global functions to their appropriate implementations given the
 environment this package is running on.
-
 This probing function will automatically search for download engines using a
 particular ordering; if you wish to override this ordering and use one over all
 others, set the `BINARYPROVIDER_DOWNLOAD_ENGINE` environment variable to its
 name, and it will be the only engine searched for. For example, put:
-
     ENV["BINARYPROVIDER_DOWNLOAD_ENGINE"] = "fetch"
-
 within your `~/.juliarc.jl` file to force `fetch` to be used over `curl`.  If
 the given override does not match any of the download engines known to this
 function, a warning will be printed and the typical ordering will be performed.
-
 Similarly, if you wish to override the compression engine used, set the
 `BINARYPROVIDER_COMPRESSION_ENGINE` environment variable to its name (e.g. `7z`
 or `tar`) and it will be the only engine searched for.  If the given override
 does not match any of the compression engines known to this function, a warning
 will be printed and the typical searching will be performed.
-
 If `verbose` is `true`, print out the various engines as they are searched.
 """
 function probe_platform_engines!(;verbose::Bool = false)
     global gen_download_cmd, gen_list_tarball_cmd, gen_package_cmd
     global gen_unpack_cmd, parse_tarball_listing, gen_sh_cmd
-
     # download_engines is a list of (test_cmd, download_opts_functor)
     # The probulator will check each of them by attempting to run `$test_cmd`,
     # and if that works, will set the global download functions appropriately.
@@ -556,7 +442,6 @@ function probe_platform_engines!(;verbose::Bool = false)
         (`wget --help`, (url, path) -> `wget -c -O $path $url`),
         (`fetch --help`, (url, path) -> `fetch -f $path $url`),
     ]
-
     # 7z is rather intensely verbose.  We also want to try running not only
     # `7z` but also a direct path to the `7z.exe` bundled with Julia on
     # windows, so we create generator functions to spit back functors to invoke
@@ -575,7 +460,6 @@ function probe_platform_engines!(;verbose::Bool = false)
         return (path) ->
             pipeline(`$exe7z x $path -so`, `$exe7z l -ttar -y -si`)
     end
-
     # Tar is rather less verbose, and we don't need to search multiple places
     # for it, so just rely on PATH to have `tar` available for us:
     unpack_tar = (tarball_path, out_path) ->
@@ -583,7 +467,6 @@ function probe_platform_engines!(;verbose::Bool = false)
     package_tar = (in_path, tarball_path) ->
         `tar -czvf $tarball_path -C $(in_path) .`
     list_tar = (in_path) -> `tar tf $in_path`
-
     # compression_engines is a list of (test_cmd, unpack_opts_functor,
     # package_opts_functor, list_opts_functor, parse_functor).  The probulator
     # will check each of them by attempting to run `$test_cmd`, and if that
@@ -592,12 +475,10 @@ function probe_platform_engines!(;verbose::Bool = false)
     compression_engines = Tuple[
         (`tar --help`, unpack_tar, package_tar, list_tar, parse_tar_list),
     ]
-
     # sh_engines is just a list of Cmds-as-paths
     sh_engines = [
         `sh`
     ]
-
     # For windows, we need to tweak a few things, as the tools available differ
     @static if Compat.Sys.iswindows()
         # For download engines, we will most likely want to use powershell.
@@ -615,7 +496,6 @@ function probe_platform_engines!(;verbose::Bool = false)
                 return `$psh_path -NoProfile -Command "$webclient_code"`
             end
         end
-
         # We want to search both the `PATH`, and the direct path for powershell
         psh_path = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell"
         prepend!(download_engines, [
@@ -624,19 +504,15 @@ function probe_platform_engines!(;verbose::Bool = false)
         prepend!(download_engines, [
             (`powershell -Help`, psh_download(`powershell`))
         ])
-
         # We greatly prefer `7z` as a compression engine on Windows
         prepend!(compression_engines, [(`7z --help`, gen_7z("7z")...)])
-
         # On windows, we bundle 7z with Julia, so try invoking that directly
         exe7z = joinpath(Compat.Sys.BINDIR, "7z.exe")
         prepend!(compression_engines, [(`$exe7z --help`, gen_7z(exe7z)...)])
-
         # And finally, we want to look for sh as busybox as well:
         busybox = joinpath(Compat.Sys.BINDIR, "busybox.exe")
         prepend!(sh_engines, [(`$busybox sh`)])
     end
-
     # Allow environment override
     if haskey(ENV, "BINARYPROVIDER_DOWNLOAD_ENGINE")
         engine = ENV["BINARYPROVIDER_DOWNLOAD_ENGINE"]
@@ -653,7 +529,6 @@ function probe_platform_engines!(;verbose::Bool = false)
             download_engines = dl_ngs
         end
     end
-
     if haskey(ENV, "BINARYPROVIDER_COMPRESSION_ENGINE")
         engine = ENV["BINARYPROVIDER_COMPRESSION_ENGINE"]
         comp_ngs = filter(e -> e[1].exec[1] == engine, compression_engines)
@@ -669,33 +544,27 @@ function probe_platform_engines!(;verbose::Bool = false)
             compression_engines = comp_ngs
         end
     end
-
     download_found = false
     compression_found = false
     sh_found = false
-
     if verbose
         Compat.@info("Probing for download engine...")
     end
-
     # Search for a download engine
     for (test, dl_func) in download_engines
         if probe_cmd(`$test`; verbose=verbose)
             # Set our download command generator
             gen_download_cmd = dl_func
             download_found = true
-
             if verbose
                 Compat.@info("Found download engine $(test.exec[1])")
             end
             break
         end
     end
-
     if verbose
         Compat.@info("Probing for compression engine...")
     end
-
     # Search for a compression engine
     for (test, unpack, package, list, parse) in compression_engines
         if probe_cmd(`$test`; verbose=verbose)
@@ -704,20 +573,16 @@ function probe_platform_engines!(;verbose::Bool = false)
             gen_package_cmd = package
             gen_list_tarball_cmd = list
             parse_tarball_listing = parse
-
             if verbose
                 Compat.@info("Found compression engine $(test.exec[1])")
             end
-
             compression_found = true
             break
         end
     end
-
     if verbose
         Compat.@info("Probing for sh engine...")
     end
-
     for path in sh_engines
         if probe_cmd(`$path --help`; verbose=verbose)
             gen_sh_cmd = (cmd) -> `$path -c $cmd`
@@ -728,8 +593,6 @@ function probe_platform_engines!(;verbose::Bool = false)
             break
         end
     end
-
-
     # Build informative error messages in case things go sideways
     errmsg = ""
     if !download_found
@@ -737,96 +600,77 @@ function probe_platform_engines!(;verbose::Bool = false)
         errmsg *= join([d[1].exec[1] for d in download_engines], ", ")
         errmsg *= ". Install one and ensure it  is available on the path.\n"
     end
-
     if !compression_found
         errmsg *= "No compression engines found. We looked for: "
         errmsg *= join([c[1].exec[1] for c in compression_engines], ", ")
         errmsg *= ". Install one and ensure it is available on the path.\n"
     end
-
     if !sh_found && verbose
         Compat.@warn("No sh engines found.  Test suite will fail.")
     end
-
     # Error out if we couldn't find something
     if !download_found || !compression_found
         error(errmsg)
     end
 end
-
 """
     parse_7z_list(output::AbstractString)
-
 Given the output of `7z l`, parse out the listed filenames.  This funciton used
 by  `list_tarball_files`.
 """
 function parse_7z_list(output::AbstractString)
     lines = [chomp(l) for l in split(output, "\n")]
-
     # If we didn't get anything, complain immediately
     if isempty(lines)
         return []
     end
-
     # Remove extraneous "\r" for windows platforms
     for idx in 1:length(lines)
         if endswith(lines[idx], '\r')
             lines[idx] = lines[idx][1:end-1]
         end
     end
-
     # Find index of " Name". (can't use `findfirst(generator)` until this is
     # closed: https://github.com/JuliaLang/julia/issues/16884
     header_row = find(contains(l, " Name") && contains(l, " Attr") for l in lines)[1]
     name_idx = search(lines[header_row], "Name")[1]
     attr_idx = search(lines[header_row], "Attr")[1] - 1
-
     # Filter out only the names of files, ignoring directories
     lines = [l[name_idx:end] for l in lines if length(l) > name_idx && l[attr_idx] != 'D']
     if isempty(lines)
         return []
     end
-
     # Extract within the bounding lines of ------------
     bounds = [i for i in 1:length(lines) if all([c for c in lines[i]] .== '-')]
     lines = lines[bounds[1]+1:bounds[2]-1]
-
     # Eliminate `./` prefix, if it exists
     for idx in 1:length(lines)
         if startswith(lines[idx], "./") || startswith(lines[idx], ".\\")
             lines[idx] = lines[idx][3:end]
         end
     end
-
     return lines
 end
-
 """
     parse_7z_list(output::AbstractString)
-
 Given the output of `tar -t`, parse out the listed filenames.  This funciton
 used by `list_tarball_files`.
 """
 function parse_tar_list(output::AbstractString)
     lines = [chomp(l) for l in split(output, "\n")]
-
     # Drop empty lines and and directories
     lines = [l for l in lines if !isempty(l) && !endswith(l, '/')]
-
     # Eliminate `./` prefix, if it exists
     for idx in 1:length(lines)
         if startswith(lines[idx], "./") || startswith(lines[idx], ".\\")
             lines[idx] = lines[idx][3:end]
         end
     end
-
     return lines
 end
-
 """
     download(url::AbstractString, dest::AbstractString;
              verbose::Bool = false)
-
 Download file located at `url`, store it at `dest`, continuing if `dest`
 already exists and the server and download engine support it.
 """
@@ -848,23 +692,19 @@ function download(url::AbstractString, dest::AbstractString;
         error("Could not download $(url) to $(dest)")
     end
 end
-
 """
     download_verify(url::AbstractString, hash::AbstractString,
                     dest::AbstractString; verbose::Bool = false,
                     force::Bool = false, quiet_download::Bool = false)
-
 Download file located at `url`, verify it matches the given `hash`, and throw
 an error if anything goes wrong.  If `dest` already exists, just verify it. If
 `force` is set to `true`, overwrite the given file if it exists but does not
 match the given `hash`.
-
 This method returns `true` if the file was downloaded successfully, `false`
 if an existing file was removed due to the use of `force`, and throws an error
 if `force` is not set and the already-existant file fails verification, or if
 `force` is set, verification fails, and then verification fails again after
 redownloading the file.
-
 If `quiet_download` is set to `false` (the default), this method will print to
 stdout when downloading a new file.  If it is set to `true` (and `verbose` is
 set to `false`) the downloading process will be completely silent.  If
@@ -876,7 +716,6 @@ function download_verify(url::AbstractString, hash::AbstractString,
                          force::Bool = false, quiet_download::Bool = false)
     # Whether the file existed in the first place
     file_existed = false
-
     if isfile(dest)
         file_existed = true
         if verbose
@@ -886,7 +725,6 @@ function download_verify(url::AbstractString, hash::AbstractString,
                 @__LINE__,
             )
         end
-
         # verify download, if it passes, return happy.  If it fails, (and
         # `force` is `true`, re-download!)
         try
@@ -908,14 +746,11 @@ function download_verify(url::AbstractString, hash::AbstractString,
             end
         end
     end
-
     # Make sure the containing folder exists
     mkpath(dirname(dest))
-
     try
         # Download the file, optionally continuing
         download(url, dest; verbose=verbose || !quiet_download)
-
         verify(dest, hash; verbose=verbose)
     catch e
         if isa(e, InterruptException)
@@ -929,7 +764,6 @@ function download_verify(url::AbstractString, hash::AbstractString,
                 Compat.@info("Continued download didn't work, restarting from scratch")
             end
             rm(dest; force=true)
-
             # Download and verify from scratch
             download(url, dest; verbose=verbose || !quiet_download)
             verify(dest, hash; verbose=verbose)
@@ -939,17 +773,14 @@ function download_verify(url::AbstractString, hash::AbstractString,
             rethrow()
         end
     end
-
     # If the file previously existed, this means we removed it (due to `force`)
     # and redownloaded, so return `false`.  If it didn't exist, then this means
     # that we successfully downloaded it, so return `true`.
     return !file_existed
 end
-
 """
     package(src_dir::AbstractString, tarball_path::AbstractString;
             verbose::Bool = false)
-
 Compress `src_dir` into a tarball located at `tarball_path`.
 """
 function package(src_dir::AbstractString, tarball_path::AbstractString;
@@ -971,11 +802,9 @@ function package(src_dir::AbstractString, tarball_path::AbstractString;
         end
     end
 end
-
 """
     unpack(tarball_path::AbstractString, dest::AbstractString;
            verbose::Bool = false)
-
 Unpack tarball located at file `tarball_path` into directory `dest`.
 """
 function unpack(tarball_path::AbstractString, dest::AbstractString;
@@ -994,24 +823,19 @@ function unpack(tarball_path::AbstractString, dest::AbstractString;
         error("Could not unpack $(tarball_path) into $(dest)")
     end
 end
-
-
 """
     download_verify_unpack(url::AbstractString, hash::AbstractString,
                            dest::AbstractString; verbose::Bool = false,
                            force::Bool = false)
-
 Helper method to download tarball located at `url`, verify it matches the
 given `hash`, then unpack it into folder `dest`.  In general, the method
 `install()` should be used to download and install tarballs into a `Prefix`;
 this method should only be used if the extra functionality of `install()` is
 undesired.
-
 If `tarball_path` is specified, the given `url` will be downloaded to
 `tarball_path`, and it will not be removed after downloading and verification
 is complete.  If it is not specified, the tarball will be downloaded to a
 temporary location, and removed after verification is complete.
-
 If `force` is specified, a verification failure will cause `tarball_path` to be
 deleted (if it exists), the `dest` folder to be removed (if it exists) and the
 tarball to be redownloaded and reverified.  If the verification check is failed
@@ -1030,7 +854,6 @@ function download_verify_unpack(url::AbstractString,
         remove_tarball = true
         tarball_path = "$(tempname())-download.tar.gz"
     end
-
     # Download the tarball; if it already existed and we needed to remove it
     # then we should remove the unpacked path as well
     should_delete = !download_verify(url, hash, tarball_path;
@@ -1041,7 +864,6 @@ function download_verify_unpack(url::AbstractString,
         end
         rm(dest; recursive=true, force=true)
     end
-
     # If the destination path already exists, don't bother to unpack
     if isdir(dest)
         if verbose
@@ -1049,7 +871,6 @@ function download_verify_unpack(url::AbstractString,
         end
         return
     end
-
     try
         if verbose
             Compat.@info("Unpacking $(tarball_path) into $(dest)...")
@@ -1061,42 +882,28 @@ function download_verify_unpack(url::AbstractString,
         end
     end
 end
-# Platform naming
-
-
-#
-# expanded from: include("PlatformNames.jl")
-#
-
 export supported_platforms, platform_key, platform_dlext, valid_dl_path,
        arch, wordsize, triplet, Platform, UnknownPlatform, Linux, MacOS,
        Windows, FreeBSD
-
 abstract type Platform end
-
 struct UnknownPlatform <: Platform
 end
-
 struct Linux <: Platform
     arch::Symbol
     libc::Symbol
     abi::Symbol
-
     function Linux(arch::Symbol, libc::Symbol=:glibc,
                                  abi::Symbol=:default_abi)
         if !in(arch, [:i686, :x86_64, :aarch64, :powerpc64le, :armv7l])
             throw(ArgumentError("Unsupported architecture '$arch' for Linux"))
         end
-
         # The default libc on Linux is glibc
         if libc === :blank_libc
             libc = :glibc
         end
-
         if !in(libc, [:glibc, :musl])
             throw(ArgumentError("Unsupported libc '$libc' for Linux"))
         end
-
         # The default abi on Linux is blank, so map over to that by default,
         # except on armv7l, where we map it over to :eabihf
         if abi === :default_abi
@@ -1106,11 +913,9 @@ struct Linux <: Platform
                 abi = :eabihf
             end
         end
-
         if !in(abi, [:eabihf, :blank_abi])
             throw(ArgumentError("Unsupported abi '$abi' for Linux"))
         end
-
         # If we're constructing for armv7l, we MUST have the eabihf abi
         if arch == :armv7l && abi != :eabihf
             throw(ArgumentError("armv7l Linux must use eabihf, not '$abi'"))
@@ -1119,16 +924,13 @@ struct Linux <: Platform
         if arch != :armv7l && abi == :eabihf
             throw(ArgumentError("eabihf Linux is only on armv7l, not '$arch'!"))
         end
-
         return new(arch, libc, abi)
     end
 end
-
 struct MacOS <: Platform
     arch::Symbol
     libc::Symbol
     abi::Symbol
-
     # Provide defaults for everything because there's really only one MacOS
     # target right now.  Maybe someday iOS.  :fingers_crossed:
     function MacOS(arch::Symbol=:x86_64, libc::Symbol=:blank_libc,
@@ -1145,12 +947,10 @@ struct MacOS <: Platform
         return new(arch, libc, abi)
     end
 end
-
 struct Windows <: Platform
     arch::Symbol
     libc::Symbol
     abi::Symbol
-
     function Windows(arch::Symbol, libc::Symbol=:blank_libc,
                                    abi::Symbol=:blank_abi)
         if !in(arch, [:i686, :x86_64])
@@ -1167,23 +967,19 @@ struct Windows <: Platform
         return new(arch, libc, abi)
     end
 end
-
 struct FreeBSD <: Platform
     arch::Symbol
     libc::Symbol
     abi::Symbol
-
     function FreeBSD(arch::Symbol, libc::Symbol=:blank_libc,
                                    abi::Symbol=:default_abi)
         if !in(arch, [:i686, :x86_64, :aarch64, :powerpc64le, :armv7l])
             throw(ArgumentError("Unsupported architecture '$arch' for FreeBSD"))
         end
-
         # The only libc we support on FreeBSD is the blank libc
         if libc !== :blank_libc
             throw(ArgumentError("Unsupported libc '$libc' for FreeBSD"))
         end
-
         # The default abi on FreeBSD is blank, execpt on armv7l
         if abi === :default_abi
             if arch != :armv7l
@@ -1192,11 +988,9 @@ struct FreeBSD <: Platform
                 abi = :eabihf
             end
         end
-
         if !in(abi, [:eabihf, :blank_abi])
             throw(ArgumentError("Unsupported abi '$abi' for FreeBSD"))
         end
-
         # If we're constructing for armv7l, we MUST have the eabihf abi
         if arch == :armv7l && abi != :eabihf
             throw(ArgumentError("armv7l FreeBSD must use eabihf, no '$abi'"))
@@ -1205,92 +999,65 @@ struct FreeBSD <: Platform
         if arch != :armv7l && abi == :eabihf
             throw(ArgumentError("eabihf FreeBSD is only on armv7l, not '$arch'!"))
         end
-
         return new(arch, libc, abi)
     end
 end
-
 """
     arch(p::Platform)
-
 Get the architecture for the given `Platform` object as a `Symbol`.
-
-# Examples
 ```jldoctest
 julia> arch(Linux(:aarch64))
 :aarch64
-
 julia> arch(MacOS())
 :x86_64
 ```
 """
 arch(p::Platform) = p.arch
 arch(u::UnknownPlatform) = :unknown
-
 """
     libc(p::Platform)
-
 Get the libc for the given `Platform` object as a `Symbol`.
-
-# Examples
 ```jldoctest
 julia> libc(Linux(:aarch64))
 :glibc
-
 julia> libc(FreeBSD(:x86_64))
 :default_libc
 ```
 """
 libc(p::Platform) = p.libc
 libc(u::UnknownPlatform) = :unknown
-
 """
     abi(p::Platform)
-
 Get the ABI for the given `Platform` object as a `Symbol`.
-
-# Examples
 ```jldoctest
 julia> abi(Linux(:x86_64))
 :blank_abi
-
 julia> abi(FreeBSD(:armv7l))
 :eabihf
 ```
 """
 abi(p::Platform) = p.abi
 abi(u::UnknownPlatform) = :unknown
-
 """
     wordsize(platform)
-
 Get the word size for the given `Platform` object.
-
-# Examples
 ```jldoctest
 julia> wordsize(Linux(:arm7vl))
 32
-
 julia> wordsize(MacOS())
 64
 ```
 """
 wordsize(p::Platform) = (arch(p) === :i686 || arch(p) === :armv7l) ? 32 : 64
 wordsize(u::UnknownPlatform) = 0
-
 """
     triplet(platform)
-
 Get the target triplet for the given `Platform` object as a `String`.
-
-# Examples
 ```jldoctest
 julia> triplet(MacOS())
 "x86_64-apple-darwin14"
-
 julia> triplet(Windows(:i686))
 "i686-w64-mingw32"
-
 julia> triplet(Linux(:armv7l))
 "arm-linux-gnueabihf"
 ```
@@ -1300,8 +1067,6 @@ triplet(m::MacOS) = string(arch_str(m), "-apple-darwin14")
 triplet(l::Linux) = string(arch_str(l), "-linux", libc_str(l), abi_str(l))
 triplet(f::FreeBSD) = string(arch_str(f), "-unknown-freebsd11.1", libc_str(f), abi_str(f))
 triplet(u::UnknownPlatform) = "unknown-unknown-unknown"
-
-# Helper functions for Linux and FreeBSD libc/abi mishmashes
 arch_str(p::Platform) = (arch(p) == :armv7l) ? "arm" : "$(arch(p))"
 function libc_str(p::Platform)
     if libc(p) == :blank_libc
@@ -1313,10 +1078,8 @@ function libc_str(p::Platform)
     end
 end
 abi_str(p::Platform) = (abi(p) == :blank_abi) ? "" : "$(abi(p))"
-
 """
     supported_platforms()
-
 Return the list of supported platforms as an array of `Platform`s.
 """
 function supported_platforms()
@@ -1331,16 +1094,12 @@ function supported_platforms()
         Windows(:x86_64),
     ]
 end
-
-# Override Compat definitions as well
 Compat.Sys.isapple(p::Platform) = p isa MacOS
 Compat.Sys.islinux(p::Platform) = p isa Linux
 Compat.Sys.iswindows(p::Platform) = p isa Windows
 Compat.Sys.isbsd(p::Platform) = (p isa FreeBSD) || (p isa MacOS)
-
 """
     platform_key(machine::AbstractString = Sys.MACHINE)
-
 Returns the platform key for the current platform, or any other though the
 the use of the `machine` parameter.
 """
@@ -1368,18 +1127,15 @@ function platform_key(machine::AbstractString = Sys.MACHINE)
         :blank_abi => "",
         :eabihf => "eabihf",
     )
-
     # Helper function to collapse dictionary of mappings down into a regex of
     # named capture groups joined by "|" operators
     c(mapping) = string("(",join(["(?<$k>$v)" for (k, v) in mapping], "|"), ")")
-
     triplet_regex = Regex(string(
         c(arch_mapping),
         c(platform_mapping),
         c(libc_mapping),
         c(abi_mapping),
     ))
-
     m = match(triplet_regex, machine)
     if m != nothing
         # Helper function to find the single named field within the giant regex
@@ -1391,13 +1147,11 @@ function platform_key(machine::AbstractString = Sys.MACHINE)
                 end
             end
         end
-
         # Extract the information we're interested in:
         arch = get_field(m, arch_mapping)
         platform = get_field(m, platform_mapping)
         libc = get_field(m, libc_mapping)
         abi = get_field(m, abi_mapping)
-
         # First, figure out what platform we're dealing with, then sub that off
         # to the appropriate constructor.  All constructors take in (arch, libc,
         # abi)  but they will throw errors on trouble, so we catch those and
@@ -1414,14 +1168,11 @@ function platform_key(machine::AbstractString = Sys.MACHINE)
             end
         end
     end
-
     warn("Platform `$(machine)` is not an officially supported platform")
     return UnknownPlatform()
 end
-
 """
     platform_dlext(platform::Platform = platform_key())
-
 Return the dynamic library extension for the given platform, defaulting to the
 currently running platform.  E.g. returns "so" for a Linux-based platform,
 "dll" for a Windows-based platform, etc...
@@ -1432,10 +1183,8 @@ platform_dlext(m::MacOS) = "dylib"
 platform_dlext(w::Windows) = "dll"
 platform_dlext(u::UnknownPlatform) = "unknown"
 platform_dlext() = platform_dlext(platform_key())
-
 """
     valid_dl_path(path::AbstractString, platform::Platform)
-
 Return `true` if the given `path` ends in a valid dynamic library filename.
 E.g. returns `true` for a path like `"usr/lib/libfoo.so.3.5"`, but returns
 `false` for a path like `"libbar.so.f.a"`.
@@ -1449,32 +1198,16 @@ function valid_dl_path(path::AbstractString, platform::Platform)
         # On Windows, libraries look like `libnettle-6.dylib`
         "dll" => r"^(.*).dll$"
     )
-
     # Given a platform, find the dlext regex that matches it
     dlregex = dlext_regexes[platform_dlext(platform)]
-
     # Return whether or not that regex matches the basename of the given path
     return ismatch(dlregex, basename(path))
 end
-# Everything related to file/path management
-
-
-#
-# expanded from: include("Prefix.jl")
-#
-
-## This file contains functionality related to the actual layout of the files
-#  on disk.  Things like the name of where downloads are stored, and what
-#  environment variables must be updated to, etc...
 import Base: convert, joinpath, show
 using SHA
-
 export Prefix, bindir, libdir, includedir, logdir, activate, deactivate,
        extract_platform_key, install, uninstall, manifest_from_url,
        manifest_for_file, list_tarball_files, verify, temp_prefix, package
-
-
-# Temporary hack around https://github.com/JuliaLang/julia/issues/26685
 function safe_isfile(path)
     try
         return isfile(path)
@@ -1485,21 +1218,16 @@ function safe_isfile(path)
         rethrow(e)
     end
 end
-
 """
     temp_prefix(func::Function)
-
 Create a temporary prefix, passing the prefix into the user-defined function so
 that build/packaging operations can occur within the temporary prefix, which is
 then cleaned up after all operations are finished.  If the path provided exists
 already, it will be deleted.
-
 Usage example:
-
     out_path = abspath("./libfoo")
     temp_prefix() do p
         # <insert build steps here>
-
         # tarball up the built package
         tarball_path, tarball_hash = package(p, out_path)
     end
@@ -1516,24 +1244,17 @@ function temp_prefix(func::Function)
             return tempdir()
         end
     end
-
     mktempdir(_tempdir()) do path
         prefix = Prefix(path)
-
         # Run the user function
         func(prefix)
     end
 end
-
-# This is the default prefix that things get saved to, it is initialized within
-# __init__() on first module load.
 global_prefix = nothing
 struct Prefix
     path::String
-
     """
         Prefix(path::AbstractString)
-
     A `Prefix` represents a binary installation location.  There is a default
     global `Prefix` (available at `BinaryProvider.global_prefix`) that packages
     are installed into by default, however custom prefixes can be created
@@ -1547,18 +1268,12 @@ struct Prefix
         return new(path)
     end
 end
-
-# Make it easy to bandy about prefixes as paths.  There has got to be a better
-# way to do this, but it's hackin' time, so just go with the flow.
 joinpath(prefix::Prefix, args...) = joinpath(prefix.path, args...)
 joinpath(s::AbstractString, prefix::Prefix, args...) = joinpath(s, prefix.path, args...)
-
 convert(::Type{AbstractString}, prefix::Prefix) = prefix.path
 show(io::IO, prefix::Prefix) = show(io, "Prefix($(prefix.path))")
-
 """
     split_PATH(PATH::AbstractString = ENV["PATH"])
-
 Splits a string such as the  `PATH` environment variable into a list of strings
 according to the path separation rules for the current platform.
 """
@@ -1569,10 +1284,8 @@ function split_PATH(PATH::AbstractString = ENV["PATH"])
         return split(PATH, ":")
     end
 end
-
 """
     join_PATH(PATH::Vector{AbstractString})
-
 Given a list of strings, return a joined string suitable for the `PATH`
 environment variable appropriate for the current platform.
 """
@@ -1583,19 +1296,15 @@ function join_PATH(paths::Vector{S}) where S<:AbstractString
         return join(paths, ":")
     end
 end
-
 """
     bindir(prefix::Prefix)
-
 Returns the binary directory for the given `prefix`.
 """
 function bindir(prefix::Prefix)
     return joinpath(prefix, "bin")
 end
-
 """
     libdir(prefix::Prefix)
-
 Returns the library directory for the given `prefix` (not ethat this differs
 between unix systems and windows systems).
 """
@@ -1606,28 +1315,22 @@ function libdir(prefix::Prefix)
         return joinpath(prefix, "lib")
     end
 end
-
 """
     includedir(prefix::Prefix)
-
 Returns the include directory for the given `prefix`
 """
 function includedir(prefix::Prefix)
     return joinpath(prefix, "include")
 end
-
 """
     logdir(prefix::Prefix)
-
 Returns the logs directory for the given `prefix`.
 """
 function logdir(prefix::Prefix)
     return joinpath(prefix, "logs")
 end
-
 """
     activate(prefix::Prefix)
-
 Prepends paths to environment variables so that binaries and libraries are
 available to Julia.
 """
@@ -1638,17 +1341,14 @@ function activate(prefix::Prefix)
         prepend!(paths, [bindir(prefix)])
     end
     ENV["PATH"] = join_PATH(paths)
-
     # Add to DL_LOAD_PATH
     if !(libdir(prefix) in Libdl.DL_LOAD_PATH)
         prepend!(Libdl.DL_LOAD_PATH, [libdir(prefix)])
     end
     return nothing
 end
-
 """
     activate(func::Function, prefix::Prefix)
-
 Prepends paths to environment variables so that binaries and libraries are
 available to Julia, calls the user function `func`, then `deactivate()`'s
 the `prefix`` again.
@@ -1658,10 +1358,8 @@ function activate(func::Function, prefix::Prefix)
     func()
     deactivate(prefix)
 end
-
 """
     deactivate(prefix::Prefix)
-
 Removes paths added to environment variables by `activate()`
 """
 function deactivate(prefix::Prefix)
@@ -1669,15 +1367,12 @@ function deactivate(prefix::Prefix)
     paths = split_PATH()
     filter!(p -> p != bindir(prefix), paths)
     ENV["PATH"] = join_PATH(paths)
-
     # Remove from DL_LOAD_PATH
     filter!(p -> p != libdir(prefix), Libdl.DL_LOAD_PATH)
     return nothing
 end
-
 """
     extract_platform_key(path::AbstractString)
-
 Given the path to a tarball, return the platform key of that tarball. If none
 can be found, prints a warning and return the current platform suffix.
 """
@@ -1692,7 +1387,6 @@ function extract_platform_key(path::AbstractString)
     end
     return platform_key(path[idx+1:end])
 end
-
 """
     install(tarball_url::AbstractString,
             hash::AbstractString;
@@ -1700,13 +1394,10 @@ end
             force::Bool = false,
             ignore_platform::Bool = false,
             verbose::Bool = false)
-
 Given a `prefix`, a `tarball_url` and a `hash`, download that tarball into the
 prefix, verify its integrity with the `hash`, and install it into the `prefix`.
 Also save a manifest of the files into the prefix for uninstallation later.
-
 This will not overwrite any files within `prefix` unless `force` is set.
-
 By default, this will not install a tarball that does not match the platform of
 the current host system, this can be overridden by setting `ignore_platform`.
 """
@@ -1721,7 +1412,6 @@ function install(tarball_url::AbstractString,
     if !ignore_platform
         try
             platform = extract_platform_key(tarball_url)
-
             # Check if we had a well-formed platform that just doesn't match
             if platform_key() != platform
                 msg = replace(strip("""
@@ -1742,30 +1432,24 @@ function install(tarball_url::AbstractString,
             end
         end
     end
-    
     # Create the downloads directory if it does not already exist
     tarball_path = joinpath(prefix, "downloads", basename(tarball_url))
     try mkpath(dirname(tarball_path)) end
-
     # Check to see if we're "installing" from a file
     if safe_isfile(tarball_url)
         # If we are, just verify it's already downloaded properly
         tarball_path = tarball_url
-
         verify(tarball_path, hash; verbose=verbose)
     else
         # If not, actually download it
         download_verify(tarball_url, hash, tarball_path;
                         force=force, verbose=verbose)
     end
-
     if verbose
         Compat.@info("Installing $(tarball_path) into $(prefix.path)")
     end
-    
     # First, get list of files that are contained within the tarball
     file_list = list_tarball_files(tarball_path)
-
     # Check to see if any files are already present
     for file in file_list
         if isfile(joinpath(prefix, file))
@@ -1782,23 +1466,18 @@ function install(tarball_url::AbstractString,
             end
         end
     end
-
     # Unpack the tarball into prefix
     unpack(tarball_path, prefix.path; verbose=verbose)
-
     # Save installation manifest
     manifest_path = manifest_from_url(tarball_path, prefix=prefix)
     mkpath(dirname(manifest_path))
     open(manifest_path, "w") do f
         write(f, join(file_list, "\n"))
     end
-
     return true
 end
-
 """
     uninstall(manifest::AbstractString; verbose::Bool = false)
-
 Uninstall a package from a prefix by providing the `manifest_path` that was
 generated during `install()`.  To find the `manifest_file` for a particular
 installed file, use `manifest_for_file(file_path; prefix=prefix)`.
@@ -1809,13 +1488,11 @@ function uninstall(manifest::AbstractString;
     if !isfile(manifest)
         error("Manifest path $(manifest) does not exist")
     end
-
     prefix_path = dirname(dirname(manifest))
     if verbose
         relmanipath = relpath(manifest, prefix_path)
         Compat.@info("Removing files installed by $(relmanipath)")
     end
-
     # Remove every file listed within the manifest file
     for path in [chomp(l) for l in readlines(manifest)]
         delpath = joinpath(prefix_path, path)
@@ -1829,7 +1506,6 @@ function uninstall(manifest::AbstractString;
                 Compat.@info("  $delrelpath removed")
             end
             rm(delpath; force=true)
-
             # Last one out, turn off the lights (cull empty directories,
             # but only if they're not our prefix)
             deldir = abspath(dirname(delpath))
@@ -1842,17 +1518,14 @@ function uninstall(manifest::AbstractString;
             end
         end
     end
-
     if verbose
         Compat.@info("  $(relmanipath) removed")
     end
     rm(manifest; force=true)
     return true
 end
-
 """
     manifest_from_url(url::AbstractString; prefix::Prefix = global_prefix())
-
 Returns the file path of the manifest file for the tarball located at `url`.
 """
 function manifest_from_url(url::AbstractString;
@@ -1860,10 +1533,8 @@ function manifest_from_url(url::AbstractString;
     # Given an URL, return an autogenerated manifest name
     return joinpath(prefix, "manifests", basename(url)[1:end-7] * ".list")
 end
-
 """
     manifest_for_file(path::AbstractString; prefix::Prefix = global_prefix)
-
 Returns the manifest file containing the installation receipt for the given
 `path`, throws an error if it cannot find a matching manifest.
 """
@@ -1872,12 +1543,10 @@ function manifest_for_file(path::AbstractString;
     if !isfile(path)
         error("File $(path) does not exist")
     end
-
     search_path = relpath(path, prefix.path)
     if startswith(search_path, "..")
         error("Cannot search for paths outside of the given Prefix!")
     end
-
     manidir = joinpath(prefix, "manifests")
     for fname in [f for f in readdir(manidir) if endswith(f, ".list")]
         manifest_path = joinpath(manidir, fname)
@@ -1885,20 +1554,16 @@ function manifest_for_file(path::AbstractString;
             return manifest_path
         end
     end
-
     error("Could not find $(search_path) in any manifest files")
 end
-
 """
     list_tarball_files(path::AbstractString; verbose::Bool = false)
-
 Given a `.tar.gz` filepath, list the compressed contents.
 """
 function list_tarball_files(path::AbstractString; verbose::Bool = false)
     if !isfile(path)
         error("Tarball path $(path) does not exist")
     end
-
     # Run the listing command, then parse the output
     oc = OutputCollector(gen_list_tarball_cmd(path); verbose=verbose)
     try
@@ -1910,11 +1575,9 @@ function list_tarball_files(path::AbstractString; verbose::Bool = false)
     end
     return parse_tarball_listing(collect_stdout(oc))
 end
-
 """
     verify(path::AbstractString, hash::AbstractString;
            verbose::Bool = false, report_cache_status::Bool = false)
-
 Given a file `path` and a `hash`, calculate the SHA256 of the file and compare
 it to `hash`.  If an error occurs, `verify()` will throw an error.  This method
 caches verification results in a `"\$(path).sha256"` file to accelerate re-
@@ -1925,7 +1588,6 @@ with the calculated hash being stored within the `".sha256"` file..  If a
 contained within matches the given `hash` parameter, and its modification time
 shows that the file located at `path` has not been modified since the last
 verification.
-
 If `report_cache_status` is set to `true`, then the return value will be a
 `Symbol` giving a granular status report on the state of the hash cache, in
 addition to the `true`/`false` signifying whether verification completed
@@ -1938,11 +1600,9 @@ function verify(path::AbstractString, hash::AbstractString; verbose::Bool = fals
         msg *= "given hash is $(length(hash)) characters long"
         error(msg)
     end
-
     # Fist, check to see if the hash cache is consistent
     hash_path = "$(path).sha256"
     status = :hash_consistent
-
     # First, it must exist
     if isfile(hash_path)
         # Next, it must contain the same hash as what we're verifying against
@@ -1958,7 +1618,6 @@ function verify(path::AbstractString, hash::AbstractString; verbose::Bool = fals
                     )
                 end
                 status = :hash_cache_consistent
-
                 # If we're reporting our status, then report it!
                 if report_cache_status
                     return true, status
@@ -1995,7 +1654,6 @@ function verify(path::AbstractString, hash::AbstractString; verbose::Bool = fals
         end
         status = :hash_cache_missing
     end
-    
     open(path) do file
         calc_hash = bytes2hex(sha256(file))
         if verbose
@@ -2005,7 +1663,6 @@ function verify(path::AbstractString, hash::AbstractString; verbose::Bool = fals
                 @__LINE__,
             )
         end
-
         if calc_hash != hash
             msg  = "Hash Mismatch!\n"
             msg *= "  Expected sha256:   $hash\n"
@@ -2013,30 +1670,25 @@ function verify(path::AbstractString, hash::AbstractString; verbose::Bool = fals
             error(msg)
         end
     end
-
     # Save a hash cache if everything worked out fine
     open(hash_path, "w") do file
         write(file, hash)
     end
-
     if report_cache_status
         return true, status
     else
         return true
     end
 end
-
 """
     package(prefix::Prefix, tarball_base::AbstractString,
             platform::Platform = platform_key(), verbose::Bool = false)
-
 Build a tarball of the `prefix`, storing the tarball at `tarball_base` plus a
 platform-dependent suffix and a file extension (defaults to the current
 platform, but overridable through the `platform` argument.  Runs an `audit()`
 on the `prefix`, to ensure that libraries can be `dlopen()`'ed, that all
 dependencies are located within the prefix, etc... See the `audit()`
 documentation for a full list of the audit steps.
-
 Returns the full path to and the hash of the generated tarball.
 """
 function package(prefix::Prefix,
@@ -2050,7 +1702,6 @@ function package(prefix::Prefix,
     catch
         error("Platform key `$(platform)` not recognized")
     end
-
     if isfile(out_path)
         if force
             if verbose
@@ -2065,10 +1716,8 @@ function package(prefix::Prefix,
             error(msg)
         end
     end
-
     # Package `prefix.path` into the tarball contained at to `out_path`
     package(prefix.path, out_path; verbose=verbose)
-
     # Also spit out the hash of the archive file
     hash = open(out_path, "r") do f
         return bytes2hex(sha256(f))
@@ -2076,43 +1725,27 @@ function package(prefix::Prefix,
     if verbose
         Compat.@info("SHA256 of $(basename(out_path)): $(hash)")
     end
-
     return out_path, hash
 end
-# Abstraction of "needing" a file, that would trigger an install
-
-
-#
-# expanded from: include("Products.jl")
-#
-
 export Product, LibraryProduct, FileProduct, ExecutableProduct, satisfied,
        locate, write_deps_file, variable_name
 import Base: repr
-
 """
 A `Product` is an expected result after building or installation of a package.
-
 Examples of `Product`s include `LibraryProduct`, `ExecutableProduct` and
 `FileProduct`.  All `Product` types must define the following minimum set of
 functionality:
-
 * `locate(::Product)`: given a `Product`, locate it within the wrapped `Prefix`
   returning its location as a string
-
 * `satisfied(::Product)`: given a `Product`, determine whether it has been
   successfully satisfied (e.g. it is locateable and it passes all callbacks)
-
 * `variable_name(::Product)`: return the variable name assigned to a `Product`
-
 * `repr(::Product)`: Return a representation of this `Product`, useful for
   auto-generating source code that constructs `Products`, if that's your thing.
 """
 abstract type Product end
-
 """
     satisfied(p::Product; platform::Platform = platform_key(), verbose = false)
-
 Given a `Product`, return `true` if that `Product` is satisfied, e.g. whether
 a file exists that matches all criteria setup for that `Product`.
 """
@@ -2120,18 +1753,13 @@ function satisfied(p::Product; platform::Platform = platform_key(),
                                verbose::Bool = false)
     return locate(p; platform=platform, verbose=verbose) != nothing
 end
-
-
 """
     variable_name(p::Product)
-
 Return the variable name associated with this `Product` as a string
 """
 function variable_name(p::Product)
     return string(p.variable_name)
 end
-
-
 """
 A `LibraryProduct` is a special kind of `Product` that not only needs to exist,
 but needs to be `dlopen()`'able.  You must know which directory the library
@@ -2146,21 +1774,17 @@ struct LibraryProduct <: Product
     libnames::Vector{String}
     variable_name::Symbol
     prefix::Union{Prefix, Nothing}
-
     """
         LibraryProduct(prefix::Prefix, libname::AbstractString,
                        varname::Symbol)
-
     Declares a `LibraryProduct` that points to a library located within the
     `libdir` of the given `Prefix`, with a name containing `libname`.  As an
     example, given that `libdir(prefix)` is equal to `usr/lib`, and `libname`
     is equal to `libnettle`, this would be satisfied by the following paths:
-
         usr/lib/libnettle.so
         usr/lib/libnettle.so.6
         usr/lib/libnettle.6.dylib
         usr/lib/libnettle-6.dll
-
     Libraries matching the search pattern are rejected if they are not
     `dlopen()`'able.
     """
@@ -2168,16 +1792,13 @@ struct LibraryProduct <: Product
                             varname::Symbol)
         return LibraryProduct(prefix, [libname], varname)
     end
-
     function LibraryProduct(prefix::Prefix, libnames::Vector{S},
                             varname::Symbol) where {S <: AbstractString}
         return new(libdir(prefix), libnames, varname, prefix)
     end
-
     """
         LibraryProduct(dir_path::AbstractString, libname::AbstractString,
                        varname::Symbol)
-
     For finer-grained control over `LibraryProduct` locations, you may directly
     pass in the `dir_path` instead of auto-inferring it from `libdir(prefix)`.
     """
@@ -2185,13 +1806,11 @@ struct LibraryProduct <: Product
                             varname::Symbol)
         return LibraryProduct(dir_path, [libname], varname)
     end
-
     function LibraryProduct(dir_path::AbstractString, libnames::Vector{S},
                             varname::Symbol) where {S <: AbstractString}
        return new(dir_path, libnames, varname, nothing)
     end
 end
-
 function repr(p::LibraryProduct)
     libnames = repr(p.libnames)
     varname = repr(p.variable_name)
@@ -2201,11 +1820,9 @@ function repr(p::LibraryProduct)
         return "LibraryProduct(prefix, $(libnames), $(varname))"
     end
 end
-
 """
 locate(lp::LibraryProduct; verbose::Bool = false,
         platform::Platform = platform_key())
-
 If the given library exists (under any reasonable name) and is `dlopen()`able,
 (assuming it was built for the current platform) return its location.  Note
 that the `dlopen()` test is only run if the current platform matches the given
@@ -2227,11 +1844,9 @@ function locate(lp::LibraryProduct; verbose::Bool = false,
         if !valid_dl_path(f, platform)
             continue
         end
-
         if verbose
             Compat.@info("Found a valid dl path $(f) while looking for $(join(lp.libnames, ", "))")
         end
-
         # If we found something that is a dynamic library, let's check to see
         # if it matches our libname:
         for libname in lp.libnames
@@ -2240,7 +1855,6 @@ function locate(lp::LibraryProduct; verbose::Bool = false,
                 if verbose
                     Compat.@info("$(dl_path) matches our search criteria of $(libname)")
                 end
-
                 # If it does, try to `dlopen()` it if the current platform is good
                 if platform == platform_key()
                     hdl = Libdl.dlopen_e(dl_path)
@@ -2261,16 +1875,13 @@ function locate(lp::LibraryProduct; verbose::Bool = false,
             end
         end
     end
-
     if verbose
         Compat.@info("Could not locate $(join(lp.libnames, ", ")) inside $(lp.dir_path)")
     end
     return nothing
 end
-
 """
 An `ExecutableProduct` is a `Product` that represents an executable file.
-
 On all platforms, an ExecutableProduct checks for existence of the file.  On
 non-Windows platforms, it will check for the executable bit being set.  On
 Windows platforms, it will check that the file ends with ".exe", (adding it on
@@ -2280,11 +1891,9 @@ struct ExecutableProduct <: Product
     path::AbstractString
     variable_name::Symbol
     prefix::Union{Prefix, Nothing}
-
     """
     `ExecutableProduct(prefix::Prefix, binname::AbstractString,
                        varname::Symbol)`
-
     Declares an `ExecutableProduct` that points to an executable located within
     the `bindir` of the given `Prefix`, named `binname`.
     """
@@ -2292,10 +1901,8 @@ struct ExecutableProduct <: Product
                                varname::Symbol)
         return new(joinpath(bindir(prefix), binname), varname, prefix)
     end
-
     """
     `ExecutableProduct(binpath::AbstractString, varname::Symbol)`
-
     For finer-grained control over `ExecutableProduct` locations, you may directly
     pass in the full `binpath` instead of auto-inferring it from `bindir(prefix)`.
     """
@@ -2303,7 +1910,6 @@ struct ExecutableProduct <: Product
         return new(binpath, varname, nothing)
     end
 end
-
 function repr(p::ExecutableProduct)
     varname = repr(p.variable_name)
     if p.prefix === nothing
@@ -2313,13 +1919,10 @@ function repr(p::ExecutableProduct)
         return "ExecutableProduct(prefix, $(repr(rp)), $(varname))"
     end
 end
-
 """
 `locate(fp::ExecutableProduct; platform::Platform = platform_key(),
                                verbose::Bool = false)`
-
 If the given executable file exists and is executable, return its path.
-
 On all platforms, an ExecutableProduct checks for existence of the file.  On
 non-Windows platforms, it will check for the executable bit being set.  On
 Windows platforms, it will check that the file ends with ".exe", (adding it on
@@ -2334,14 +1937,12 @@ function locate(ep::ExecutableProduct; platform::Platform = platform_key(),
     else
         ep.path
     end
-
     if !isfile(path)
         if verbose
             Compat.@info("$(ep.path) does not exist, reporting unsatisfied")
         end
         return nothing
     end
-
     # If the file is not executable, fail out (unless we're on windows since
     # windows doesn't honor these permissions on its filesystems)
     @static if !Compat.Sys.iswindows()
@@ -2352,10 +1953,8 @@ function locate(ep::ExecutableProduct; platform::Platform = platform_key(),
             return nothing
         end
     end
-
     return path
 end
-
 """
 A `FileProduct` represents a file that simply must exist to be satisfied.
 """
@@ -2363,11 +1962,9 @@ struct FileProduct <: Product
     path::AbstractString
     variable_name::Symbol
     prefix::Union{Prefix, Nothing}
-
     """
         FileProduct(prefix::Prefix, relative_path::AbstractString,
                                     varname::Symbol)`
-
     Declares a `FileProduct` that points to a file located relative to a the
     root of a `Prefix`.
     """
@@ -2376,10 +1973,8 @@ struct FileProduct <: Product
         file_path = joinpath(prefix.path, relative_path)
         return new(file_path, varname, prefix)
     end
-
     """
         FileProduct(file_path::AbstractString, varname::Symbol)
-
     For finer-grained control over `FileProduct` locations, you may directly
     pass in the full `file_pathpath` instead of defining it in reference to
     a root `Prefix`.
@@ -2388,7 +1983,6 @@ struct FileProduct <: Product
         return new(file_path, varname, nothing)
     end
 end
-
 function repr(p::FileProduct)
     varname = repr(p.variable_name)
     if p.prefix === nothing
@@ -2398,11 +1992,9 @@ function repr(p::FileProduct)
         return "FileProduct(prefix, $(repr(rp)), $(varname))"
     end
 end
-
 """
 locate(fp::FileProduct; platform::Platform = platform_key(),
                         verbose::Bool = false)
-
 If the given file exists, return its path.  The platform argument is ignored
 here, but included for uniformity.
 """
@@ -2416,32 +2008,25 @@ function locate(fp::FileProduct; platform::Platform = platform_key(),
     end
     return nothing
 end
-
 """
     write_deps_file(depsjl_path::AbstractString, products::Vector{Product};
                     verbose::Bool = false)
-
 Generate a `deps.jl` file that contains the variables referred to by the
 products within `products`.  As an example, running the following code:
-
     fooifier = ExecutableProduct(..., :foo_exe)
     libbar = LibraryProduct(..., :libbar)
     write_deps_file(joinpath(@__DIR__, "deps.jl"), [fooifier, libbar])
-
 Will generate a `deps.jl` file that contains definitions for the two variables
 `foo_exe` and `libbar`.  If any `Product` object cannot be satisfied (e.g.
 `LibraryProduct` objects must be `dlopen()`-able, `FileProduct` objects must
 exist on the filesystem, etc...) this method will error out.  Ensure that you
 have used `install()` to install the binaries you wish to write a `deps.jl`
 file for.
-
 The result of this method is a `deps.jl` file containing variables named as
 defined within the `Product` objects passed in to it, holding the full path to the
 installed binaries.  Given the example above, it would contain code similar to:
-
     global const foo_exe = "<pkg path>/deps/usr/bin/fooifier"
     global const libbar = "<pkg path>/deps/usr/lib/libbar.so"
-
 This `deps.jl` file is intended to be `include()`'ed from within the top-level
 source of your package.  Note that all files are checked for consistency on
 package load time, and if an error is discovered, package loading will fail,
@@ -2451,22 +2036,18 @@ function write_deps_file(depsjl_path::AbstractString, products::Vector{P};
                          verbose::Bool=false) where {P <: Product}
     # helper function to escape paths
     escape_path = path -> replace(path, "\\" => "\\\\")
-
     # Grab the package name as the name of the top-level directory of a package
     package_name = basename(dirname(dirname(depsjl_path)))
-
     # We say this a couple of times
     rebuild = strip("""
     Please re-run Pkg.build(\\\"$(package_name)\\\"), and restart Julia.
     """)
-
     # Begin by ensuring that we can satisfy every product RIGHT NOW
     for p in products
         if !satisfied(p; verbose=verbose)
             error("$p is not satisfied, cannot generate deps.jl!")
         end
     end
-
     # If things look good, let's generate the `deps.jl` file
     open(depsjl_path, "w") do depsjl_file
         # First, dump the preamble
@@ -2477,7 +2058,6 @@ function write_deps_file(depsjl_path::AbstractString, products::Vector{P};
         ## Include this file within your main top-level source, and call
         ## `check_deps()` from within your module's `__init__()` method
         """))
-
         # Next, spit out the paths of all our products
         for product in products
             # Escape the location so that e.g. Windows platforms are happy with
@@ -2491,23 +2071,18 @@ function write_deps_file(depsjl_path::AbstractString, products::Vector{P};
             const $(vp) = joinpath(dirname(@__FILE__), \"$(product_path)\")
             """))
         end
-
         # Next, generate a function to check they're all on the up-and-up
         println(depsjl_file, "function check_deps()")
-
         for product in products
             varname = variable_name(product)
-
             # Add a `global $(name)`
             println(depsjl_file, "    global $(varname)");
-
             # Check that any file exists
             println(depsjl_file, """
                 if !isfile($(varname))
                     error("\$($(varname)) does not exist, $(rebuild)")
                 end
             """)
-
             # For Library products, check that we can dlopen it:
             if typeof(product) <: LibraryProduct
                 println(depsjl_file, """
@@ -2517,7 +2092,6 @@ function write_deps_file(depsjl_path::AbstractString, products::Vector{P};
                 """)
             end
         end
-
         # If any of the products are `ExecutableProduct`s, we need to add Julia's
         # library directory onto the end of {DYLD,LD}_LIBRARY_PATH
         @static if !Compat.Sys.iswindows()
@@ -2531,7 +2105,6 @@ function write_deps_file(depsjl_path::AbstractString, products::Vector{P};
                     "LD_LIBRARY_PATH"
                 end
                 envvar_name = repr(envvar_name)
-
                 println(depsjl_file, """
                     libpaths = split(get(ENV, $(envvar_name), ""), ":")
                     if !($(julia_libdir) in libpaths)
@@ -2541,26 +2114,20 @@ function write_deps_file(depsjl_path::AbstractString, products::Vector{P};
                 """)
             end
         end
-
         # Close the `check_deps()` function
         println(depsjl_file, "end")
     end
 end
-
 function __init__()
     global global_prefix
-
     # Initialize our global_prefix
     global_prefix = Prefix(joinpath(dirname(@__FILE__), "../", "global_prefix"))
     activate(global_prefix)
-
     # Find the right download/compression engines for this platform
     probe_platform_engines!()
-
     # If we're on a julia that's too old, then fixup the color mappings
     if !haskey(Base.text_colors, :default)
         Base.text_colors[:default] = Base.color_normal
     end
 end
-
 end # module

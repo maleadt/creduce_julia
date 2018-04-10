@@ -1,12 +1,8 @@
 __precompile__(true)
 module DataStreams
-
 export Data
-
 module Data
-
 using Missings, WeakRefStrings
-
 if !isdefined(Base, :AbstractRange)
     const AbstractRange = Range
 end
@@ -16,36 +12,26 @@ macro uninit(expr)
     end
     return esc(expr)
 end
-
-# Data.Schema
 """
 A `Data.Schema` describes a tabular dataset, i.e. a set of named, typed columns with records as rows
-
 `Data.Schema` allow `Data.Source` and `Data.Sink` to talk to each other and prepare to provide/receive data through streaming.
 `Data.Schema` provides the following accessible properties:
-
  * `Data.header(schema)` to return the header/column names in a `Data.Schema`
  * `Data.types(schema)` to return the column types in a `Data.Schema`; `Union{T, Missing}` indicates columns that may contain missing data (`missing` values)
  * `Data.size(schema)` to return the (# of rows, # of columns) in a `Data.Schema`; note that # of rows may be `nothing`, meaning unknown
-
 `Data.Schema` has the following constructors:
-
  * `Data.Schema()`: create an "emtpy" schema with no rows, no columns, and no column names
  * `Data.Schema(types[, header, rows, meta::Dict])`: column element types are provided as a tuple or vector; column names provided as an iterable; # of rows can be an Int or `missing` to indicate unknown # of rows
-
 `Data.Schema` are indexable via column names to get the number of that column in the `Data.Schema`
-
 ```julia
 julia> sch = Data.Schema([Int], ["column1"], 10)
 Data.Schema:
 rows: 10	cols: 1
 Columns:
  "column1"  Int64
-
 julia> sch["column1"]
 1
 ```
-
 **Developer note**: the full type definition is `Data.Schema{R, T}` where the `R` type parameter will be `true` or `false`, indicating
 whether the # of rows are known (i.e not `missing`), respectively. The `T` type parameter is a `Tuple{A, B, ...}` representing the column element types
 in the `Data.Schema`. Both of these type parameters provide valuable information that may be useful when constructing `Sink`s or streaming data.
@@ -58,7 +44,6 @@ mutable struct Schema{R, T}
     metadata::Dict           # for any other metadata we'd like to keep around (not used for '==' operation)
     index::Dict{String, Int} # maps column names as Strings to their index # in `header` and `types`
 end
-
 function Schema(types=(), header=["Column$i" for i = 1:length(types)], rows::Union{Integer,Missing}=0, metadata::Dict=Dict())
     !ismissing(rows) && rows < 0 && throw(ArgumentError("Invalid # of rows for Data.Schema; use `nothing` to indicate an unknown # of rows"))
     types2 = Tuple(types)
@@ -68,17 +53,14 @@ function Schema(types=(), header=["Column$i" for i = 1:length(types)], rows::Uni
     return Schema{!ismissing(rows), Tuple{types2...}}(header2, rows, cols, metadata, Dict(n=>i for (i, n) in enumerate(header2)))
 end
 Schema(types, rows::Union{Integer,Missing}, metadata::Dict=Dict()) = Schema(types, ["Column$i" for i = 1:length(types)], rows, metadata)
-
 header(sch::Schema) = sch.header
 types(sch::Schema{R, T}) where {R, T} = Tuple(T.parameters)
 metadata(sch::Schema) = sch.metadata
 Base.size(sch::Schema) = (sch.rows, sch.cols)
 Base.size(sch::Schema, i::Int) = ifelse(i == 1, sch.rows, ifelse(i == 2, sch.cols, 0))
-
 setrows!(source, rows) = isdefined(source, :schema) ? (source.schema.rows = rows; nothing) : nothing
 setrows!(source::Array, rows) = nothing
 Base.getindex(sch::Schema, col::String) = sch.index[col]
-
 function Base.show(io::IO, schema::Schema)
     println(io, "Data.Schema:")
     println(io, "rows: $(schema.rows)  cols: $(schema.cols)")
@@ -87,7 +69,6 @@ function Base.show(io::IO, schema::Schema)
         Base.print_matrix(io, hcat(schema.header, collect(types(schema))))
     end
 end
-
 function transform(sch::Data.Schema{R, T}, transforms::Dict{Int, <:Base.Callable}, weakref) where {R, T}
     types = Data.types(sch)
     transforms2 = ((get(transforms, x, identity) for x = 1:length(types))...,)
@@ -98,50 +79,33 @@ function transform(sch::Data.Schema{R, T}, transforms::Dict{Int, <:Base.Callable
     return Schema(newtypes, Data.header(sch), size(sch, 1), sch.metadata), transforms2
 end
 transform(sch::Data.Schema, transforms::Dict{String, <:Base.Callable}, s) = transform(sch, Dict{Int, Base.Callable}(sch[x]=>f for (x, f) in transforms), s)
-
-# Data.StreamTypes
 abstract type StreamType end
 struct Field  <: StreamType end
 struct Row    <: StreamType end
 struct Column <: StreamType end
-
-# Data.Source Interface
 abstract type Source end
-
-# Required methods
 """
 `Data.schema(s::Source) => Data.Schema`
-
 Return the `Data.Schema` of a source, which describes the # of rows & columns, as well as the column types of a dataset.
 Some sources like `CSV.Source` or `SQLite.Source` store the `Data.Schema` directly in the type, whereas
 others like `DataFrame` compute the schema on the fly.
-
 The `Data.Schema` of a source is used in various ways during the streaming process:
-
 - The # of rows and if they are known are used to generate the inner streaming loop
 - The # of columns determine if the innermost streaming loop can be unrolled automatically or not
 - The types of the columns are used in loop unrolling to generate efficient and type-stable streaming
-
 See `?Data.Schema` for more details on how to work with the type.
 """
 function schema end
 """
 `Data.isdone(source, row, col) => Bool`
-
 Checks whether a source can stream additional fields/columns for a desired
 `row` and `col` intersection. Used during the streaming process, especially for sources
 that have an unknown # of rows, to detect when a source has been exhausted of data.
-
 Data.Source types must at least implement:
-
 `Data.isdone(source::S, row::Int, col::Int)`
-
 If more convenient/performant, they can also implement:
-
 `Data.isdone(source::S, row::Int, col::Int, rows::Union{Int, Missing}, cols::Int)`
-
 where `rows` and `cols` are the size of the `source`'s schema when streaming.
-
 A simple example of how a DataFrame implements this is:
 ```julia
 Data.isdone(df::DataFrame, row, col, rows, cols) = row > rows || col > cols
@@ -149,47 +113,34 @@ Data.isdone(df::DataFrame, row, col, rows, cols) = row > rows || col > cols
 """
 function isdone end
 isdone(source, row, col, rows, cols) = isdone(source, row, col)
-
 """
 `Data.streamtype{T<:Data.Source, S<:Data.StreamType}(::Type{T}, ::Type{S}) => Bool`
-
 Indicates whether the source `T` supports streaming of type `S`. To be overloaded by individual sources according to supported `Data.StreamType`s.
 This is used in the streaming process to determine the compatability of streaming from a specific source to a specific sink.
 It also helps in determining the preferred streaming method, when matched up with the results of `Data.streamtypes(s::Sink)`.
-
 For example, if `MyPkg.Source` supported `Data.Field` streaming, I would define:
-
 ```julia
 Data.streamtype(::Type{MyPkg.Source}, ::Type{Data.Field}) = true
 ```
-
 and/or for `Data.Column` streaming:
-
 ```julia
 Data.streamtype(::Type{MyPkg.Source}, ::Type{Data.Column}) = true
 ```
 """
 function streamtype end
-
 """
 `Data.reset!(source)`
-
 Resets a source into a state that allows streaming its data again.
 For example, for `CSV.Source`, the internal buffer is "seek"ed back to the start position of
 the csv data (after the column name headers). For `SQLite.Source`, the source SQL query is re-executed.
 """
 function reset! end
-
 """
 Data.Source types must implement one of the following:
-
 `Data.streamfrom(source, ::Type{Data.Field}, ::Type{T}, row::Int, col::Int) where {T}`
-
 `Data.streamfrom(source, ::Type{Data.Column}, ::Type{T}, col::Int) where {T}`
-
 Performs the actually streaming of data "out" of a data source. For `Data.Field` streaming, the single field value of type `T`
 at the intersection of `row` and `col` is returned. For `Data.Column` streaming, the column # `col` with element type `T` is returned.
-
 For `Data.Column`, a source can also implement:
 ```julia
 Data.streamfrom(source, ::Type{Data.Field}, ::Type{T}, row::Int, col::Int) where {T}
@@ -199,41 +150,27 @@ where `row` indicates the # of rows that have already been streamed from the sou
 function streamfrom end
 Data.streamfrom(source, ::Type{Data.Column}, T, row, col) = Data.streamfrom(source, Data.Column, T, col)
 Data.streamfrom(source, ::Type{Data.Column}, T, r::AbstractRange, col) = Data.streamfrom(source, Data.Column, T, first(r), col)[r]
-
-# Generic fallbacks
 Data.streamtype(source, ::Type{Data.Row}) = Data.streamtype(source, Data.Field)
 Data.streamtype(source, ::Type{<:StreamType}) = false
 Data.reset!(source) = nothing
-
 struct RandomAccess end
 struct Sequential end
-
 """
 `Data.accesspattern(source) => Data.RandomAccess | Data.Sequential`
-
 returns the data access pattern for a Data.Source.
-
 `RandomAccess` indicates that a source supports streaming data (via calls to `Data.streamfrom`) with arbitrary row/column values in any particular order.
-
 `Sequential` indicates that the source only supports streaming data sequentially, starting w/ row 1, then accessing each column from 1:N, then row 2, and each column from 1:N again, etc.
-
 For example, a `DataFrame` holds all data in-memory, and thus supports easy random access in any order.
 A `CSV.Source` however, is streaming the contents of a file, where rows must be read sequentially, and each column sequentially within each rows.
-
 By default, sources are assumed to have a `Sequential` access pattern.
 """
 function accesspattern end
-
 accesspattern(x) = Sequential()
-
 const EMPTY_REFERENCE = UInt8[]
 """
 Data.Source types can optionally implement
-
 `Data.reference(x::Source) => Vector{UInt8}`
-
 where the type retruns a `Vector{UInt8}` that represents a memory block that should be kept in reference for WeakRefStringArrays.
-
 In many streaming situations, the minimizing of data copying/movement is ideal. Some sources can provide in-memory access to their data
 in the form of a `Vector{UInt8}`, i.e. a single byte vector, that sinks can "point to" when streaming, instead of needing to always
 copy all the data. In particular, the `WeakRefStrings` package provides utilities for creating "string types" that don't actually hold their
@@ -242,20 +179,14 @@ and move around, this provides excellent performance gains in some cases when th
 """
 function reference end
 reference(x) = EMPTY_REFERENCE
-
-# Data.Sink Interface
 """
 Represents a type that can have data streamed to it from `Data.Source`s.
-
 To satisfy the `Data.Sink` interface, it must provide two constructors with the following signatures:
-
 ```
 [Sink](sch::Data.Schema, S::Type{StreamType}, append::Bool, args...; reference::Vector{UInt8}=UInt8[], kwargs...) => [Sink]
 [Sink](sink, sch::Data.Schema, S::Type{StreamType}, append::Bool; reference::Vector{UInt8}=UInt8[]) => [Sink]
 ```
-
 Let's break these down, piece by piece:
-
 - `[Sink]`: this is your sink type, i.e. `CSV.Sink`, `DataFrame`, etc. You're defining a constructor for your sink type.
 - `sch::Data.Schema`: in the streaming process, the schema of a `Data.Source` is provided to the sink in order to allow the sink to "initialize" properly in order to receive data according to the format in `sch`. This might mean pre-allocating space according to the # of rows/columns in the source, managing the sink's own schema to match `sch`, etc.
 - `S::Type{StreamType}`: `S` represents the type of streaming that will occur from the `Data.Source`, either `Data.Field` or `Data.Column`
@@ -264,9 +195,7 @@ Let's break these down, piece by piece:
 - `reference::Vector{UInt8}`: if your sink defined `Data.weakrefstrings(sink::MySink) = true`, then it also needs to be able to accept the `reference` keyword argument, where a source's memory block will be passed, to be held onto appropriately by the sink when streaming WeakRefStrings. If a sink does not support streaming WeakRefStrings (the default), the sink constructor doesn't need to support any keyword arguments.
 - `kwargs...`: Similar to `args...`, `kwargs...` is a catchall for any additional keyword arguments you'd like to expose for your sink constructor, typically matching supported keyword arguments that are provided through the normal sink constructor
 - `sink`: in the 2nd form, an already-constructed sink is passed in as the 1st argument. This allows efficient sink re-use. This constructor needs to ensure the existing sink is modified (enlarged, shrunk, schema changes, etc) to be ready to accept the incoming source data as described by `sch`.
-
 Now let's look at an example implementation from CSV.jl:
-
 ```julia
 function CSV.Sink(fullpath::AbstractString; append::Bool=false, headers::Bool=true, colnames::Vector{String}=String[], kwargs...)
     io = IOBuffer()
@@ -274,12 +203,10 @@ function CSV.Sink(fullpath::AbstractString; append::Bool=false, headers::Bool=tr
     !append && header && !isempty(colnames) && writeheaders(io, colnames, options)
     return CSV.Sink(options, io, fullpath, position(io), !append && header && !isempty(colnames), colnames, length(colnames), append)
 end
-
 function CSV.Sink(sch::Data.Schema, T, append, file::AbstractString; reference::Vector{UInt8}=UInt8[], kwargs...)
     sink = CSV.Sink(file; append=append, colnames=Data.header(sch), kwargs...)
     return sink
 end
-
 function CSV.Sink(sink, sch::Data.Schema, T, append; reference::Vector{UInt8}=UInt8[])
     sink.append = append
     sink.cols = size(sch, 2)
@@ -287,32 +214,25 @@ function CSV.Sink(sink, sch::Data.Schema, T, append; reference::Vector{UInt8}=UI
     return sink
 end
 ```
-
 In this case, CSV.jl defined an initial constructor that just takes the filename with a few keyword arguments.
 The two required Data.Sink constructors are then defined. The first constructs a new Sink, requiring a `file::AbstractString` argument.
 We also see that `CSV.Sink` supports WeakRefString streaming by accepting a `reference` keyword argument (which is trivially implemented for CSV, since all data is simply written out to disk as text).
-
 For the 2nd (last) constructor in the definitions above, we see the case where an existing `sink` is passed to `CSV.Sink`.
 The sink updates a few of its fields (`sink.append = append`), and some logic is computed to determine if
 the column headers should be written.
 """
 abstract type Sink end
-
 """
 `Data.streamtypes(::Type{[Sink]}) => Vector{StreamType}`
-
 Returns a vector of `Data.StreamType`s that the sink is able to receive; the order of elements indicates the sink's streaming preference
-
 For example, if my sink only supports `Data.Field` streaming, I would simply define:
 ```julia
 Data.streamtypes(::Type{MyPkg.Sink}) = [Data.Field]
 ```
-
 If, on the other hand, my sink also supported `Data.Column` streaming, and `Data.Column` streaming happend to be more efficient, I could define:
 ```julia
 Data.streamtypes(::Type{MyPkg.Sink}) = [Data.Column, Data.Field] # put Data.Column first to indicate preference
 ```
-
 A third option is a sink that operates on entire rows at a time, in which case I could define:
 ```julia
 Data.streamtypes(::Type{MyPkg.Sink}) = [Data.Row]
@@ -320,15 +240,11 @@ Data.streamtypes(::Type{MyPkg.Sink}) = [Data.Row]
 The subsequent `Data.streamto!` method would then require the signature `Data.streamto!(sink::MyPkg.Sink, ::Type{Data.Row}, vals::NamedTuple, row, col, knownrows`
 """
 function streamtypes end
-
 """
 `Data.streamto!(sink, S::Type{StreamType}, val, row, col)`
-
 `Data.streamto!(sink, S::Type{StreamType}, val, row, col, knownrows)`
-
 Streams data to a sink. `S` is the type of streaming (`Data.Field`, `Data.Row`, or `Data.Column`). `val` is the value or values (single field, row as a NamedTuple, or column, respectively)
 to be streamed to the sink. `row` and `col` indicate where the data should be streamed/stored.
-
 A sink may optionally define the method that also accepts the `knownrows` argument, which will be `Val{true}` or `Val{false}`,
 indicating whether the source streaming has a known # of rows or not. This can be useful for sinks that
 may know how to pre-allocate space in the cases where the source can tell the # of rows, or in the case
@@ -337,11 +253,8 @@ of unknown # of rows, may need to stream the data in differently.
 function streamto! end
 Data.streamto!(sink, S, val, row, col, knownrows) = Data.streamto!(sink, S, val, row, col)
 Data.streamto!(sink, S, val, row, col) = Data.streamto!(sink, S, val, col)
-
-# Optional methods
 """
 `Data.cleanup!(sink)`
-
 Sometimes errors occur during the streaming of data from source to sink. Some sinks may be left in
 an undesired state if an error were to occur mid-streaming. `Data.cleanup!` allows a sink to "clean up"
 any necessary resources in the case of a streaming error. `SQLite.jl`, for example, defines:
@@ -352,14 +265,11 @@ function Data.cleanup!(sink::SQLite.Sink)
 end
 ```
 Since a database transaction is initiated at the start of streaming, it must be rolled back in the case of streaming error.
-
 The default definition is: `Data.cleanup!(sink) = nothing`
 """
 function cleanup! end
-
 """
 `Data.close!(sink) => sink`
-
 A function to "close" a sink to streaming. Some sinks require a definitive time where data can be "committed",
 `Data.close!` allows a sink to perform any necessary resource management or commits to ensure all data that has been
 streamed is stored appropriately. For example, the `SQLite` package defines:
@@ -372,14 +282,10 @@ end
 Which commits a database transaction that was started when the sink was initially "opened".
 """
 function close! end
-
-# Generic fallbacks
 cleanup!(sink) = nothing
 close!(sink) = sink
-
 """
 `Data.weakrefstrings(sink) => Bool`
-
 If a sink is able to appropriately handle `WeakRefString` objects, it can define:
 ```julia
 Data.weakrefstrings(::Type{[Sink]}) = true
@@ -390,31 +296,21 @@ not support WeakRefString streaming. Supporting WeakRefStrings corresponds to ac
 """
 function weakrefstrings end
 weakrefstrings(x) = false
-
-# Data.stream!
 """
 `Data.stream!(source, sink; append::Bool=false, transforms=Dict())`
-
 `Data.stream!(source, ::Type{Sink}, args...; append::Bool=false, transforms=Dict(), kwargs...)`
-
 Stream data from source to sink. The 1st definition assumes already constructed source & sink and takes two optional keyword arguments:
-
 - `append::Bool=false`: whether the data from `source` should be appended to `sink`
 - `transforms::Dict`: A dict with mappings between column # or name (Int or String) to a "transform" function. For `Data.Field` streaming, the transform function should be of the form `f(x::T) => y::S`, i.e. takes a single input of type `T` and returns a single value of type `S`. For `Data.Column` streaming, it should be of the form `f(x::AbstractVector{T}) => y::AbstractVector{S}`, i.e. take an AbstractVector with eltype `T` and return another AbstractVector with eltype `S`.
-
 For the 2nd definition, the Sink type itself is passed as the 2nd argument (`::Type{Sink}`) and is constructed "on-the-fly", being passed `args...` and `kwargs...` like `Sink(args...; kwargs...)`.
-
 While users are free to call `Data.stream!` themselves, oftentimes, packages want to provide even higher-level convenience functions.
-
 An example of of these higher-level convenience functions are from CSV.jl:
-
 ```julia
 function CSV.read(fullpath::Union{AbstractString,IO}, sink::Type=DataFrame, args...; append::Bool=false, transforms::Dict=Dict{Int,Function}(), kwargs...)
     source = CSV.Source(fullpath; kwargs...)
     sink = Data.stream!(source, sink, args...; append=append, transforms=transforms, kwargs...)
     return Data.close!(sink)
 end
-
 function CSV.read(fullpath::Union{AbstractString,IO}, sink::T; append::Bool=false, transforms::Dict=Dict{Int,Function}(), kwargs...) where T
     source = CSV.Source(fullpath; kwargs...)
     sink = Data.stream!(source, sink; append=append, transforms=transforms)
@@ -424,20 +320,14 @@ end
 In this example, CSV.jl defines it's own high-level function for reading from a `CSV.Source`. In these examples, a `CSV.Source` is constructed using the `fullpath` argument, along w/ any extra `kwargs...`.
 The sink can be provided as a type with `args...` and `kwargs...` that will be passed to its DataStreams constructor, like `Sink(sch, streamtype, append, args...; kwargs...)`; otherwise, an already-constructed
 Sink can be provided directly (2nd example).
-
 Once the `source` is constructed, the data is streamed via the call to `Data.stream(source, sink; append=append, transforms=transforms)`, with the sink being returned.
-
 And finally, to "finish" the streaming process, `Data.close!(sink)` is closed, which returns the finalized sink. Note that `Data.stream!(source, sink)` could be called multiple times with different sources and the same sink,
 most likely with `append=true` being passed, to enable the accumulation of several sources into a single sink. A single `Data.close!(sink)` method should be called to officially close or commit the final sink.
-
 Two "builtin" Source/Sink types that are included with the DataStreams package are the `Data.Table` and `Data.RowTable` types. `Data.Table` is a NamedTuple of AbstractVectors, with column names as NamedTuple fieldnames.
 This type supports both `Data.Field` and `Data.Column` streaming. `Data.RowTable` is just a Vector of NamedTuples, and as such, only supports `Data.Field` streaming.
-
 In addition, any `Data.Source` can be iterated via the `Data.rows(source)` function, which returns a NamedTuple-iterator over the rows of a source. 
 """
 function stream! end
-
-# skipfield! and skiprow! only apply to Data.Field/Data.Row streaming
 skipfield!(source, S, T, row, col) = Data.accesspattern(source) == Data.RandomAccess() ? nothing : Data.streamfrom(source, S, T, row, col)
 function skiprow!(source, S, row, col)
     Data.accesspattern(source) == Data.RandomAccess() && return
@@ -460,12 +350,8 @@ function skiprows!(source, S, from, to)
         end
     end
 end
-
 datatype(T) = eval(Base.datatype_module(Base.unwrap_unionall(T)), Base.datatype_name(T))
-
-# generic public definitions
 const TRUE = x->true
-# the 2 methods below are safe and expected to be called from higher-level package convenience functions (e.g. CSV.read)
 function Data.stream!(source::So, ::Type{Si}, args...;
                         append::Bool=false,
                         transforms::Dict=Dict{Int, Function}(),
@@ -492,7 +378,6 @@ function Data.stream!(source::So, ::Type{Si}, args...;
     end
     throw(ArgumentError("`source` doesn't support the supported streaming types of `sink`: $sinkstreamtypes"))
 end
-
 function Data.stream!(source::So, sink::Si;
                         append::Bool=false,
                         transforms::Dict=Dict{Int, Function}(),
@@ -518,7 +403,6 @@ function Data.stream!(source::So, sink::Si;
     end
     throw(ArgumentError("`source` doesn't support the supported streaming types of `sink`: $sinkstreamtypes"))
 end
-
 function inner_loop(::Type{Val{N}}, ::Type{S}, ::Type{Val{homogeneous}}, ::Type{T}, knownrows::Type{Val{R}}, names, sourcetypes) where {N, S <: StreamType, homogeneous, T, R}
     if S == Data.Row
         vals = Tuple(:($(Symbol("val_$col"))) for col = 1:N)
@@ -573,7 +457,6 @@ function inner_loop(::Type{Val{N}}, ::Type{S}, ::Type{Val{homogeneous}}, ::Type{
     # println(macroexpand(loop))
     return loop
 end
-
 @inline function streamto!(sink, ::Type{S}, source, ::Type{T}, row, sinkrowoffset, col::Int, f::Base.Callable, knownrows) where {S, T}
     val = Data.streamfrom(source, S, T, row, col)
     if val isa Missing
@@ -583,7 +466,6 @@ end
     end
     return length(val)
 end
-
 function generate_loop(::Type{Val{knownrows}}, ::Type{S}, inner_loop) where {knownrows, S <: StreamType}
     if knownrows && S == Data.Field
         # println("generating loop w/ known rows...")
@@ -607,7 +489,6 @@ function generate_loop(::Type{Val{knownrows}}, ::Type{S}, inner_loop) where {kno
     # println(macroexpand(loop))
     return loop
 end
-
 @generated function Data.stream!(source::So, ::Type{S}, sink::Si,
                         source_schema::Schema{R, T1}, sinkrowoffset,
                         transforms, filter, columns, ::Type{Ref{names}}) where {So, S <: StreamType, Si, R, T1, names}
@@ -634,21 +515,12 @@ end
     # println(r)
     return r
 end
-
-
-
-#
-# expanded from: include("namedtuples.jl")
-#
-
 if !isdefined(Core, :NamedTuple)
     using NamedTuples
     function Base.get(f::Function, nt::NamedTuple, k)
         return haskey(nt, k) ? nt[k] : f()
     end
 end
-
-# Source/Sink with NamedTuple, both row and column oriented
 "A default row-oriented \"table\" that supports both the `Data.Source` and `Data.Sink` interfaces. Can be used like `Data.stream!(source, Data.RowTable)`. It is represented as a Vector of NamedTuples."
 const RowTable{T} = Vector{T} where {T <: NamedTuple}
 Data.isdone(source::RowTable, row, col, rows, cols) = row > rows || col > cols
@@ -660,80 +532,50 @@ Data.streamtype(::Type{Array}, ::Type{Data.Field}) = true
 @inline Data.streamfrom(source::RowTable, ::Type{Data.Field}, ::Type{T}, row, col) where {T} = source[row][col]
 Data.streamtypes(::Type{Array}) = [Data.Row]
 Data.accesspattern(::RowTable) = Data.RandomAccess()
-
 @inline Data.streamto!(sink::RowTable, ::Type{Data.Row}, val, row, col) =
     row > length(sink) ? push!(sink, val) : setindex!(sink, val, row)
 @inline Data.streamto!(sink::RowTable, ::Type{Data.Row}, val, row, col::Int, ::Type{Val{false}}) =
     push!(sink, val)
 @inline Data.streamto!(sink::RowTable, ::Type{Data.Row}, val, row, col::Int, ::Type{Val{true}}) =
     setindex!(sink, val, row)
-
 if isdefined(Core, :NamedTuple)
-
-# Basically, a NamedTuple with any # of AbstractVector elements, accessed by column name
 "A default column-oriented \"table\" that supports both the `Data.Source` and `Data.Sink` interfaces. Can be used like `Data.stream!(source, Data.Table). It is represented as a NamedTuple of AbstractVectors.`"
 const Table = NamedTuple{names, T} where {names, T <: NTuple{N, AbstractVector{S} where S}} where {N}
-
 function Data.schema(rt::RowTable{NamedTuple{names, T}}) where {names, T}
     return Data.Schema(Type[A for A in T.parameters],
                         collect(map(string, names)), length(rt))
 end
-# NamedTuple Data.Source implementation
-# compute Data.Schema on the fly
 function Data.schema(df::NamedTuple{names, T}) where {names, T}
     return Data.Schema(Type[eltype(A) for A in T.parameters],
                         collect(map(string, names)), length(df) == 0 ? 0 : length(getfield(df, 1)))
 end
-
 else # if isdefined(Core, :NamedTuple)
-
-# Constraint relaxed for compatability; NamedTuples.NamedTuple does not have parameters
 "A default column-oriented \"table\" that supports both the `Data.Source` and `Data.Sink` interfaces. Can be used like `Data.stream!(source, Data.Table). It is represented as a NamedTuple of AbstractVectors.`"
 const Table = NamedTuple
-
 function Data.schema(rt::RowTable{T}) where {T}
     return Data.Schema(Type[fieldtype(T, i) for i = 1:nfields(T)],
                         collect(map(string, fieldnames(T))), length(rt))
 end
-# NamedTuple Data.Source implementation
-# compute Data.Schema on the fly
 function Data.schema(df::NamedTuple)
     return Data.Schema(Type[eltype(A) for A in values(df)],
                         collect(map(string, keys(df))), length(df) == 0 ? 0 : length(getfield(df, 1)))
 end
-
 end # if isdefined(Core, :NamedTuple)
-
 Data.isdone(source::Table, row, col, rows, cols) = row > rows || col > cols
 function Data.isdone(source::Table, row, col)
     cols = length(source)
     return Data.isdone(source, row, col, cols == 0 ? 0 : length(getfield(source, 1)), cols)
 end
-
-# We support both kinds of streaming
 Data.streamtype(::Type{<:NamedTuple}, ::Type{Data.Column}) = true
 Data.streamtype(::Type{<:NamedTuple}, ::Type{Data.Field}) = true
 Data.accesspattern(::Table) = Data.RandomAccess()
-
-# Data.streamfrom is pretty simple, just return the cell or column
 @inline Data.streamfrom(source::Table, ::Type{Data.Column}, T, row::Integer, col::Integer) = source[col]
 @inline Data.streamfrom(source::Table, ::Type{Data.Field}, T, row::Integer, col::Integer) = source[col][row]
-
-# NamedTuple Data.Sink implementation
-# we support both kinds of streaming to our type
 Data.streamtypes(::Type{<:NamedTuple}) = [Data.Column, Data.Field]
-# we support streaming WeakRefStrings
 Data.weakrefstrings(::Type{<:NamedTuple}) = true
-
-# convenience methods for "allocating" a single column for streaming
 allocate(::Type{T}, rows, ref) where {T} = @uninit Vector{T}(uninitialized, rows)
-# allocate(::Type{T}, rows, ref) where {T <: Union{CategoricalValue, Missing}} =
-#     CategoricalArray{CategoricalArrays.unwrap_catvalue_type(T)}(rows)
-# special case for WeakRefStrings
 allocate(::Type{WeakRefString{T}}, rows, ref) where {T} = WeakRefStringArray(ref, WeakRefString{T}, rows)
 allocate(::Type{Union{WeakRefString{T}, Missing}}, rows, ref) where {T} = WeakRefStringArray(ref, Union{WeakRefString{T}, Missing}, rows)
-
-# NamedTuple doesn't allow duplicate names, so make sure there are no duplicates in our column names
 function makeunique(names::Vector{String})
     nms = [Symbol(nm) for nm in names]
     seen = Set{Symbol}()
@@ -742,7 +584,6 @@ function makeunique(names::Vector{String})
     end
     return (nms...,)
 end
-
 function Array(sch::Data.Schema{R}, ::Type{Data.Row}, append::Bool=false, args...) where {R}
     types = Data.types(sch)
     # check if we're dealing with an existing NamedTuple sink or not
@@ -770,13 +611,9 @@ function Array(sch::Data.Schema{R}, ::Type{Data.Row}, append::Bool=false, args..
     end
     return sink
 end
-
 function Array(sink::RowTable, sch::Data.Schema, ::Type{Data.Row}, append::Bool)
     return Array(sch, Data.Row, append, sink)
 end
-
-# Construct or modify a NamedTuple to be ready to stream data from a source with a schema of `sch`
-# We support WeakRefString streaming, so we include the `reference` keyword
 function NamedTuple(sch::Data.Schema{R}, ::Type{S}=Data.Field,
                     append::Bool=false, args...; reference::Vector{UInt8}=UInt8[]) where {R, S <: StreamType}
     types = Data.types(sch)
@@ -808,7 +645,6 @@ function NamedTuple(sch::Data.Schema{R}, ::Type{S}=Data.Field,
         # for Data.Column or unknown # of rows in Data.Field, we only ever append!, so just allocate empty columns
         rows = ifelse(S == Data.Column, 0, ifelse(!R, 0, sch.rows))
         names = makeunique(Data.header(sch))
-
         sink = @static if isdefined(Core, :NamedTuple)
                 NamedTuple{names}(Tuple(allocate(types[i], rows, reference) for i = 1:length(types)))
             else
@@ -818,14 +654,9 @@ function NamedTuple(sch::Data.Schema{R}, ::Type{S}=Data.Field,
     end
     return sink
 end
-
-# Constructor that takes an existing NamedTuple sink, just pass it to our mega-constructor above
 function NamedTuple(sink::Table, sch::Data.Schema, ::Type{S}, append::Bool; reference::Vector{UInt8}=UInt8[]) where {S}
     return NamedTuple(sch, S, append, sink; reference=reference)
 end
-
-# Data.streamto! is easy-peasy, if there are known # of rows from source, we pre-allocated
-# so we can just set the value; otherwise (didn't pre-allocate), we push!/append! the values
 @inline Data.streamto!(sink::Table, ::Type{Data.Field}, val, row, col::Int) =
     (A = getfield(sink, col); row > length(A) ? push!(A, val) : setindex!(A, val, row))
 @inline Data.streamto!(sink::Table, ::Type{Data.Field}, val, row, col::Int, ::Type{Val{false}}) =
@@ -834,19 +665,14 @@ end
     getfield(sink, col)[row] = val
 @inline Data.streamto!(sink::Table, ::Type{Data.Column}, column, row, col::Int, knownrows) =
     append!(getfield(sink, col), column)
-
-
-# Row iteration for Data.Sources
 struct Rows{S, NT}
     source::S
 end
-
 Base.eltype(rows::Rows{S, NT}) where {S, NT} = NT
 function Base.length(rows::Rows)
     sch = Data.schema(rows.source)
     return size(sch, 1)
 end
-
 "Returns a NamedTuple-iterator of any `Data.Source`"
 function rows(source::S) where {S}
     sch = Data.schema(source)
@@ -860,10 +686,8 @@ function rows(source::S) where {S}
         end
     return Rows{S, NT}(source)
 end
-
 Base.start(rows::Rows) = 1
 @static if isdefined(Core, :NamedTuple)
-
 @generated function Base.next(rows::Rows{S, NamedTuple{names, types}}, row::Int) where {S, names, types}
     vals = Tuple(:(Data.streamfrom(rows.source, Data.Field, $typ, row, $col)) for (col, typ) in zip(1:length(names), types.parameters) )
     r = :(($(NamedTuple{names, types})(($(vals...),)), row + 1))
@@ -875,7 +699,6 @@ end
     return :(Data.isdone(rows.source, row, $cols))
 end
 else
-
 @generated function Base.next(rows::Rows{S, NT}, row::Int) where {S, NT}
     names = fieldnames(NT)
     types = Tuple(fieldtype(NT, i) for i = 1:nfields(NT))
@@ -888,38 +711,12 @@ end
     cols = length(fieldnames(NT))
     return :(Data.isdone(rows.source, row, $cols))
 end
-
 end
-
-
-#
-# expanded from: include("query.jl")
-#
-
-# function rle(t::Tuple)
-#     typs = Pair{Type, Int}[]
-#     len = 1
-#     T = t[1]
-#     for i = 2:length(t)
-#         TT = t[i]
-#         if T == TT
-#             len += 1
-#         else
-#             push!(typs, T=>len)
-#             T = TT
-#             len = 1
-#         end
-#     end
-#     push!(typs, T=>len)
-#     return typs
-# end
 tuplesubset(tup, ::Tuple{}) = ()
 tuplesubset(tup, inds) = (tup[inds[1]], tuplesubset(tup, Base.tail(inds))...)
-
 import Base.|
 |(::Type{A}, ::Type{B}) where {A, B} = Union{A, B}
 have(x) = x !== nothing
-
 const QueryCodeType = UInt8
 const UNUSED         = 0x00
 const SELECTED       = 0x01
@@ -930,12 +727,9 @@ const AGGCOMPUTED    = 0x10
 const SORTED         = 0x20
 const GROUPED        = 0x40
 const AAA = 0x80
-
 unused(code::QueryCodeType) = code === UNUSED
-
 concat!(A, val) = push!(A, val)
 concat!(A, a::AbstractArray) = append!(A, a)
-
 filter(func, val) = func(val)
 function filter(filtered, func, val)
     @inbounds for i = 1:length(val)
@@ -943,11 +737,8 @@ function filter(filtered, func, val)
         filtered[i] = func(val[i])
     end
 end
-
 calculate(func, vals...) = func(vals...)
 calculate(func, vals::AbstractArray...) = func.(vals...)
-
-# Data.Field/Data.Row aggregating
 @generated function aggregate(aggregates, aggkeys, aggvalues)
     # if @generated
         default = Tuple(:($T[]) for T in aggvalues.parameters)
@@ -964,7 +755,6 @@ calculate(func, vals::AbstractArray...) = func.(vals...)
     #     end
     # end
 end
-# Data.Column aggregating
 @generated function aggregate(aggregates::Dict{K}, aggkeys::T, aggvalues) where {K, T <: NTuple{N, Vector{TT} where TT}} where {N}
     # if @generated
         len = length(aggkeys.parameters)
@@ -1004,8 +794,6 @@ end
     #     println("slow path")
     # end
 end
-
-# Nested binary search tree for multi-column sorting
 mutable struct Node{T}
     inds::Vector{Int}
     value::T
@@ -1015,7 +803,6 @@ mutable struct Node{T}
 end
 Node(rowind, ::Tuple{}) = nothing
 Node(rowind, t::Tuple) = Node([rowind], t[1], nothing, nothing, Node(rowind, Base.tail(t)))
-
 insert!(node, rowind, dir, ::Tuple{}) = nothing
 function insert!(node, rowind, dir, tup)
     key = tup[1]
@@ -1053,7 +840,6 @@ function inds(n::Node, ind, A::Vector{Int})
         inds(n.right, ind, A)
     end
 end
-
 function sort(sortinds, sortkeys::Tuple)
     dirs = Tuple(p.second for p in sortkeys)
     root = Node(1, Tuple(p.first[1] for p in sortkeys))
@@ -1063,18 +849,13 @@ function sort(sortinds, sortkeys::Tuple)
     inds(root, Ref(1), sortinds)
     return sortinds
 end
-
 struct Sort{ind, asc} end
 sortind(::Type{Sort{ind, asc}}) where {ind, asc} = ind
 sortasc(::Type{Sort{ind, asc}}) where {ind, asc} = asc
-
 """
 Represents a column used in a Data.Query for querying a Data.Source
-
 Passed as the `actions` argument as an array of NamedTuples to `Data.query(source, actions, sink)`
-
 Options include:
-
   * `col::Integer`: reference to a source column index
   * `name`: the name the column should have in the resulting query, if none is provided, it will be auto-generated
   * `T`: the type of the column, if not provided, it will be inferred from the source
@@ -1096,7 +877,6 @@ struct QueryColumn{code, T, sourceindex, sinkindex, name, sort, args}
     compute::(Function|Void)
     aggregate::(Function|Void)
 end
-
 function QueryColumn(sourceindex, types=(), header=[];
                 name=Symbol(""),
                 T::Type=Any,
@@ -1123,7 +903,6 @@ function QueryColumn(sourceindex, types=(), header=[];
     group && hide && throw(ArgumentError("grouped column must be included in resultset"))
     sort && !have(sortindex) && throw(ArgumentError("must provide sortindex if column is sorted"))
     sort && hide && throw(ArgumentError("sorted column must be included in resultset"))
-
     args = ()
     code = UNUSED
     for (arg, c) in (!hide=>SELECTED, sort=>SORTED, group=>GROUPED)
@@ -1152,7 +931,6 @@ function QueryColumn(sourceindex, types=(), header=[];
     S = sort ? Sort{sortindex, sortasc} : nothing
     return QueryColumn{code, T, sourceindex, sinkindex, name, S, args}(filter, having, compute, aggregate)
 end
-
 for (f, c) in (:selected=>SELECTED,
                :scalarfiltered=>SCALARFILTERED,
                :aggfiltered=>AGGFILTERED,
@@ -1164,19 +942,14 @@ for (f, c) in (:selected=>SELECTED,
     @eval $f(x) = $f(code(x))
     @eval $f(x::QueryColumn{code}) where {code} = $f(code)
 end
-
 for (f, arg) in (:code=>:c, :T=>:t, :sourceindex=>:so, :sinkindex=>:si, :name=>:n, :sort=>:s, :args=>:a)
     @eval $f(::Type{<:QueryColumn{c, t, so, si, n, s, a}}) where {c, t, so, si, n, s, a} = $arg
     @eval $f(::QueryColumn{c, t, so, si, n, s, a}) where {c, t, so, si, n, s, a} = $arg
 end
-
-# E type parameter is for a tuple of integers corresponding to
-# column index inputs for aggcomputed columns
 struct Query{code, S, T, E, L, O}
     source::S
     columns::T # Tuple{QueryColumn...}, columns are in *output* order (i.e. monotonically increasing by sinkindex)
 end
-
 function Query(source::S, actions, limit=nothing, offset=nothing) where {S}
     sch = Data.schema(source)
     types = Data.types(sch)
@@ -1233,19 +1006,14 @@ function Query(source::S, actions, limit=nothing, offset=nothing) where {S}
     end
     append!(columns, QueryColumn(x, types, header; hide=true, sinkindex=outlen+i) for (i, x) in enumerate(Base.sort(collect(extras))))
     columns = Tuple(columns)
-
     return Query{querycode, S, typeof(columns), Tuple(aggcompute_extras), limit, offset}(source, columns)
 end
-
 """
     Data.query(source, actions, sink=Data.Table, args...; append::Bool=false, limit=nothing, offset=nothing)
-
 Query a valid DataStreams `Data.Source` according to query `actions` and stream the result into `sink`.
 `limit` restricts the total number of rows streamed out, while `offset` will skip initial N rows.
 `append=true` will cause the `sink` to _accumulate_ the additional query resultset rows instead of replacing any existing rows in the sink.
-
 `actions` is an array of NamedTuples, w/ each NamedTuple including one or more of the following query arguments:
-
   * `col::Integer`: reference to a source column index
   * `name`: the name the column should have in the resulting query, if none is provided, it will be auto-generated
   * `T`: the type of the column, if not provided, it will be inferred from the source
@@ -1266,10 +1034,8 @@ function query(source, actions, sink=Table, args...; append::Bool=false, limit::
     sink = Data.stream!(q, sink, args...; append=append)
     return Data.close!(sink)
 end
-
 unwk(T, wk) = T
 unwk(::Type{WeakRefString{T}}, wk) where {T} = wk ? WeakRefString{T} : String
-
 "Compute the Data.Schema of the resultset of executing Data.Query `q` against its source"
 function schema(q::Query{code, S, columns, e, limit, offset}, wk=true) where {code, S, columns, e, limit, offset}
     types = Tuple(unwk(T(col), wk) for col in columns.parameters if selected(col))
@@ -1280,26 +1046,6 @@ function schema(q::Query{code, S, columns, e, limit, offset}, wk=true) where {co
     rows = (scalarfiltered(code) | grouped(code)) ? missing : rows
     return Schema(types, header, rows)
 end
-
-# function subset(T, I, i)
-#     if Base.tuple_type_head(I) == i
-#         head = Base.tuple_type_head(T)
-#         tail = Base.tuple_type_tail(I)
-#         return tail == Tuple{} ? Tuple{head} : Base.tuple_type_cons(head, subset(Base.tuple_type_tail(T), tail, i + 1))
-#     else
-#         return subset(T, I, i + 1)
-#     end
-# end
-
-# function tupletypesubset(::Type{T}, ::Type{I}) where {T, I}
-#     if @generated
-#         TT = subset(T, I, 1)
-#         return :($TT)
-#     else
-#         Tuple{(T.parameters[i] for i in I.parameters)...}
-#     end
-# end
-
 codeblock() = Expr(:block)
 macro vals(ex)
     return esc(:(Symbol(string("vals", $ex))))
@@ -1307,8 +1053,6 @@ end
 macro val(ex)
     return esc(:(Symbol(string("val", $ex))))
 end
-
-# generate the entire streaming loop, according to any QueryColumns passed by the user
 function generate_loop(knownrows, S, code, columns, extras, sourcetypes, limit, offset)
     streamfrom_inner_loop = codeblock()
     streamto_inner_loop = codeblock()
@@ -1333,14 +1077,12 @@ function generate_loop(knownrows, S, code, columns, extras, sourcetypes, limit, 
     cols = collect(columns.parameters)
     sourceinds = sortperm(cols, by=x->sourceindex(x))
     sourcecolumns = [ind=>cols[ind] for ind in sourceinds]
-
     starting_row = 1
     if have(offset)
         starting_row = offset + 1
         push!(pre_outer_loop.args, :(Data.skiprows!(source, $S, 1, $offset)))
     end
     rows = have(limit) ? :(min(rows, $(starting_row + limit - 1))) : :rows
-
     # loop thru sourcecolumns first, to ensure we stream everything we need from the Data.Source
     for (ind, col) in sourcecolumns
         si = sourceindex(col)
@@ -1555,7 +1297,6 @@ function generate_loop(knownrows, S, code, columns, extras, sourcetypes, limit, 
         push!(streamto_inner_loop.args,
             :(Data.streamto!(sink, Data.Row, $vals, sinkrowoffset + sinkrow, 0, Val{$knownrows})))
     end
-
     if knownrows && (S == Data.Field || S == Data.Row) && !sorted(code)
         # println("generating loop w/ known rows...")
         return quote
@@ -1587,7 +1328,6 @@ function generate_loop(knownrows, S, code, columns, extras, sourcetypes, limit, 
         end
     end
 end
-
 function Data.stream!(q::Query{code, So}, ::Type{Si}, args...; append::Bool=false, kwargs...) where {code, So, Si}
     S = datatype(Si)
     sinkstreamtypes = Data.streamtypes(S)
@@ -1609,7 +1349,6 @@ function Data.stream!(q::Query{code, So}, ::Type{Si}, args...; append::Bool=fals
     end
     throw(ArgumentError("`source` doesn't support the supported streaming types of `sink`: $sinkstreamtypes"))
 end
-
 @generated function Data.stream!(q::Query{code, So, columns, extras, limit, offset}, ::Type{S}, sink,
                         source_schema::Data.Schema{R, T1}, sinkrowoffset) where {S <: Data.StreamType, R, T1, code, So, columns, extras, limit, offset}
     types = T1.parameters
@@ -1638,13 +1377,8 @@ end
     # println(r)
     return r
 end
-
-#TODO: figure out non-unrolled case
   # use Any[ ] to store row vals until stream out or push
-#TODO: spread, gather, sample, analytic functions
     # gather: (name=:gathered, gather=true, args=(1,2,3))
     # spread: (spread=1, value=2)
-
 end # module Data
-
 end # module DataStreams

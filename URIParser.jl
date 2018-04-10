@@ -1,37 +1,24 @@
 __precompile__()
-
 module URIParser
-
 export URI
 export defrag, userinfo, path_params, query_params, isvalid
 export escape, escape_form, escape_with, unescape, unescape_form
-
 import Base: isequal, isvalid, show, print, (==)
 using Compat
-
 if VERSION >= v"0.7.0-DEV.2915"
     using Unicode
     using Base.Unicode: isascii
 end
-
 if VERSION >= v"0.7.0-DEV.3526"
     _parse(T, s, b) = Base.parse(Int, s, base=b)
 else
     _parse(T, s, b) = Base.parse(Int, s, b)
 end
-
-
-
-#
-# expanded from: include("parser.jl")
-#
-
 if isdefined(Base, :isnumeric)
     _isalnum(c) = isalpha(c) || isnumeric(c)
 else
     const _isalnum = Base.isalnum
 end
-
 is_url_char(c) =  ((@assert UInt32(c) < 0x80); 'A' <= c <= '~' || '$' <= c <= '>' || c == '\f' || c == '\t')
 is_mark(c) = (c == '-') || (c == '_') || (c == '.') || (c == '!') || (c == '~') ||
              (c == '*') || (c == '\'') || (c == '(') || (c == ')')
@@ -40,8 +27,6 @@ is_userinfo_char(c) = _isalnum(c) || is_mark(c) || (c == '%') || (c == ';') ||
 isnum(c) = ('0' <= c <= '9')
 ishex(c) =  (isnum(c) || 'a' <= lowercase(c) <= 'f')
 is_host_char(c) = _isalnum(c) || (c == '.') || (c == '-') || (c == '_') || (c == "~")
-
-
 struct URI
     scheme::String
     host::String
@@ -54,7 +39,6 @@ struct URI
     URI(scheme,host,port,path,query="",fragment="",userinfo="",specifies_authority=false) =
             new(scheme,host,UInt16(port),path,query,fragment,userinfo,specifies_authority)
 end
-
 ==(a::URI,b::URI) = isequal(a,b)
 isequal(a::URI,b::URI) = (a.scheme == b.scheme) &&
                          (a.host == b.host) &&
@@ -63,7 +47,6 @@ isequal(a::URI,b::URI) = (a.scheme == b.scheme) &&
                          (a.query == b.query) &&
                          (a.fragment == b.fragment) &&
                          (a.userinfo == b.userinfo)
-
 URI(host,path) = URI("http",host,UInt16(80),path,"","","",true)
 URI(uri::URI; scheme=nothing, host=nothing, port=nothing, path=nothing, query=nothing, fragment=nothing, userinfo=nothing, specifies_authority=nothing) =
 URI(scheme === nothing ? uri.scheme : scheme,
@@ -74,13 +57,6 @@ URI(scheme === nothing ? uri.scheme : scheme,
     fragment === nothing ? uri.fragment : fragment,
     userinfo === nothing ? uri.userinfo : userinfo,
     specifies_authority === nothing ? uri.specifies_authority : specifies_authority)
-
-
-# URL parser based on the http-parser package by Joyent
-# Licensed under the BSD license
-
-# Parse authority (user@host:port)
-# return (host,port,user)
 function parse_authority(authority,seen_at)
     host=""
     port=""
@@ -93,11 +69,9 @@ function parse_authority(authority,seen_at)
             last_state = state
             state = :done
         end
-
         if s == 0
             s = li
         end
-
         if state != last_state
             r = s:prevind(authority,li)
             s = li
@@ -109,19 +83,15 @@ function parse_authority(authority,seen_at)
                 port = authority[r]
             end
         end
-
         if state == :done
             break
         end
-
         if done(authority,i)
             li = i
             continue
         end
-
         li = i
         (ch,i) = next(authority,i)
-
         last_state = state
         if state == :http_userinfo || state == :http_userinfo_start
             if ch == '@'
@@ -169,7 +139,6 @@ function parse_authority(authority,seen_at)
     end
     (host, UInt16(port == "" ? 0 : _parse(Int, port, 10)), user)
 end
-
 function parse_url(url)
     scheme = ""
     host = ""
@@ -183,7 +152,6 @@ function parse_url(url)
     last_state = state = :req_spaces_before_url
     seen_at = false
     specifies_authority = false
-
     i = start(url)
     li = s = 0
     while true
@@ -191,11 +159,9 @@ function parse_url(url)
             last_state = state
             state = :done
         end
-
         if s == 0
             s = li
         end
-
         if state != last_state
             r = s:prevind(url,li)
             s = li
@@ -213,25 +179,19 @@ function parse_url(url)
                 fragment = url[r]
             end
         end
-
         if state == :done
             break
         end
-
         if done(url,i)
             li = i
             continue
         end
-
         li = i
         (ch,i) = next(url,i)
-
         if !isascii(ch)
             error("Non-ASCII characters not supported in URIs. Encode the URL and try again.")
         end
-
         last_state = state
-
         if state == :req_spaces_before_url
             if ch == '/' || ch == '*'
                 state = :req_path
@@ -325,11 +285,8 @@ function parse_url(url)
     host, port, user = parse_authority(server,seen_at)
     URI(lowercase(scheme),host,port,path,query,fragment,user,specifies_authority)
 end
-
 URI(url) = parse_url(url)
-
 show(io::IO, uri::URI) = print(io,"URI(",uri,")")
-
 function print(io::IO, uri::URI)
     if uri.specifies_authority || !isempty(uri.host)
         print(io,uri.scheme,"://")
@@ -355,7 +312,6 @@ function print(io::IO, uri::URI)
         print(io,"#",uri.fragment)
     end
 end
-
 function show(io::IO, ::MIME"text/html", uri::URI)
     print(io, "<a href=\"")
     print(io, uri)
@@ -363,28 +319,15 @@ function show(io::IO, ::MIME"text/html", uri::URI)
     print(io, uri)
     print(io, "</a>")
 end
-
-
-#
-# expanded from: include("esc.jl")
-#
-
 const escaped_regex = r"%([0-9a-fA-F]{2})"
-
-# Escaping
 const control_array = vcat(map(UInt8, 0:_parse(Int, "1f", 16)))
 const control = String(control_array)*"\x7f"
 const space = String(" ")
 const delims = String("%<>\"")
 const unwise   = String("(){}|\\^`")
-
 const reserved = String(",;/?:@&=+\$![]'*#")
-# Strings to be escaped
-# (Delims goes first so '%' gets escaped first.)
 const unescaped = delims * reserved * control * space * unwise
 const unescaped_form = delims * reserved * control * unwise
-
-
 function unescape(str)
     r = UInt8[]
     l = length(str)
@@ -401,10 +344,7 @@ function unescape(str)
    return String(r)
 end
 unescape_form(str) = unescape(replace(str, "+" => " "))
-
 hex_string(x) = string('%', uppercase(hex(x,2)))
-
-# Escapes chars (in second string); also escapes all non-ASCII chars.
 function escape_with(str, use)
     str = String(str)
     out = IOBuffer()
@@ -430,22 +370,8 @@ function escape_with(str, use)
     end
     String(take!(out))
 end
-
 escape(str) = escape_with(str, unescaped)
 escape_form(str) = replace(escape_with(str, unescaped_form), " " => "+")
-
-
-#
-# expanded from: include("utils.jl")
-#
-
-##
-# Splits the userinfo portion of an URI in the format user:password and
-# returns the components as tuple.
-#
-# Note: This is just a convenience method, and this form of usage is
-# deprecated as of rfc3986.
-# See: http://tools.ietf.org/html/rfc3986#section-3.2.1
 function userinfo(uri::URI)
     Base.warn_once("Use of the format user:password is deprecated (rfc3986)")
     uinfo = uri.userinfo
@@ -455,10 +381,6 @@ function userinfo(uri::URI)
     password = ((sep == l) || (sep == 0)) ? "" : uinfo[(sep+1):l]
     (username, password)
 end
-
-##
-# Splits the path into components and parameters
-# See: http://tools.ietf.org/html/rfc3986#section-3.3
 function path_params(uri::URI, seps=[';',',','='])
     elems = split(uri.path, '/', keep = false)
     p = Array[]
@@ -468,9 +390,6 @@ function path_params(uri::URI, seps=[';',',','='])
     end
     p
 end
-
-##
-# Splits the query into key value pairs
 function query_params(query::AbstractString)
     elems = split(query, '&', keep = false)
     d = Dict{AbstractString, AbstractString}()
@@ -485,20 +404,12 @@ function query_params(query::AbstractString)
     d
 end
 query_params(uri::URI) = query_params(uri.query::AbstractString)
-
-
-##
-# Create equivalent URI without the fragment
 defrag(uri::URI) = URI(uri.scheme, uri.host, uri.port, uri.path, uri.query, "", uri.userinfo, uri.specifies_authority)
-
-##
-# Validate known URI formats
 const uses_authority = ["hdfs", "ftp", "http", "gopher", "nntp", "telnet", "imap", "wais", "file", "mms", "https", "shttp", "snews", "prospero", "rtsp", "rtspu", "rsync", "svn", "svn+ssh", "sftp" ,"nfs", "git", "git+ssh", "ldap"]
 const uses_params = ["ftp", "hdl", "prospero", "http", "imap", "https", "shttp", "rtsp", "rtspu", "sip", "sips", "mms", "sftp", "tel"]
 const non_hierarchical = ["gopher", "hdl", "mailto", "news", "telnet", "wais", "imap", "snews", "sip", "sips"]
 const uses_query = ["http", "wais", "imap", "https", "shttp", "mms", "gopher", "rtsp", "rtspu", "sip", "sips", "ldap"]
 const uses_fragment = ["hdfs", "ftp", "hdl", "http", "gopher", "news", "nntp", "wais", "https", "shttp", "snews", "file", "prospero"]
-
 function isvalid(uri::URI)
     scheme = uri.scheme
     isempty(scheme) && error("Can not validate relative URI")
@@ -512,12 +423,6 @@ function isvalid(uri::URI)
     end
     true
 end
-
-
-#
-# expanded from: include("precompile.jl")
-#
-
 function _precompile_()
     ccall(:jl_generating_output, Cint, ()) == 1 || return nothing
     precompile(URIParser.parse_url, (String,))
@@ -532,5 +437,4 @@ function _precompile_()
     precompile(URIParser.ishex, (Char,))
 end
 _precompile_()
-
 end # module

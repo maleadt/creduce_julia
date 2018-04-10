@@ -1,34 +1,22 @@
 __precompile__()
-
 module JSON
-
 using Compat
-
 export json # returns a compact (or indented) JSON representation as a string
 export JSONText # string wrapper to insert raw JSON into JSON output
-
-
-
 #
 # expanded from: include("Common.jl")
 #
-
 """
 Internal implementation detail.
 """
 module Common
-
 using Compat
 if VERSION >= v"0.7.0-DEV.2915"
     using Unicode
 end
-
-
-
 #
 # expanded from: include("bytes.jl")
 #
-
 # The following bytes have significant meaning in JSON
 const BACKSPACE      = UInt8('\b')
 const TAB            = UInt8('\t')
@@ -63,7 +51,6 @@ const LATIN_T        = UInt8('t')
 const LATIN_U        = UInt8('u')
 const OBJECT_BEGIN   = UInt8('{')
 const OBJECT_END     = UInt8('}')
-
 const ESCAPES = Dict(
     STRING_DELIM => STRING_DELIM,
     BACKSLASH    => BACKSLASH,
@@ -73,7 +60,6 @@ const ESCAPES = Dict(
     LATIN_N      => NEWLINE,
     LATIN_R      => RETURN,
     LATIN_T      => TAB)
-
 const REVERSE_ESCAPES = Dict(reverse(p) for p in ESCAPES)
 const ESCAPED_ARRAY = Vector{Vector{UInt8}}(undef, 256)
 for c in 0x00:0xFF
@@ -93,19 +79,15 @@ for c in 0x00:0xFF
         [c]
     end
 end
-
 export BACKSPACE, TAB, NEWLINE, FORM_FEED, RETURN, SPACE, STRING_DELIM,
        PLUS_SIGN, DELIMITER, MINUS_SIGN, DECIMAL_POINT, SOLIDUS, DIGIT_ZERO,
        DIGIT_NINE, SEPARATOR, LATIN_UPPER_A, LATIN_UPPER_E, LATIN_UPPER_F,
        ARRAY_BEGIN, BACKSLASH, ARRAY_END, LATIN_A, LATIN_B, LATIN_E, LATIN_F,
        LATIN_L, LATIN_N, LATIN_R, LATIN_S, LATIN_T, LATIN_U, OBJECT_BEGIN,
        OBJECT_END, ESCAPES, REVERSE_ESCAPES, ESCAPED_ARRAY
-
-
 #
 # expanded from: include("errors.jl")
 #
-
 # The following errors may be thrown by the parser
 const E_EXPECTED_EOF    = "Expected end of input"
 const E_UNEXPECTED_EOF  = "Unexpected end of input"
@@ -115,59 +97,44 @@ const E_BAD_ESCAPE      = "Invalid escape sequence"
 const E_BAD_CONTROL     = "ASCII control character in string"
 const E_LEADING_ZERO    = "Invalid leading zero in number"
 const E_BAD_NUMBER      = "Invalid number"
-
 export E_EXPECTED_EOF, E_UNEXPECTED_EOF, E_UNEXPECTED_CHAR, E_BAD_KEY,
        E_BAD_ESCAPE, E_BAD_CONTROL, E_LEADING_ZERO, E_BAD_NUMBER
-
 end
-
 # Parser modules
-
-
 #
 # expanded from: include("Parser.jl")
 #
-
 module Parser  # JSON
-
 using Compat
 using Compat.Mmap
 using Nullables
 using ..Common
-
 """
 Like `isspace`, but work on bytes and includes only the four whitespace
 characters defined by the JSON standard: space, tab, line feed, and carriage
 return.
 """
 isjsonspace(b::UInt8) = b == SPACE || b == TAB || b == NEWLINE || b == RETURN
-
 """
 Like `isdigit`, but for bytes.
 """
 isjsondigit(b::UInt8) = DIGIT_ZERO ≤ b ≤ DIGIT_NINE
-
 abstract type ParserState end
-
 mutable struct MemoryParserState <: ParserState
     utf8::String
     s::Int
 end
-
 # it is convenient to access MemoryParserState like a Vector{UInt8} to avoid copies
 Base.@propagate_inbounds Base.getindex(state::MemoryParserState, i::Int) = codeunit(state.utf8, i)
 Base.length(state::MemoryParserState) = sizeof(state.utf8)
 Base.unsafe_convert(::Type{Ptr{UInt8}}, state::MemoryParserState) = unsafe_convert(Ptr{UInt8}, state.utf8)
-
 mutable struct StreamingParserState{T <: IO} <: ParserState
     io::T
     cur::UInt8
     used::Bool
 end
 StreamingParserState(io::IO) = StreamingParserState(io, 0x00, true)
-
 struct ParserContext{DictType, IntType} end
-
 """
 Return the byte at the current position of the `ParserState`. If there is no
 byte (that is, the `ParserState` is done), then an error is thrown that the
@@ -180,7 +147,6 @@ input ended unexpectedly.
         _error(E_UNEXPECTED_EOF, ps)
     end
 end
-
 @inline function byteat(ps::StreamingParserState)
     if ps.used
         ps.used = false
@@ -192,14 +158,12 @@ end
     end
     ps.cur
 end
-
 """
 Like `byteat`, but with no special bounds check and error message. Useful when
 a current byte is known to exist.
 """
 @inline current(ps::MemoryParserState) = ps[ps.s]
 @inline current(ps::StreamingParserState) = byteat(ps)
-
 """
 Require the current byte of the `ParserState` to be the given byte, and then
 skip past that byte. Otherwise, an error is thrown.
@@ -211,32 +175,27 @@ skip past that byte. Otherwise, an error is thrown.
         _error("Expected '$(Char(c))' here", ps)
     end
 end
-
 function skip!(ps::ParserState, cs::UInt8...)
     for c in cs
         skip!(ps, c)
     end
 end
-
 """
 Move the `ParserState` to the next byte.
 """
 @inline incr!(ps::MemoryParserState) = (ps.s += 1)
 @inline incr!(ps::StreamingParserState) = (ps.used = true)
-
 """
 Move the `ParserState` to the next byte, and return the value at the byte before
 the advancement. If the `ParserState` is already done, then throw an error.
 """
 @inline advance!(ps::ParserState) = (b = byteat(ps); incr!(ps); b)
-
 """
 Return `true` if there is a current byte, and `false` if all bytes have been
 exausted.
 """
 @inline hasmore(ps::MemoryParserState) = ps.s ≤ length(ps)
 @inline hasmore(ps::StreamingParserState) = true  # no more now ≠ no more ever
-
 """
 Remove as many whitespace bytes as possible from the `ParserState` starting from
 the current byte.
@@ -246,8 +205,6 @@ the current byte.
         incr!(ps)
     end
 end
-
-
 # Used for line counts
 function _count_before(haystack::AbstractString, needle::Char, _end::Int)
     count = 0
@@ -257,8 +214,6 @@ function _count_before(haystack::AbstractString, needle::Char, _end::Int)
     end
     return count
 end
-
-
 # Throws an error message with an indicator to the source
 function _error(message::AbstractString, ps::MemoryParserState)
     orig = ps.utf8
@@ -273,20 +228,16 @@ function _error(message::AbstractString, ps::MemoryParserState)
       "\n           " * (" " ^ (ps.s - li)) * "^\n"
     )
 end
-
 function _error(message::AbstractString, ps::StreamingParserState)
     error("$message\n ...when parsing byte with value '$(current(ps))'")
 end
-
 # PARSING
-
 """
 Given a `ParserState`, after possibly any amount of whitespace, return the next
 parseable value.
 """
 function parse_value(pc::ParserContext, ps::ParserState)
     chomp_space!(ps)
-
     @inbounds byte = byteat(ps)
     if byte == STRING_DELIM
         parse_string(ps)
@@ -300,7 +251,6 @@ function parse_value(pc::ParserContext, ps::ParserState)
         parse_jsconstant(ps::ParserState)
     end
 end
-
 function parse_jsconstant(ps::ParserState)
     c = advance!(ps)
     if c == LATIN_T      # true
@@ -316,7 +266,6 @@ function parse_jsconstant(ps::ParserState)
         _error(E_UNEXPECTED_CHAR, ps)
     end
 end
-
 function parse_array(pc::ParserContext, ps::ParserState)
     result = Any[]
     @inbounds incr!(ps)  # Skip over opening '['
@@ -329,16 +278,12 @@ function parse_array(pc::ParserContext, ps::ParserState)
             skip!(ps, DELIMITER)
         end
     end
-
     @inbounds incr!(ps)
     result
 end
-
-
 function parse_object(pc::ParserContext{DictType, <:Real}, ps::ParserState) where DictType
     obj = DictType()
     keyT = keytype(DictType)
-
     incr!(ps)  # Skip over opening '{'
     chomp_space!(ps)
     if byteat(ps) ≠ OBJECT_END  # special case for empty object
@@ -357,18 +302,13 @@ function parse_object(pc::ParserContext{DictType, <:Real}, ps::ParserState) wher
             skip!(ps, DELIMITER)
         end
     end
-
     incr!(ps)
     obj
 end
-
-
 utf16_is_surrogate(c::UInt16) = (c & 0xf800) == 0xd800
 utf16_get_supplementary(lead::UInt16, trail::UInt16) = Char(UInt32(lead-0xd7f7)<<10 + trail)
-
 function read_four_hex_digits!(ps::ParserState)
     local n::UInt16 = 0
-
     for _ in 1:4
         b = advance!(ps)
         n = n << 4 + if isjsondigit(b)
@@ -381,10 +321,8 @@ function read_four_hex_digits!(ps::ParserState)
             _error(E_BAD_ESCAPE, ps)
         end
     end
-
     n
 end
-
 function read_unicode_escape!(ps)
     u1 = read_four_hex_digits!(ps)
     if utf16_is_surrogate(u1)
@@ -396,13 +334,11 @@ function read_unicode_escape!(ps)
         Char(u1)
     end
 end
-
 function parse_string(ps::ParserState)
     b = IOBuffer()
     incr!(ps)  # skip opening quote
     while true
         c = advance!(ps)
-
         if c == BACKSLASH
             c = advance!(ps)
             if c == LATIN_U  # Unicode escape
@@ -418,11 +354,9 @@ function parse_string(ps::ParserState)
         elseif c == STRING_DELIM
             return String(take!(b))
         end
-
         write(b, c)
     end
 end
-
 """
 Return `true` if the given bytes vector, starting at `from` and ending at `to`,
 has a leading zero.
@@ -434,7 +368,6 @@ function hasleadingzero(bytes, from::Int, to::Int)
     from < to && to > from + 1 && c == DIGIT_ZERO &&
             isjsondigit(bytes[from + 1])
 end
-
 """
 Parse a float from the given bytes vector, starting at `from` and ending at the
 byte before `to`. Bytes enclosed should all be ASCII characters.
@@ -445,7 +378,6 @@ function float_from_bytes(bytes, from::Int, to::Int)
     ccall(:jl_try_substrtod, Nullable{Float64},
             (Ptr{UInt8}, Csize_t, Csize_t), bytes, from - 1, to - from + 1)
 end
-
 """
 Parse an integer from the given bytes vector, starting at `from` and ending at
 the byte before `to`. Bytes enclosed should all be ASCII characters.
@@ -462,7 +394,6 @@ function int_from_bytes(pc::ParserContext{<:AbstractDict,IntType},
     end
     ifelse(isnegative, -num, num)
 end
-
 function number_from_bytes(pc::ParserContext,
                            ps::ParserState,
                            isint::Bool,
@@ -472,7 +403,6 @@ function number_from_bytes(pc::ParserContext,
     @inbounds if hasleadingzero(bytes, from, to)
         _error(E_LEADING_ZERO, ps)
     end
-
     if isint
         @inbounds if to == from && bytes[from] == MINUS_SIGN
             _error(E_BAD_NUMBER, ps)
@@ -483,17 +413,13 @@ function number_from_bytes(pc::ParserContext,
         isnull(res) ? _error(E_BAD_NUMBER, ps) : get(res)
     end
 end
-
-
 function parse_number(pc::ParserContext, ps::ParserState)
     # Determine the end of the floating point by skipping past ASCII values
     # 0-9, +, -, e, E, and .
     number = UInt8[]
     isint = true
-
     @inbounds while hasmore(ps)
         c = current(ps)
-
         if isjsondigit(c) || c == MINUS_SIGN
             push!(number, UInt8(c))
         elseif c in (PLUS_SIGN, LATIN_E, LATIN_UPPER_E, DECIMAL_POINT)
@@ -502,19 +428,14 @@ function parse_number(pc::ParserContext, ps::ParserState)
         else
             break
         end
-
         incr!(ps)
     end
-
     number_from_bytes(pc, ps, isint, number, 1, length(number))
 end
-
-
 function unparameterize_type(T::Type)
     candidate = typeintersect(T, AbstractDict{String, Any})
     candidate <: Union{} ? T : candidate
 end
-
 function parse(str::AbstractString;
                dicttype::Type{<:AbstractDict}=Dict{String,Any},
                inttype::Type{<:Real}=Int64)
@@ -527,7 +448,6 @@ function parse(str::AbstractString;
     end
     v
 end
-
 function parse(io::IO;
                dicttype::Type{<:AbstractDict}=Dict{String,Any},
                inttype::Type{<:Real}=Int64)
@@ -535,7 +455,6 @@ function parse(io::IO;
     ps = StreamingParserState(io)
     parse_value(pc, ps)
 end
-
 function parsefile(filename::AbstractString;
                    dicttype::Type{<:AbstractDict}=Dict{String, Any},
                    inttype::Type{<:Real}=Int64,
@@ -546,14 +465,10 @@ function parsefile(filename::AbstractString;
         parse(s; dicttype=dicttype, inttype=inttype)
     end
 end
-
 # Efficient implementations of some of the above for in-memory parsing
-
-
 #
 # expanded from: include("specialized.jl")
 #
-
 function maxsize_buffer(maxsize::Int)
     @static if VERSION < v"0.7.0-DEV.3734"
         IOBuffer(maxsize)
@@ -561,15 +476,12 @@ function maxsize_buffer(maxsize::Int)
         IOBuffer(maxsize=maxsize)
     end
 end
-
 # Specialized functions for increased performance when JSON is in-memory
 function parse_string(ps::MemoryParserState)
     # "Dry Run": find length of string so we can allocate the right amount of
     # memory from the start. Does not do full error checking.
     fastpath, len = predict_string(ps)
-
     # Now read the string itself:
-
     # Fast path occurs when the string has no escaped characters. This is quite
     # often the case in real-world data, especially when keys are short strings.
     # We can just copy the data from the buffer in this case.
@@ -581,34 +493,27 @@ function parse_string(ps::MemoryParserState)
         String(take!(parse_string(ps, maxsize_buffer(len))))
     end
 end
-
 """
 Scan through a string at the current parser state and return a tuple containing
 information about the string. This function avoids memory allocation where
 possible.
-
 The first element of the returned tuple is a boolean indicating whether the
 string may be copied directly from the parser state. Special casing string
 parsing when there are no escaped characters leads to substantially increased
 performance in common situations.
-
 The second element of the returned tuple is an integer representing the exact
 length of the string, in bytes when encoded as UTF-8. This information is useful
 for pre-sizing a buffer to contain the parsed string.
-
 This function will throw an error if:
-
  - invalid control characters are found
  - an invalid unicode escape is read
  - the string is not terminated
-
 No error is thrown when other invalid backslash escapes are encountered.
 """
 function predict_string(ps::MemoryParserState)
     e = length(ps)
     fastpath = true  # true if no escapes in this string, so it can be copied
     len = 0          # the number of UTF8 bytes the string contains
-
     s = ps.s + 1     # skip past opening string character "
     @inbounds while s <= e
         c = ps[s]
@@ -632,11 +537,9 @@ function predict_string(ps::MemoryParserState)
         len += 1
         s += 1
     end
-
     ps.s = s
     _error(E_UNEXPECTED_EOF, ps)
 end
-
 """
 Parse the string starting at the parser state’s current location into the given
 pre-sized IOBuffer. The only correctness checking is for escape sequences, so the
@@ -645,7 +548,6 @@ passed-in buffer must exactly represent the amount of space needed for parsing.
 function parse_string(ps::MemoryParserState, b::IOBuffer)
     s = ps.s
     e = length(ps)
-
     s += 1  # skip past opening string character "
     len = b.maxsize
     @inbounds while b.size < len
@@ -667,24 +569,20 @@ function parse_string(ps::MemoryParserState, b::IOBuffer)
                 end
             end
         end
-
         # UTF8-encoded non-ascii characters will be copied verbatim, which is
         # the desired behaviour
         write(b, c)
         s += 1
     end
-
     # don't worry about non-termination or other edge cases; those should have
     # been caught in the dry run.
     ps.s = s + 1
     b
 end
-
 function parse_number(ps::MemoryParserState)
     s = p = ps.s
     e = length(ps)
     isint = true
-
     # Determine the end of the floating point by skipping past ASCII values
     # 0-9, +, -, e, E, and .
     while p ≤ e
@@ -699,34 +597,24 @@ function parse_number(ps::MemoryParserState)
         p += 1
     end
     ps.s = p
-
     number_from_bytes(ps, isint, ps, s, p - 1)
 end
-
 end  # module Parser
-
 # Writer modules
-
-
 #
 # expanded from: include("Serializations.jl")
 #
-
 """
 JSON writer serialization contexts.
-
 This module defines the `Serialization` abstract type and several concrete
 implementations, as they relate to JSON.
 """
 module Serializations
-
 using ..Common
-
 """
 A `Serialization` defines how objects are lowered to JSON format.
 """
 abstract type Serialization end
-
 """
 The `CommonSerialization` comes with a default set of rules for serializing
 Julia types to their JSON equivalents. Additional rules are provided either by
@@ -736,44 +624,32 @@ packages explicitly defining `JSON.show_json` for this serialization, or by the
 which case `Serialization` should be subtyped.
 """
 abstract type CommonSerialization <: Serialization end
-
 """
 The `StandardSerialization` defines a common, standard JSON serialization format
 that is optimized to:
-
 - strictly follow the JSON standard
 - be useful in the greatest number of situations
-
 All serializations defined for `CommonSerialization` are inherited by
 `StandardSerialization`. It is therefore generally advised to add new
 serialization behaviour to `CommonSerialization`.
 """
 struct StandardSerialization <: CommonSerialization end
-
 end
-
-
 #
 # expanded from: include("Writer.jl")
 #
-
 module Writer
-
 using Compat
 using Compat.Dates
 using Nullables
 using ..Common
 using ..Serializations: Serialization, StandardSerialization,
                         CommonSerialization
-
 if VERSION >= v"0.7.0-DEV.2915"
     using Unicode
 end
-
-
 """
 Internal JSON.jl implementation detail; do not depend on this type.
-
 A JSON primitive that wraps around any composite type to enable `Dict`-like
 serialization.
 """
@@ -781,24 +657,19 @@ struct CompositeTypeWrapper{T}
     wrapped::T
     fns::Vector{Symbol}
 end
-
 CompositeTypeWrapper(x, syms) = CompositeTypeWrapper(x, collect(syms))
 CompositeTypeWrapper(x) = CompositeTypeWrapper(x, fieldnames(typeof(x)))
-
 """
     lower(x)
-
 Return a value of a JSON-encodable primitive type that `x` should be lowered
 into before encoding as JSON. Supported types are: `AbstractDict` to JSON
 objects, `Tuple` and `AbstractVector` to JSON arrays, `AbstractArray` to nested
 JSON arrays, `AbstractString`, `Symbol`, `Enum`, or `Char` to JSON string,
 `Integer` and `AbstractFloat` to JSON number, `Bool` to JSON boolean, and
 `Nothing` to JSON null, or any other types with a `show_json` method defined.
-
 Extensions of this method should preserve the property that the return value is
 one of the aforementioned types. If first lowering to some intermediate type is
 required, then extensions should call `lower` before returning a value.
-
 Note that the return value need not be *recursively* lowered—this function may
 for instance return an `AbstractArray{Any, 1}` whose elements are not JSON
 primitives.
@@ -810,7 +681,6 @@ function lower(a)
         error("Cannot serialize type $(typeof(a))")
     end
 end
-
 # To avoid allocating an intermediate string, we directly define `show_json`
 # for this type instead of lowering it to a string first (which would
 # allocate). However, the `show_json` method does call `lower` so as to allow
@@ -819,19 +689,15 @@ end
 const IsPrintedAsString = Union{
     Dates.TimeType, Char, Type, AbstractString, Enum, Symbol}
 lower(x::IsPrintedAsString) = x
-
 lower(m::Module) = throw(ArgumentError("cannot serialize Module $m as JSON"))
 lower(x::Real) = convert(Float64, x)
 lower(x::Base.AbstractSet) = collect(x)
-
 """
 Abstract supertype of all JSON and JSON-like structural writer contexts.
 """
 abstract type StructuralContext <: IO end
-
 """
 Internal implementation detail.
-
 A JSON structural context around an `IO` object. Structural writer contexts
 define the behaviour of serializing JSON structural objects, such as objects,
 arrays, and strings to JSON. The translation of Julia types to JSON structural
@@ -842,10 +708,8 @@ such as `begin_array` or `begin_object` are preferred to directly writing bytes
 to the stream.
 """
 abstract type JSONContext <: StructuralContext end
-
 """
 Internal implementation detail.
-
 Keeps track of the current location in the array or object, which winds and
 unwinds during serialization.
 """
@@ -856,10 +720,8 @@ mutable struct PrettyContext{T<:IO} <: JSONContext
     first::Bool   # whether an object/array was just started
 end
 PrettyContext(io::IO, step) = PrettyContext(io, step, 0, false)
-
 """
 Internal implementation detail.
-
 For compact printing, which in JSON is fully recursive.
 """
 mutable struct CompactContext{T<:IO} <: JSONContext
@@ -867,20 +729,16 @@ mutable struct CompactContext{T<:IO} <: JSONContext
     first::Bool
 end
 CompactContext(io::IO) = CompactContext(io, false)
-
 """
 Internal implementation detail.
-
 Implements an IO context safe for printing into JSON strings.
 """
 struct StringContext{T<:IO} <: IO
     io::T
 end
-
 # These aliases make defining additional methods on `show_json` easier.
 const CS = CommonSerialization
 const SC = StructuralContext
-
 # Low-level direct access
 Base.write(io::JSONContext, byte::UInt8) = write(io.io, byte)
 Base.write(io::StringContext, byte::UInt8) =
@@ -890,10 +748,8 @@ write(io::StringContext, char::Char) =
     char <= '\x7f' ? write(io, ESCAPED_ARRAY[UInt8(c) + 0x01]) :
                      Base.print(io, c)
 =#
-
 """
     indent(io::StructuralContext)
-
 If appropriate, write a newline to the given context, then indent it by the
 appropriate number of spaces. Otherwise, do nothing.
 """
@@ -904,18 +760,14 @@ appropriate number of spaces. Otherwise, do nothing.
     end
 end
 @inline indent(io::CompactContext) = nothing
-
 """
     separate(io::StructuralContext)
-
 Write a colon, followed by a space if appropriate, to the given context.
 """
 @inline separate(io::PrettyContext) = write(io, SEPARATOR, SPACE)
 @inline separate(io::CompactContext) = write(io, SEPARATOR)
-
 """
     delimit(io::StructuralContext)
-
 If this is not the first item written in a collection, write a comma in the
 structural context.  Otherwise, do not write a comma, but set a flag that the
 first element has been written already.
@@ -926,7 +778,6 @@ first element has been written already.
     end
     io.first = false
 end
-
 for kind in ("object", "array")
     beginfn = Symbol("begin_", kind)
     beginsym = Symbol(uppercase(kind), "_BEGIN")
@@ -949,10 +800,8 @@ for kind in ("object", "array")
     end
     @eval $endfn(io::CompactContext) = (write(io, $endsym); io.first = false)
 end
-
 """
     show_string(io::IO, str)
-
 Print `str` as a JSON string (that is, properly escaped and wrapped by double
 quotes) to the given IO object `io`.
 """
@@ -961,17 +810,13 @@ function show_string(io::IO, x)
     Base.print(StringContext(io), x)
     write(io, STRING_DELIM)
 end
-
 """
     show_null(io::IO)
-
 Print the string `null` to the given IO object `io`.
 """
 show_null(io::IO) = Base.print(io, "null")
-
 """
     show_element(io::StructuralContext, s, x)
-
 Print object `x` as an element of a JSON array to context `io` using rules
 defined by serialization `s`.
 """
@@ -980,10 +825,8 @@ function show_element(io::JSONContext, s, x)
     indent(io)
     show_json(io, s, x)
 end
-
 """
     show_key(io::StructuralContext, k)
-
 Print string `k` as the key of a JSON key-value pair to context `io`.
 """
 function show_key(io::JSONContext, k)
@@ -992,10 +835,8 @@ function show_key(io::JSONContext, k)
     show_string(io, k)
     separate(io)
 end
-
 """
     show_pair(io::StructuralContext, s, k, v)
-
 Print the key-value pair defined by `k => v` as JSON to context `io`, using
 rules defined by serialization `s`.
 """
@@ -1004,7 +845,6 @@ function show_pair(io::JSONContext, s, k, v)
     show_json(io, s, v)
 end
 show_pair(io::JSONContext, s, kv) = show_pair(io, s, first(kv), last(kv))
-
 # Default serialization rules for CommonSerialization (CS)
 function show_json(io::SC, s::CS, x::IsPrintedAsString)
     # We need this check to allow `lower(x::Enum)` overrides to work if needed;
@@ -1016,7 +856,6 @@ function show_json(io::SC, s::CS, x::IsPrintedAsString)
         show_json(io, s, lx)
     end
 end
-
 function show_json(io::SC, s::CS, x::Union{Integer, AbstractFloat})
     if isfinite(x)
         Base.print(io, x)
@@ -1024,9 +863,7 @@ function show_json(io::SC, s::CS, x::Union{Integer, AbstractFloat})
         show_null(io)
     end
 end
-
 show_json(io::SC, ::CS, ::Nothing) = show_null(io)
-
 function show_json(io::SC, s::CS, a::Nullable)
     if isnull(a)
         Base.print(io, "null")
@@ -1034,7 +871,6 @@ function show_json(io::SC, s::CS, a::Nullable)
         show_json(io, s, get(a))
     end
 end
-
 function show_json(io::SC, s::CS, a::AbstractDict)
     begin_object(io)
     for kv in a
@@ -1042,13 +878,11 @@ function show_json(io::SC, s::CS, a::AbstractDict)
     end
     end_object(io)
 end
-
 function show_json(io::SC, s::CS, kv::Pair)
     begin_object(io)
     show_pair(io, s, kv)
     end_object(io)
 end
-
 function show_json(io::SC, s::CS, x::CompositeTypeWrapper)
     begin_object(io)
     for fn in x.fns
@@ -1056,7 +890,6 @@ function show_json(io::SC, s::CS, x::CompositeTypeWrapper)
     end
     end_object(io)
 end
-
 function show_json(io::SC, s::CS, x::Union{AbstractVector, Tuple})
     begin_array(io)
     for elt in x
@@ -1064,7 +897,6 @@ function show_json(io::SC, s::CS, x::Union{AbstractVector, Tuple})
     end
     end_array(io)
 end
-
 """
 Serialize a multidimensional array to JSON in column-major format. That is,
 `json([1 2 3; 4 5 6]) == "[[1,4],[2,5],[3,6]]"`.
@@ -1077,12 +909,9 @@ function show_json(io::SC, s::CS, A::AbstractArray{<:Any,n}) where n
     end
     end_array(io)
 end
-
 # special case for 0-dimensional arrays
 show_json(io::SC, s::CS, A::AbstractArray{<:Any,0}) = show_json(io, s, A[])
-
 show_json(io::SC, s::CS, a) = show_json(io, s, lower(a))
-
 # Fallback show_json for non-SC types
 """
 Serialize Julia object `obj` to IO `io` using the behaviour described by `s`. If
@@ -1097,14 +926,11 @@ function show_json(io::IO, s::Serialization, obj; indent=nothing)
         println(io)
     end
 end
-
 """
     JSONText(s::AbstractString)
-
 `JSONText` is a wrapper around a Julia string representing JSON-formatted
 text, which is inserted *as-is* in the JSON output of `JSON.print` and `JSON.json`
 for compact output, and is otherwise re-parsed for pretty-printed output.
-
 `s` *must* contain valid JSON text.  Otherwise compact output will contain
 the malformed `s` and other serialization output will throw a parsing exception.
 """
@@ -1113,19 +939,14 @@ struct JSONText
 end
 show_json(io::CompactContext, s::CS, json::JSONText) = write(io, json.s)
 # other contexts for JSONText are handled by lower(json) = parse(json.s)
-
 print(io::IO, obj, indent) =
     show_json(io, StandardSerialization(), obj; indent=indent)
 print(io::IO, obj) = show_json(io, StandardSerialization(), obj)
-
 print(a, indent) = print(stdout, a, indent)
 print(a) = print(stdout, a)
-
 json(a) = sprint(print, a)
 json(a, indent) = sprint(print, a, indent)
-
 end
-
 # stuff to re-"export"
 # note that this package does not actually export anything except `json` but
 # all of the following are part of the public interface in one way or another
@@ -1136,8 +957,6 @@ using .Writer: show_json, json, lower, print, StructuralContext, show_element,
                JSONText
 using .Serializations: Serialization, CommonSerialization,
                        StandardSerialization
-
 # for pretty-printed (non-compact) output, JSONText must be re-parsed:
 Writer.lower(json::JSONText) = parse(json.s)
-
 end # module

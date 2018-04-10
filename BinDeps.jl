@@ -1,25 +1,19 @@
 __precompile__()
-
 module BinDeps
-
 using Compat
-
 if VERSION >= v"0.7.0-DEV.3073"
     const _HOME = Sys.BINDIR
 else
     const _HOME = JULIA_HOME
 end
-
 if VERSION >= v"0.7.0-DEV.3382"
     using Libdl
 end
-
 export @build_steps, find_library, download_cmd, unpack_cmd,
     Choice, Choices, CCompile, FileDownloader, FileRule,
     ChangeDirectory, FileUnpacker, prepare_src,
     autotools_install, CreateDirectory, MakeTargets,
     MAKE_CMD, glibc_version
-
 function find_library(pkg,libname,files)
     Base.warn_once("BinDeps.find_library is deprecated; use Base.find_library instead.")
     dl = C_NULL
@@ -29,18 +23,15 @@ function find_library(pkg,libname,files)
             ccall(:add_library_mapping,Cint,(Ptr{Cchar},Ptr{Cvoid}),libname,dl)
             return true
         end
-
         dl = Libdl.dlopen_e(filename)
         if dl != C_NULL
             ccall(:add_library_mapping,Cint,(Ptr{Cchar},Ptr{Cvoid}),libname,dl)
             return true
         end
     end
-
     dl = Libdl.dlopen_e(libname)
     dl != C_NULL ? true : false
 end
-
 macro make_rule(condition,command)
     quote
         if(!$(esc(condition)))
@@ -49,9 +40,7 @@ macro make_rule(condition,command)
         end
     end
 end
-
 abstract type BuildStep end
-
 downloadcmd = nothing
 function download_cmd(url::AbstractString, filename::AbstractString)
     global downloadcmd
@@ -88,7 +77,6 @@ function download_cmd(url::AbstractString, filename::AbstractString)
         error("No download agent available; $(extraerr)install curl, wget, or fetch.")
     end
 end
-
 if Compat.Sys.isunix() && Sys.KERNEL != :FreeBSD
     function unpack_cmd(file,directory,extension,secondary_extension)
         if ((extension == ".gz" || extension == ".Z") && secondary_extension == ".tar") || extension == ".tgz"
@@ -107,7 +95,6 @@ if Compat.Sys.isunix() && Sys.KERNEL != :FreeBSD
         error("I don't know how to unpack $file")
     end
 end
-
 if Sys.KERNEL == :FreeBSD
     # The `tar` on FreeBSD can auto-detect the archive format via libarchive.
     # The supported formats can be found in libarchive-formats(5).
@@ -120,10 +107,8 @@ if Sys.KERNEL == :FreeBSD
             `/usr/bin/tar -xf $file -C $dir $tar_args`)
     end
 end
-
 if Compat.Sys.iswindows()
     const exe7z = joinpath(_HOME, "7z.exe")
-
     function unpack_cmd(file,directory,extension,secondary_extension)
         if ((extension == ".Z" || extension == ".gz" || extension == ".xz" || extension == ".bz2") &&
                 secondary_extension == ".tar") || extension == ".tgz" || extension == ".tbz"
@@ -135,7 +120,6 @@ if Compat.Sys.iswindows()
         error("I don't know how to unpack $file")
     end
 end
-
 mutable struct SynchronousStepCollection
     steps::Vector{Any}
     cwd::AbstractString
@@ -143,43 +127,34 @@ mutable struct SynchronousStepCollection
     SynchronousStepCollection(cwd) = new(Any[],cwd,cwd)
     SynchronousStepCollection() = new(Any[],"","")
 end
-
 import Base: push!, run, |
 push!(a::SynchronousStepCollection,args...) = push!(a.steps,args...)
-
 mutable struct ChangeDirectory <: BuildStep
     dir::AbstractString
 end
-
 mutable struct CreateDirectory <: BuildStep
     dest::AbstractString
     mayexist::Bool
     CreateDirectory(dest, me) = new(dest,me)
     CreateDirectory(dest) = new(dest,true)
 end
-
 struct RemoveDirectory <: BuildStep
     dest::AbstractString
 end
-
 mutable struct FileDownloader <: BuildStep
     src::AbstractString     # url
     dest::AbstractString    # local_file
 end
-
 mutable struct ChecksumValidator <: BuildStep
     sha::AbstractString
     path::AbstractString
 end
-
 mutable struct FileUnpacker <: BuildStep
     src::AbstractString     # archive file
     dest::AbstractString    # directory to unpack into
     target::AbstractString  # file or directory inside the archive to test
                             # for existence (or blank to check for a.tgz => a/)
 end
-
-
 mutable struct MakeTargets <: BuildStep
     dir::AbstractString
     targets::Vector{String}
@@ -189,7 +164,6 @@ mutable struct MakeTargets <: BuildStep
     MakeTargets(target::String;env = Dict{AbstractString,AbstractString}()) = new("",[target],env)
     MakeTargets(;env = Dict{AbstractString,AbstractString}()) = new("",String[],env)
 end
-
 mutable struct AutotoolsDependency <: BuildStep
     src::AbstractString     #src direcory
     prefix::AbstractString
@@ -206,24 +180,18 @@ mutable struct AutotoolsDependency <: BuildStep
     AutotoolsDependency(;srcdir::AbstractString = "", prefix = "", builddir = "", configure_options=AbstractString[], libtarget = AbstractString[], include_dirs=AbstractString[], lib_dirs=AbstractString[], rpath_dirs=AbstractString[], installed_libpath = String[], force_rebuild=false, config_status_dir = "", env = Dict{String,String}()) =
         new(srcdir,prefix,builddir,configure_options,isa(libtarget,Vector) ? libtarget : AbstractString[libtarget],include_dirs,lib_dirs,rpath_dirs,installed_libpath,config_status_dir,force_rebuild,env)
 end
-
-### Choices
-
 mutable struct Choice
     name::Symbol
     description::AbstractString
     step::SynchronousStepCollection
     Choice(name,description,step) = (s=SynchronousStepCollection();lower(step,s);new(name,description,s))
 end
-
 mutable struct Choices <: BuildStep
     choices::Vector{Choice}
     Choices() = new(Choice[])
     Choices(choices::Vector{Choice}) = new(choices)
 end
-
 push!(c::Choices, args...) = push!(c.choices, args...)
-
 function run(c::Choices)
     println()
     info("There are multiple options available for installing this dependency:")
@@ -243,27 +211,21 @@ function run(c::Choices)
         end
     end
 end
-
 mutable struct CCompile <: BuildStep
     srcFile::AbstractString
     destFile::AbstractString
     options::Vector{String}
     libs::Vector{String}
 end
-
 lower(cc::CCompile,c) = lower(FileRule(cc.destFile,`gcc $(cc.options) $(cc.srcFile) $(cc.libs) -o $(cc.destFile)`),c)
-##
-
 mutable struct DirectoryRule <: BuildStep
     dir::AbstractString
     step
 end
-
 mutable struct PathRule <: BuildStep
     path::AbstractString
     step
 end
-
 function meta_lower(a::Expr,blk::Expr,collection)
     if(a.head == :block || a.head == :tuple)
         for x in a.args
@@ -290,25 +252,21 @@ function meta_lower(a::Expr,blk::Expr,collection)
         end)
     end
 end
-
 function meta_lower(a::Tuple,blk::Expr,collection)
     for x in a
         meta_lower(a,blk,collection)
     end
 end
-
 function meta_lower(a,blk::Expr,collection)
     push!(blk.args,quote
         $(esc(collection)), lower($(esc(a)), $(esc(collection)))
     end)
 end
-
 macro dependent_steps(steps)
     blk = Expr(:block)
     meta_lower(steps,blk,:collection)
     blk
 end
-
 macro build_steps(steps)
     collection = gensym()
     blk = Expr(:block)
@@ -319,10 +277,8 @@ macro build_steps(steps)
     push!(blk.args, quote; $(esc(collection)); end)
     blk
 end
-
 src(b::BuildStep) = b.src
 dest(b::BuildStep) = b.dest
-
 (|)(a::BuildStep,b::BuildStep) = SynchronousStepCollection()
 function (|)(a::SynchronousStepCollection,b::SynchronousStepCollection)
     if a.cwd == b.cwd
@@ -334,11 +290,8 @@ function (|)(a::SynchronousStepCollection,b::SynchronousStepCollection)
 end
 (|)(a::SynchronousStepCollection,b::Function) = (lower(b,a);a)
 (|)(a::SynchronousStepCollection,b) = (lower(b,a);a)
-
 (|)(b::Function,a::SynchronousStepCollection) = (c=SynchronousStepCollection(); ((c|b)|a))
 (|)(b,a::SynchronousStepCollection) = (c=SynchronousStepCollection(); ((c|b)|a))
-
-# Create any of these files
 mutable struct FileRule <: BuildStep
     file::Array{AbstractString}
     step
@@ -348,7 +301,6 @@ mutable struct FileRule <: BuildStep
     end
 end
 FileRule(files::Vector{T},step) where {T <: AbstractString} = FileRule(AbstractString[f for f in files],step)
-
 function lower(s::ChangeDirectory,collection)
     if !isempty(collection.steps)
         error("Change of directory must be the first instruction")
@@ -386,18 +338,15 @@ function lower(s::FileUnpacker,collection)
         PathRule(joinpath(s.dest,target),unpack_cmd(s.src,s.dest,extension,secondary_extension))
     end
 end
-
 function adjust_env(env)
     ret = similar(env)
     merge!(ret,ENV)
     merge!(ret,env) # s.env overrides ENV
     ret
 end
-
 if Compat.Sys.isunix()
     function lower(a::MakeTargets,collection)
         cmd = `make -j8`
-
         if Sys.KERNEL == :FreeBSD
             jobs = readchomp(`make -V MAKE_JOBS_NUMBER`)
             if isempty(jobs)
@@ -407,7 +356,6 @@ if Compat.Sys.isunix()
             # but the implementation of `make` on FreeBSD system base is `bmake`
             cmd = `gmake -j$jobs`
         end
-
         if !isempty(a.dir)
             cmd = `$cmd -C $(a.dir)`
         end
@@ -419,47 +367,37 @@ if Compat.Sys.isunix()
 end
 Compat.Sys.iswindows() && (lower(a::MakeTargets,collection) = @dependent_steps ( setenv(`make $(!isempty(a.dir) ? "-C "*a.dir : "") $(a.targets)`, adjust_env(a.env)), ))
 lower(s::SynchronousStepCollection,collection) = (collection|=s)
-
 lower(s) = (c=SynchronousStepCollection();lower(s,c);c)
-
-#run(s::MakeTargets) = run(@make_steps (s,))
-
 function lower(s::AutotoolsDependency,collection)
     prefix = s.prefix
     if Compat.Sys.iswindows()
         prefix = replace(replace(s.prefix, "\\" => "/"), "C:/" => "/c/")
     end
     cmdstring = "pwd && ./configure --prefix=$(prefix) "*join(s.configure_options," ")
-
     env = adjust_env(s.env)
-
     for path in s.include_dirs
         if !haskey(env,"CPPFLAGS")
             env["CPPFLAGS"] = ""
         end
         env["CPPFLAGS"]*=" -I$path"
     end
-
     for path in s.lib_dirs
         if !haskey(env,"LDFLAGS")
             env["LDFLAGS"] = ""
         end
         env["LDFLAGS"]*=" -L$path"
     end
-
     for path in s.rpath_dirs
         if !haskey(env,"LDFLAGS")
             env["LDFLAGS"] = ""
         end
         env["LDFLAGS"]*=" -Wl,-rpath -Wl,$path"
     end
-
     if s.force_rebuild
         @dependent_steps begin
             RemoveDirectory(s.builddir)
         end
     end
-
     @static if Compat.Sys.isunix()
         @dependent_steps begin
             CreateDirectory(s.builddir)
@@ -471,7 +409,6 @@ function lower(s::AutotoolsDependency,collection)
             end
         end
     end
-
     @static if Compat.Sys.iswindows()
         @dependent_steps begin
             ChangeDirectory(s.src)
@@ -481,11 +418,9 @@ function lower(s::AutotoolsDependency,collection)
         end
     end
 end
-
 function run(f::Function)
     f()
 end
-
 function run(s::FileRule)
     if !any(map(isfile,s.file))
         run(s.step)
@@ -505,7 +440,6 @@ function run(s::DirectoryRule)
         info("Directory $(s.dir) already exists")
     end
 end
-
 function run(s::PathRule)
     if !ispath(s.path)
         run(s.step)
@@ -516,7 +450,6 @@ function run(s::PathRule)
         info("Path $(s.path) already exists")
     end
 end
-
 function run(s::BuildStep)
     error("Unimplemented BuildStep: $(typeof(s))")
 end
@@ -533,9 +466,7 @@ function run(s::SynchronousStepCollection)
         end
     end
 end
-
 const MAKE_CMD = Compat.Sys.isbsd() && !Compat.Sys.isapple() ? `gmake` : `make`
-
 function prepare_src(depsdir,url, downloaded_file, directory_name)
     local_file = joinpath(joinpath(depsdir,"downloads"),downloaded_file)
     @build_steps begin
@@ -543,7 +474,6 @@ function prepare_src(depsdir,url, downloaded_file, directory_name)
         FileUnpacker(local_file,joinpath(depsdir,"src"),directory_name)
     end
 end
-
 function autotools_install(depsdir,url, downloaded_file, configure_opts, directory_name, directory, libname, installed_libname, confstatusdir)
     prefix = joinpath(depsdir,"usr")
     libdir = joinpath(prefix,"lib")
@@ -556,9 +486,7 @@ function autotools_install(depsdir,url, downloaded_file, configure_opts, directo
 end
 autotools_install(depsdir,url, downloaded_file, configure_opts, directory_name, directory, libname, installed_libname) = autotools_install(depsdir,url, downloaded_file, configure_opts, directory_name, directory, libname, installed_libname, "")
 autotools_install(depsdir,url, downloaded_file, configure_opts, directory, libname)=autotools_install(depsdir,url,downloaded_file,configure_opts,directory,directory,libname,libname)
-
 autotools_install(args...) = error("autotools_install has been removed")
-
 function eval_anon_module(context, file)
     m = Module(:__anon__)
     if isdefined(Base, Symbol("@__MODULE__"))
@@ -570,10 +498,8 @@ function eval_anon_module(context, file)
     end
     return
 end
-
 """
     glibc_version()
-
 For Linux-based systems, return the version of glibc in use. For non-glibc Linux and
 other platforms, returns `nothing`.
 """
@@ -585,35 +511,19 @@ function glibc_version()
     v = unsafe_string(ccall(ptr, Ptr{UInt8}, ()))
     contains(v, Base.VERSION_REGEX) ? VersionNumber(v) : nothing
 end
-
-
-
-#
-# expanded from: include("dependencies.jl")
-#
-
-# This is the high level interface for building dependencies using the declarative BinDeps Interface
 import Base: show
 const OSNAME = Compat.Sys.iswindows() ? :Windows : Sys.KERNEL
-
 if !isdefined(Base, :pairs)
     pairs(x) = (a => b for (a, b) in x)
 end
-
-
-# A dependency provider, if successfully executed will satisfy the dependency
 abstract type DependencyProvider end
-
-# A library helper may be used by `DependencyProvider`s but will by itself not provide the library
 abstract type DependencyHelper end
-
 mutable struct PackageContext
     do_install::Bool
     dir::AbstractString
     package::AbstractString
     deps::Vector{Any}
 end
-
 mutable struct LibraryDependency
     name::AbstractString
     context::PackageContext
@@ -622,13 +532,10 @@ mutable struct LibraryDependency
     properties::Dict{Symbol,Any}
     libvalidate::Function
 end
-
 mutable struct LibraryGroup
     name::AbstractString
     deps::Vector{LibraryDependency}
 end
-
-# Default directory organization
 pkgdir(dep) = dep.context.dir
 depsdir(dep) = joinpath(pkgdir(dep),"deps")
 usrdir(dep) = joinpath(depsdir(dep),"usr")
@@ -640,9 +547,7 @@ downloadsdir(dep) = joinpath(depsdir(dep),"downloads")
 srcdir(dep) = joinpath(depsdir(dep),"src")
 libdir(provider, dep) = [libdir(dep), libdir(dep)*"32", libdir(dep)*"64"]
 bindir(provider, dep) = bindir(dep)
-
 successful_validate(l,p) = true
-
 function _library_dependency(context::PackageContext, name; props...)
     validate = successful_validate
     group = nothing
@@ -665,14 +570,11 @@ function _library_dependency(context::PackageContext, name; props...)
     end
     r
 end
-
 function _library_group(context,name)
     r = LibraryGroup(name,LibraryDependency[])
     push!(context.deps,r)
     r
 end
-
-# This macro expects to be the first thing run. It attempts to deduce the package name and initializes the context
 macro setup()
     dir = normpath(joinpath(pwd(),".."))
     package = basename(dir)
@@ -686,19 +588,14 @@ macro setup()
         library_dependency(args...; properties...) = BinDeps._library_dependency(bindeps_context,args...;properties...)
     end)
 end
-
 export library_dependency, bindir, srcdir, usrdir, libdir
-
 library_dependency(args...; properties...) = error("No context provided. Did you forget `@BinDeps.setup`?")
-
 abstract type PackageManager <: DependencyProvider end
-
 const DEBIAN_VERSION_REGEX = r"^
     ([0-9]+\:)?                                           # epoch
     (?:(?:([0-9][a-z0-9.\-+:~]*)-([0-9][a-z0-9.+~]*)) |   # upstream version + debian revision
           ([0-9][a-z0-9.+:~]*))                           # upstream version
 "ix
-
 const has_apt = try success(`apt-get -v`) && success(`apt-cache -v`) catch e false end
 mutable struct AptGet <: PackageManager
     package::AbstractString
@@ -732,9 +629,7 @@ function available_version(p::AptGet)
     return vers[end]
 end
 pkg_name(a::AptGet) = a.package
-
 libdir(p::AptGet,dep) = ["/usr/lib", "/usr/lib64", "/usr/lib32", "/usr/lib/x86_64-linux-gnu", "/usr/lib/i386-linux-gnu"]
-
 const has_yum = try success(`yum --version`) catch e false end
 mutable struct Yum <: PackageManager
     package::AbstractString
@@ -760,23 +655,17 @@ function available_version(y::Yum)
     error("yum did not return version information.  This shouldn't happen. Please file a bug!")
 end
 pkg_name(y::Yum) = y.package
-
-# Pacman/Yaourt are package managers for Arch Linux.
-
-# Note that `pacman --version` has an unreliable return value.
 const has_pacman = try success(`pacman -Qq`) catch e false end
 mutable struct Pacman <: PackageManager
     package::AbstractString
 end
 can_use(::Type{Pacman}) = has_pacman && Compat.Sys.islinux()
 package_available(p::Pacman) = can_use(Pacman) && success(`pacman -Si $(p.package)`)
-# Only one version is usually available via pacman, hence no `available_versions`.
 function available_version(p::Pacman)
     for l in eachline(`/usr/bin/pacman -Si $(p.package)`) # To circumvent alias problems
         if startswith(l, "Version")
             # The following isn't perfect, but it's hopefully less brittle than
             # writing a regex for pacman's nonexistent version-string standard.
-
             # This also strips away the sometimes leading epoch as in ffmpeg's
             # Version        : 1:2.3.3-1
             versionstr = strip(split(l, ":")[end])
@@ -792,10 +681,7 @@ function available_version(p::Pacman)
     error("pacman did not return version information. This shouldn't happen. Please file a bug!")
 end
 pkg_name(p::Pacman) = p.package
-
 libdir(p::Pacman,dep) = ["/usr/lib", "/usr/lib32"]
-
-# zypper is a package manager used by openSUSE
 const has_zypper = try success(`zypper --version`) catch e false end
 mutable struct Zypper <: PackageManager
     package::AbstractString
@@ -821,10 +707,7 @@ function available_version(z::Zypper)
     error("zypper did not return version information.  This shouldn't happen. Please file a bug!")
 end
 pkg_name(z::Zypper) = z.package
-
 libdir(z::Zypper,dep) = ["/usr/lib", "/usr/lib32", "/usr/lib64"]
-
-# pkg is the system binary package manager for FreeBSD
 const has_bsdpkg = try success(`pkg -v`) catch e false end
 mutable struct BSDPkg <: PackageManager
     package::AbstractString
@@ -865,66 +748,42 @@ function available_version(p::BSDPkg)
 end
 pkg_name(p::BSDPkg) = p.package
 libdir(p::BSDPkg, dep) = ["/usr/local/lib"]
-
-# Can use everything else without restriction by default
 can_use(::Type) = true
-
 abstract type Sources <: DependencyHelper end
 abstract type Binaries <: DependencyProvider end
-
-#
-# A dummy provider checked for every library that
-# indicates the library was found somewhere on the
-# system using dlopen.
-#
 struct SystemPaths <: DependencyProvider; end
-
 show(io::IO, ::SystemPaths) = print(io,"System Paths")
-
 using URIParser
 export URI
-
 mutable struct NetworkSource <: Sources
     uri::URI
 end
-
 srcdir(s::Sources, dep::LibraryDependency) = srcdir(dep,s,Dict{Symbol,Any}())
 function srcdir( dep::LibraryDependency, s::NetworkSource,opts)
     joinpath(srcdir(dep),get(opts,:unpacked_dir,splittarpath(basename(s.uri.path))[1]))
 end
-
 mutable struct RemoteBinaries <: Binaries
     uri::URI
 end
-
 mutable struct CustomPathBinaries <: Binaries
     path::AbstractString
 end
-
 libdir(p::CustomPathBinaries,dep) = p.path
-
 abstract type BuildProcess <: DependencyProvider end
-
 mutable struct SimpleBuild <: BuildProcess
     steps
 end
-
 mutable struct Autotools <: BuildProcess
     source
     opts
 end
-
 mutable struct GetSources <: BuildStep
     dep::LibraryDependency
 end
-
 lower(x::GetSources,collection) = push!(collection,generate_steps(x.dep,gethelper(x.dep,Sources)...))
-
 Autotools(;opts...) = Autotools(nothing, Dict{Any,Any}(pairs(opts)))
-
 export AptGet, Yum, Pacman, Zypper, BSDPkg, Sources, Binaries, provides, BuildProcess, Autotools,
        GetSources, SimpleBuild, available_version
-
 provider(::Type{T},package::AbstractString; opts...) where {T <: PackageManager} = T(package)
 provider(::Type{Sources},uri::URI; opts...) = NetworkSource(uri)
 provider(::Type{Binaries},uri::URI; opts...) = RemoteBinaries(uri)
@@ -933,7 +792,6 @@ provider(::Type{SimpleBuild},steps; opts...) = SimpleBuild(steps)
 provider(::Type{BuildProcess},p::T; opts...) where {T <: BuildProcess} = provider(T,p; opts...)
 provider(::Type{BuildProcess},steps::Union{BuildStep,SynchronousStepCollection}; opts...) = provider(SimpleBuild,steps; opts...)
 provider(::Type{Autotools},a::Autotools; opts...) = a
-
 provides(provider::DependencyProvider,dep::LibraryDependency; opts...) = push!(dep.providers,(provider,Dict{Symbol,Any}(pairs(opts))))
 provides(helper::DependencyHelper,dep::LibraryDependency; opts...) = push!(dep.helpers,(helper,Dict{Symbol,Any}(pairs(opts))))
 provides(::Type{T},p,dep::LibraryDependency; opts...) where {T} = provides(provider(T,p; opts...),dep; opts...)
@@ -942,22 +800,18 @@ function provides(::Type{T},packages::AbstractArray,dep::LibraryDependency; opts
         provides(T,p,dep; opts...)
     end
 end
-
 function provides(::Type{T},ps,deps::Vector{LibraryDependency}; opts...) where {T}
     p = provider(T,ps; opts...)
     for dep in deps
         provides(p,dep; opts...)
     end
 end
-
 function provides(::Type{T},providers::Dict; opts...) where {T}
     for (k,v) in providers
         provides(T,k,v;opts...)
     end
 end
-
 sudoname(c::Cmd) = c == `` ? "" : "sudo "
-
 const have_sonames = Ref(false)
 const sonames = Dict{String,String}()
 function reread_sonames()
@@ -969,7 +823,6 @@ function reread_sonames()
         ccall(:jl_read_sonames, Cvoid, ())
     end
 end
-
 if Compat.Sys.iswindows() || Compat.Sys.isapple()
     function read_sonames()
         have_sonames[] = true
@@ -1017,7 +870,6 @@ else
         have_sonames[] = true
     end
 end
-
 if VERSION >= v"0.7.0-DEV.1287" # only use this where julia issue #22832 is fixed
     lookup_soname(s) = lookup_soname(String(s))
     function lookup_soname(s::String)
@@ -1033,7 +885,6 @@ else
         return ""
     end
 end
-
 generate_steps(h::DependencyProvider,dep::LibraryDependency) = error("Must also pass provider options")
 generate_steps(h::BuildProcess,dep::LibraryDependency,opts) = h.steps
 function generate_steps(dep::LibraryDependency,h::AptGet,opts)
@@ -1126,7 +977,6 @@ function generate_steps(dep::LibraryDependency,h::RemoteBinaries,opts)
     end
 end
 generate_steps(dep::LibraryDependency,h::SimpleBuild,opts) = h.steps
-
 function getoneprovider(dep::LibraryDependency,method)
     for (p,opts) = dep.providers
         if typeof(p) <: method && can_use(typeof(p))
@@ -1135,7 +985,6 @@ function getoneprovider(dep::LibraryDependency,method)
     end
     return (nothing,nothing)
 end
-
 function getallproviders(dep::LibraryDependency,method)
     ret = Any[]
     for (p,opts) = dep.providers
@@ -1145,7 +994,6 @@ function getallproviders(dep::LibraryDependency,method)
     end
     ret
 end
-
 function gethelper(dep::LibraryDependency,method)
     for (p,opts) = dep.helpers
         if typeof(p) <: method
@@ -1154,11 +1002,8 @@ function gethelper(dep::LibraryDependency,method)
     end
     return (nothing,nothing)
 end
-
-# convert aliases="foo" into aliases=["foo"] to avoid iterating over characters 'f' 'o' 'o'
 stringarray(s::AbstractString) = [s]
 stringarray(s) = s
-
 function generate_steps(dep::LibraryDependency,method)
     (p,opts) = getoneprovider(dep,method)
     p !== nothing && return generate_steps(p,dep,opts)
@@ -1166,7 +1011,6 @@ function generate_steps(dep::LibraryDependency,method)
     p !== nothing && return generate_steps(p,dep,hopts)
     error("No provider or helper for method $method found for dependency $(dep.name)")
 end
-
 function generate_steps(dep::LibraryDependency, h::Autotools,  provider_opts)
     if h.source === nothing
         h.source = gethelper(dep,Sources)
@@ -1227,11 +1071,7 @@ function generate_steps(dep::LibraryDependency, h::Autotools,  provider_opts)
     steps |= AutotoolsDependency(;opts...)
     steps
 end
-
 const EXTENSIONS = ["", "." * Libdl.dlext]
-
-# Finds all copies of the library on the system, listed in preference order.
-# Return value is an array of tuples of the provider and the path where it is found
 function _find_library(dep::LibraryDependency; provider = Any)
     ret = Any[]
     # Same as find_library, but with extra check defined by dep
@@ -1241,15 +1081,12 @@ function _find_library(dep::LibraryDependency; provider = Any)
     for (p,opts) in providers
         (p !== nothing && can_use(typeof(p)) && can_provide(p,opts,dep)) || continue
         paths = AbstractString[]
-
         # Allow user to override installation path
         if haskey(opts,:installed_libpath) && isdir(opts[:installed_libpath])
             pushfirst!(paths,opts[:installed_libpath])
         end
-
         ppaths = libdir(p,dep)
         append!(paths,isa(ppaths,Array) ? ppaths : [ppaths])
-
         if haskey(opts,:unpacked_dir)
             dir = opts[:unpacked_dir]
             if dir == "." && isdir(joinpath(depsdir(dep), dep.name))
@@ -1259,7 +1096,6 @@ function _find_library(dep::LibraryDependency; provider = Any)
                 push!(paths,joinpath(depsdir(dep),dir))
             end
         end
-
         # Windows, do you know what `lib` stands for???
         if Compat.Sys.iswindows()
             push!(paths,bindir(p,dep))
@@ -1303,7 +1139,6 @@ function _find_library(dep::LibraryDependency; provider = Any)
     end
     return ret
 end
-
 function check_path!(ret, dep, opath)
     flags = Libdl.RTLD_LAZY
     handle = ccall(:jl_dlopen, Ptr{Cvoid}, (Cstring, Cuint), opath, flags)
@@ -1313,7 +1148,6 @@ function check_path!(ret, dep, opath)
         handle != C_NULL && Libdl.dlclose(handle)
     end
 end
-
 function check_system_handle!(ret,dep,handle)
     if handle != C_NULL
         libpath = Libdl.dlpath(handle)
@@ -1338,8 +1172,6 @@ function check_system_handle!(ret,dep,handle)
         end
     end
 end
-
-# Default installation method
 defaults = if Compat.Sys.isapple()
     [Binaries, PackageManager, SystemPaths, BuildProcess]
 elseif Compat.Sys.isbsd() || (Compat.Sys.islinux() && glibc_version() === nothing) # non-glibc
@@ -1351,7 +1183,6 @@ elseif Compat.Sys.iswindows()
 else
     [SystemPaths, BuildProcess]
 end
-
 function applicable(dep::LibraryDependency)
     if haskey(dep.properties,:os)
         if (dep.properties[:os] != OSNAME && dep.properties[:os] != :Unix) || (dep.properties[:os] == :Unix && !Compat.Sys.isunix())
@@ -1362,9 +1193,7 @@ function applicable(dep::LibraryDependency)
     end
     return true
 end
-
 applicable(deps::LibraryGroup) = any([applicable(dep) for dep in deps.deps])
-
 function can_provide(p,opts,dep)
     if p === nothing || (haskey(opts,:os) && opts[:os] != OSNAME && (opts[:os] != :Unix || !Compat.Sys.isunix()))
         return false
@@ -1377,7 +1206,6 @@ function can_provide(p,opts,dep)
         return opts[:validate](p,dep)
     end
 end
-
 function can_provide(p::PackageManager,opts,dep)
     if p === nothing || (haskey(opts,:os) && opts[:os] != OSNAME && (opts[:os] != :Unix || !Compat.Sys.isunix()))
         return false
@@ -1393,9 +1221,7 @@ function can_provide(p::PackageManager,opts,dep)
         return opts[:validate](p,dep)
     end
 end
-
 issatisfied(dep::LibraryDependency) = !isempty(_find_library(dep))
-
 allf(deps) = Dict([(dep, _find_library(dep)) for dep in deps.deps])
 function satisfied_providers(deps::LibraryGroup, allfl = allf(deps))
     viable_providers = nothing
@@ -1412,7 +1238,6 @@ function satisfied_providers(deps::LibraryGroup, allfl = allf(deps))
     end
     viable_providers
 end
-
 function viable_providers(deps::LibraryGroup)
     vp = nothing
     for dep in deps.deps
@@ -1428,14 +1253,7 @@ function viable_providers(deps::LibraryGroup)
     end
     vp
 end
-
-#
-# We need to make sure all libraries are satisfied with the
-# additional constraint that all of them are satisfied by the
-# same provider.
-#
 issatisfied(deps::LibraryGroup) = !isempty(satisfied_providers(deps))
-
 function _find_library(deps::LibraryGroup, allfl = allf(deps); provider = Any)
     providers = satisfied_providers(deps,allfl)
     p = nothing
@@ -1462,7 +1280,6 @@ function _find_library(deps::LibraryGroup, allfl = allf(deps); provider = Any)
         ret
     end) for dep in filter(applicable,deps.deps)])
 end
-
 function satisfy!(deps::LibraryGroup, methods = defaults)
     sp = satisfied_providers(deps)
     if !isempty(sp)
@@ -1510,7 +1327,6 @@ function satisfy!(deps::LibraryGroup, methods = defaults)
         Use BinDeps.debug(package_name) to see available providers
         """)
 end
-
 function satisfy!(dep::LibraryDependency, methods = defaults)
     sp = map(x->typeof(x[1][1]),_find_library(dep))
     if !isempty(sp)
@@ -1544,9 +1360,7 @@ function satisfy!(dep::LibraryDependency, methods = defaults)
         Use BinDeps.debug(package_name) to see available providers
         """)
 end
-
 execute(dep::LibraryDependency,method) = run(lower(generate_steps(dep,method)))
-
 macro install(_libmaps...)
     if length(_libmaps) == 0
         return esc(quote
@@ -1592,7 +1406,6 @@ macro install(_libmaps...)
                                 end
                             end
                         end
-
                         # Generate "deps.jl" file for runtime loading
                         depsfile_location = joinpath(splitdir(Base.source_path())[1],"deps.jl")
                         depsfile_buffer = IOBuffer()
@@ -1641,32 +1454,6 @@ macro install(_libmaps...)
         ret
     end
 end
-
-# Usage: @load_dependencies [file] [filter]
-#
-# Load dependencies as declared in `file` (default to "../deps/build.jl")
-#
-# This will also assign global variables in the current module that are the result of the symbol lookup
-# The filter argument determines which libaries are being loaded and can be used to modify
-# the name of the global variable to be set to the result of the lookup.
-# The second argument may be as follows:
-#
-#  1. Vector{Symbol} or Vector{T <: AbstractString}
-#       Only load that are declared whose name is listed in the Array
-#       E.g. @load_dependencies "file.jl" [:cairo, :tk]
-#
-#  2. Associative{S<:Union{Symbol,AbstractString},S<:Union{Symbol,AbstractString}}
-#       Only loads libraries whose name matches a key in the Associative collection, but assigns it
-#       to the name matiching the corresponsing value
-#       E.g. @load_dependencies "file.jl" [:cairo=>:libcairo, :tk=>:libtk]
-#       will assign the result of the lookup for :cairo and :tk to the variables `libcairo` and `libtk`
-#       respectively.
-#
-#  3. Function
-#       A filter function
-#       E.g. @load_dependencies "file.jl" x->x=="tk"
-#
-#
 macro load_dependencies(args...)
     dir = dirname(normpath(joinpath(dirname(Base.source_path()),"..")))
     arg1 = nothing
@@ -1762,7 +1549,6 @@ macro load_dependencies(args...)
     end
     ret
 end
-
 function build(pkg::AbstractString, method; dep::AbstractString="", force=false)
     dir = Pkg.dir(pkg)
     file = joinpath(dir,"deps/build.jl")
@@ -1772,10 +1558,7 @@ function build(pkg::AbstractString, method; dep::AbstractString="", force=false)
         BinDeps.satisfy!(d,[method])
     end
 end
-
-# Calculate the SHA-256 hash of a file
 using SHA
-
 function sha_check(path, sha)
     open(path) do f
         calc_sha = sha256(f)
@@ -1789,14 +1572,7 @@ function sha_check(path, sha)
         end
     end
 end
-
-
-#
-# expanded from: include("debug.jl")
-#
-
 import Base: show
-
 function _show_indented(io::IO, dep::LibraryDependency, indent, lib)
     print_indented(io,"- Library \"$(dep.name)\"",indent+1)
     if !applicable(dep)
@@ -1823,7 +1599,6 @@ function _show_indented(io::IO, dep::LibraryDependency, indent, lib)
 end
 show_indented(io::IO, dep::LibraryDependency, indent) = _show_indented(io,dep,indent, applicable(dep) ? _find_library(dep) : nothing)
 show(io::IO, dep::LibraryDependency) = show_indented(io, dep, 0)
-
 function show(io::IO, deps::LibraryGroup)
     print(io," - Library Group \"$(deps.name)\"")
     all = allf(deps)
@@ -1840,7 +1615,6 @@ function show(io::IO, deps::LibraryGroup)
         end
     end
 end
-
 function debug_context(pkg::AbstractString)
     info("Reading build script...")
     dir = Pkg.dir(pkg)
@@ -1849,11 +1623,9 @@ function debug_context(pkg::AbstractString)
     eval_anon_module(context, file)
     context
 end
-
 function debug(io,pkg::AbstractString)
     context = debug_context(pkg)
     println(io,"The package declares $(length(context.deps)) dependencies.")
-
     # We need to `eval()` the rest of this function because `debug_context()` will
     # `eval()` in things like `Homebrew.jl`, which contain new methods for things
     # like `can_provide()`, and we cannot deal with those new methods in our
@@ -1864,32 +1636,19 @@ function debug(io,pkg::AbstractString)
     end
 end
 debug(pkg::AbstractString) = debug(STDOUT,pkg)
-
-
-#
-# expanded from: include("show.jl")
-#
-
 print_indented(io::IO,x,indent) = print(io," "^indent,x)
 function show_indented(io::IO,x,indent)
     print_indented(io,"- ",indent)
     show(io,x)
 end
-
 show(io::IO,x::PackageManager) = print(io,"$(typeof(x)) package $(pkg_name(x))")
 show(io::IO,x::SimpleBuild) = print(io,"Simple Build Process")
 show(io::IO,x::Sources) = print(io,"Sources")
 show(io::IO,x::Binaries) = print(io,"Binaries")
 show(io::IO,x::Autotools) = print(io,"Autotools Build")
-
-
-# deprecations
-
 @Base.deprecate_binding shlib_ext Libdl.dlext
-
 const has_sudo = Ref{Bool}(false)
 function __init__()
     has_sudo[] = try success(`sudo -V`) catch err false end
 end
-
 end

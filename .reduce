@@ -1,5 +1,5 @@
 #!/bin/bash -uxe
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-multidelta -level=0 $DIR/run.sh $DIR/*.jl
+cd $DIR
+creduce --n $(nproc) --not-c ./.run *.jl

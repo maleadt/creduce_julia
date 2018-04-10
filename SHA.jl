@@ -1,9 +1,6 @@
 __precompile__()
-
 module SHA
 using Compat
-
-# Export convenience functions, context types, update!() and digest!() functions
 export sha1, SHA1_CTX, update!, digest!
 export sha224, sha256, sha384, sha512
 export sha2_224, sha2_256, sha2_384, sha2_512
@@ -15,29 +12,12 @@ export HMAC_CTX, hmac_sha1
 export hmac_sha224, hmac_sha256, hmac_sha384, hmac_sha512
 export hmac_sha2_224, hmac_sha2_256, hmac_sha2_384, hmac_sha2_512
 export hmac_sha3_224, hmac_sha3_256, hmac_sha3_384, hmac_sha3_512
-
-
-
-
-#
-# expanded from: include("constants.jl")
-#
-
-# SHA initial hash values and constants
-
-# Hash constant words K for SHA1
 const K1 = UInt32[
     0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6
 ]
-
-# Initial hash value H for SHA1
 const SHA1_initial_hash_value = UInt32[
     0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0
 ]
-
-
-
-# Hash constant words K for SHA-256:
 const K256 = UInt32[
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
     0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -56,20 +36,14 @@ const K256 = UInt32[
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
     0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 ]
-
-# Initial hash value H for SHA-224:
 const SHA2_224_initial_hash_value = UInt32[
     0xc1059ed8, 0x367cd507, 0x3070dd17, 0xf70e5939,
     0xffc00b31, 0x68581511, 0x64f98fa7, 0xbefa4fa4
 ]
-
-
 const SHA2_256_initial_hash_value = UInt32[
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
     0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
 ]
-
-# Hash constant words K for SHA-384 and SHA-512:
 const K512 = UInt64[
     0x428a2f98d728ae22, 0x7137449123ef65cd,
     0xb5c0fbcfec4d3b2f, 0xe9b5dba58189dbbc,
@@ -112,24 +86,18 @@ const K512 = UInt64[
     0x4cc5d4becb3e42b6, 0x597f299cfc657e2a,
     0x5fcb6fab3ad6faec, 0x6c44198c4a475817
 ]
-
-# Initial hash value H for SHA-384
 const SHA2_384_initial_hash_value = UInt64[
     0xcbbb9d5dc1059ed8, 0x629a292a367cd507,
     0x9159015a3070dd17, 0x152fecd8f70e5939,
     0x67332667ffc00b31, 0x8eb44a8768581511,
     0xdb0c2e0d64f98fa7, 0x47b5481dbefa4fa4
 ]
-
-# Initial hash value H for SHA-512
 const SHA2_512_initial_hash_value = UInt64[
     0x6a09e667f3bcc908, 0xbb67ae8584caa73b,
     0x3c6ef372fe94f82b, 0xa54ff53a5f1d36f1,
     0x510e527fade682d1, 0x9b05688c2b3e6c1f,
     0x1f83d9abfb41bd6b, 0x5be0cd19137e2179
 ]
-
-# Round constants for SHA3 rounds
 const SHA3_ROUND_CONSTS = UInt64[
     0x0000000000000001, 0x0000000000008082, 0x800000000000808a,
     0x8000000080008000, 0x000000000000808b, 0x0000000080000001,
@@ -140,73 +108,48 @@ const SHA3_ROUND_CONSTS = UInt64[
     0x000000000000800a, 0x800000008000000a, 0x8000000080008081,
     0x8000000000008080, 0x0000000080000001, 0x8000000080008008
 ]
-
-# Rotation constants for SHA3 rounds
 const SHA3_ROTC = UInt64[
     1,  3,  6,  10, 15, 21, 28, 36, 45, 55, 2,  14,
     27, 41, 56, 8,  25, 43, 62, 18, 39, 61, 20, 44
 ]
-
-# Permutation indices for SHA3 rounds (+1'ed so as to work with julia's 1-based indexing)
 const SHA3_PILN = Int[
     11, 8,  12, 18, 19, 4, 6,  17, 9,  22, 25, 5,
     16, 24, 20, 14, 13, 3, 21, 15, 23, 10,  7,  2
 ]
-
-
-#
-# expanded from: include("types.jl")
-#
-
-# Type hierarchy to aid in splitting up of SHA2 algorithms
-# as SHA224/256 are similar, and SHA-384/512 are similar
 abstract type SHA_CTX end
 abstract type SHA2_CTX <: SHA_CTX end
 abstract type SHA3_CTX <: SHA_CTX end
 import Base: copy
-
-# We derive SHA1_CTX straight from SHA_CTX since it doesn't have a
-# family of types like SHA2 or SHA3 do
 mutable struct SHA1_CTX <: SHA_CTX
     state::Array{UInt32,1}
     bytecount::UInt64
     buffer::Array{UInt8,1}
     W::Array{UInt32,1}
 end
-
-# SHA2 224/256/384/512-bit Context Structures
 mutable struct SHA2_224_CTX <: SHA2_CTX
     state::Array{UInt32,1}
     bytecount::UInt64
     buffer::Array{UInt8,1}
 end
-
 mutable struct SHA2_256_CTX <: SHA2_CTX
     state::Array{UInt32,1}
     bytecount::UInt64
     buffer::Array{UInt8,1}
 end
-
 mutable struct SHA2_384_CTX <: SHA2_CTX
     state::Array{UInt64,1}
     bytecount::UInt128
     buffer::Array{UInt8,1}
 end
-
 mutable struct SHA2_512_CTX <: SHA2_CTX
     state::Array{UInt64,1}
     bytecount::UInt128
     buffer::Array{UInt8,1}
 end
-
-# Typealias common nicknames for SHA2 family of functions
 const SHA224_CTX = SHA2_224_CTX
 const SHA256_CTX = SHA2_256_CTX
 const SHA384_CTX = SHA2_384_CTX
 const SHA512_CTX = SHA2_512_CTX
-
-
-# SHA3 224/256/384/512-bit context structures
 mutable struct SHA3_224_CTX <: SHA3_CTX
     state::Array{UInt64,1}
     bytecount::UInt128
@@ -231,10 +174,6 @@ mutable struct SHA3_512_CTX <: SHA3_CTX
     buffer::Array{UInt8,1}
     bc::Array{UInt64,1}
 end
-
-# Define constants via functions so as not to bloat context objects.  Yay dispatch!
-
-# Digest lengths for SHA1, SHA2 and SHA3.  This is easy to figure out from the typename
 digestlen(::Type{SHA1_CTX}) = 20
 digestlen(::Type{SHA2_224_CTX}) = 28
 digestlen(::Type{SHA3_224_CTX}) = 28
@@ -244,59 +183,38 @@ digestlen(::Type{SHA2_384_CTX}) = 48
 digestlen(::Type{SHA3_384_CTX}) = 48
 digestlen(::Type{SHA2_512_CTX}) = 64
 digestlen(::Type{SHA3_512_CTX}) = 64
-
-# SHA1 and SHA2 have differing element types for the internal state objects
 state_type(::Type{SHA1_CTX}) = UInt32
 state_type(::Type{SHA2_224_CTX}) = UInt32
 state_type(::Type{SHA2_256_CTX}) = UInt32
 state_type(::Type{SHA2_384_CTX}) = UInt64
 state_type(::Type{SHA2_512_CTX}) = UInt64
 state_type(::Type{SHA3_CTX}) = UInt64
-
-# blocklen is the number of bytes of data processed by the transform!() function at once
 blocklen(::Type{SHA1_CTX}) = UInt64(64)
 blocklen(::Type{SHA2_224_CTX}) = UInt64(64)
 blocklen(::Type{SHA2_256_CTX}) = UInt64(64)
 blocklen(::Type{SHA2_384_CTX}) = UInt64(128)
 blocklen(::Type{SHA2_512_CTX}) = UInt64(128)
-
 blocklen(::Type{SHA3_224_CTX}) = UInt64(25*8 - 2*digestlen(SHA3_224_CTX))
 blocklen(::Type{SHA3_256_CTX}) = UInt64(25*8 - 2*digestlen(SHA3_256_CTX))
 blocklen(::Type{SHA3_384_CTX}) = UInt64(25*8 - 2*digestlen(SHA3_384_CTX))
 blocklen(::Type{SHA3_512_CTX}) = UInt64(25*8 - 2*digestlen(SHA3_512_CTX))
-
-
-# short_blocklen is the size of a block minus the width of bytecount
 short_blocklen(::Type{T}) where {T<:SHA_CTX} = blocklen(T) - 2*sizeof(state_type(T))
-
-# Once the "blocklen" methods are defined, we can define our outer constructors for SHA types:
 SHA2_224_CTX() = SHA2_224_CTX(copy(SHA2_224_initial_hash_value), 0, zeros(UInt8, blocklen(SHA2_224_CTX)))
 SHA2_256_CTX() = SHA2_256_CTX(copy(SHA2_256_initial_hash_value), 0, zeros(UInt8, blocklen(SHA2_256_CTX)))
 SHA2_384_CTX() = SHA2_384_CTX(copy(SHA2_384_initial_hash_value), 0, zeros(UInt8, blocklen(SHA2_384_CTX)))
 SHA2_512_CTX() = SHA2_512_CTX(copy(SHA2_512_initial_hash_value), 0, zeros(UInt8, blocklen(SHA2_512_CTX)))
-
 SHA3_224_CTX() = SHA3_224_CTX(zeros(UInt64, 25), 0, zeros(UInt8, blocklen(SHA3_224_CTX)), Vector{UInt64}(uninitialized, 5))
 SHA3_256_CTX() = SHA3_256_CTX(zeros(UInt64, 25), 0, zeros(UInt8, blocklen(SHA3_256_CTX)), Vector{UInt64}(uninitialized, 5))
 SHA3_384_CTX() = SHA3_384_CTX(zeros(UInt64, 25), 0, zeros(UInt8, blocklen(SHA3_384_CTX)), Vector{UInt64}(uninitialized, 5))
 SHA3_512_CTX() = SHA3_512_CTX(zeros(UInt64, 25), 0, zeros(UInt8, blocklen(SHA3_512_CTX)), Vector{UInt64}(uninitialized, 5))
-
-# Nickname'd outer constructor methods for SHA2
 const SHA224_CTX = SHA2_224_CTX
 const SHA256_CTX = SHA2_256_CTX
 const SHA384_CTX = SHA2_384_CTX
 const SHA512_CTX = SHA2_512_CTX
-
-# SHA1 is special; he needs extra workspace
 SHA1_CTX() = SHA1_CTX(copy(SHA1_initial_hash_value), 0, zeros(UInt8, blocklen(SHA1_CTX)), Vector{UInt32}(uninitialized, 80))
-
-
-# Copy functions
 copy(ctx::T) where {T<:SHA1_CTX} = T(copy(ctx.state), ctx.bytecount, copy(ctx.buffer), copy(ctx.W))
 copy(ctx::T) where {T<:SHA2_CTX} = T(copy(ctx.state), ctx.bytecount, copy(ctx.buffer))
 copy(ctx::T) where {T<:SHA3_CTX} = T(copy(ctx.state), ctx.bytecount, copy(ctx.buffer), Vector{UInt64}(uninitialized, 5))
-
-
-# Make printing these types a little friendlier
 import Base.show
 show(io::IO, ::SHA1_CTX) = write(io, "SHA1 hash state")
 show(io::IO, ::SHA2_224_CTX) = write(io, "SHA2 224-bit hash state")
@@ -307,103 +225,57 @@ show(io::IO, ::SHA3_224_CTX) = write(io, "SHA3 224-bit hash state")
 show(io::IO, ::SHA3_256_CTX) = write(io, "SHA3 256-bit hash state")
 show(io::IO, ::SHA3_384_CTX) = write(io, "SHA3 384-bit hash state")
 show(io::IO, ::SHA3_512_CTX) = write(io, "SHA3 512-bit hash state")
-
-
-# use our types to define a method to get a pointer to the state buffer
 buffer_pointer(ctx::T) where {T<:SHA_CTX} = Ptr{state_type(T)}(pointer(ctx.buffer))
-
-
-#
-# expanded from: include("base_functions.jl")
-#
-
-# THE SIX LOGICAL FUNCTIONS
-#
-# Bit shifting and rotation (used by the six SHA-XYZ logical functions:
-#
-#   NOTE:  The naming of R and S appears backwards here (R is a SHIFT and
-#   S is a ROTATION) because the SHA2-256/384/512 description document
-#   (see http://csrc.nist.gov/cryptval/shs/sha256-384-512.pdf) uses this
-#   same "backwards" definition.
-
-# 32-bit Rotate-right (equivalent to S32 in SHA-256) and rotate-left
 rrot(b,x,width) = ((x >> b) | (x << (width - b)))
 lrot(b,x,width) = ((x << b) | (x >> (width - b)))
-
-# Shift-right (used in SHA-256, SHA-384, and SHA-512):
 R(b,x)   = (x >> b)
-# 32-bit Rotate-right (used in SHA-256):
 S32(b,x) = rrot(b,x,32)
-# 64-bit Rotate-right (used in SHA-384 and SHA-512):
 S64(b,x) = rrot(b,x,64)
-# 64-bit Rotate-left (used in SHA3)
 L64(b,x) = lrot(b,x,64)
-
-# Two of six logical functions used in SHA-256, SHA-384, and SHA-512:
 Ch(x,y,z)  = ((x & y) ⊻ (~x & z))
 Maj(x,y,z) = ((x & y) ⊻ (x & z) ⊻ (y & z))
-
-# Four of six logical functions used in SHA-256:
 Sigma0_256(x) = (S32(2,  UInt32(x)) ⊻ S32(13, UInt32(x)) ⊻ S32(22, UInt32(x)))
 Sigma1_256(x) = (S32(6,  UInt32(x)) ⊻ S32(11, UInt32(x)) ⊻ S32(25, UInt32(x)))
 sigma0_256(x) = (S32(7,  UInt32(x)) ⊻ S32(18, UInt32(x)) ⊻ R(3 ,   UInt32(x)))
 sigma1_256(x) = (S32(17, UInt32(x)) ⊻ S32(19, UInt32(x)) ⊻ R(10,   UInt32(x)))
-
-# Four of six logical functions used in SHA-384 and SHA-512:
 Sigma0_512(x) = (S64(28, UInt64(x)) ⊻ S64(34, UInt64(x)) ⊻ S64(39, UInt64(x)))
 Sigma1_512(x) = (S64(14, UInt64(x)) ⊻ S64(18, UInt64(x)) ⊻ S64(41, UInt64(x)))
 sigma0_512(x) = (S64( 1, UInt64(x)) ⊻ S64( 8, UInt64(x)) ⊻ R( 7,   UInt64(x)))
 sigma1_512(x) = (S64(19, UInt64(x)) ⊻ S64(61, UInt64(x)) ⊻ R( 6,   UInt64(x)))
-
-# Let's be able to bswap arrays of these types as well
 bswap!(x::Vector{<:Integer}) = map!(bswap, x, x)
-
-
-#
-# expanded from: include("sha1.jl")
-#
-
-# Nonlinear functions, in order to encourage inlining, these sadly are not an array of lambdas
 function Round0(b,c,d)
     return UInt32((b & c) | (~b & d))
 end
-
 function Round1And3(b,c,d)
     return UInt32(b ⊻ c ⊻ d)
 end
-
 function Round2(b,c,d)
     return UInt32((b & c) | (b & d) | (c & d))
 end
-
 function transform!(context::SHA1_CTX)
     # Buffer is 16 elements long, we expand to 80
     pbuf = buffer_pointer(context)
     for i in 1:16
         context.W[i] = bswap(unsafe_load(pbuf, i))
     end
-
     # First round of expansions
     for i in 17:32
         @inbounds begin
             context.W[i] = lrot(1, context.W[i-3] ⊻ context.W[i-8] ⊻ context.W[i-14] ⊻ context.W[i-16], 32)
         end
     end
-
     # Second round of expansions (possibly 4-way SIMD-able)
     for i in 33:80
         @inbounds begin
             context.W[i] = lrot(2, context.W[i-6] ⊻ context.W[i-16] ⊻ context.W[i-28] ⊻ context.W[i-32], 32)
         end
     end
-
     # Initialize registers with the previous intermediate values (our state)
     a = context.state[1]
     b = context.state[2]
     c = context.state[3]
     d = context.state[4]
     e = context.state[5]
-
     # Run our rounds, manually separated into the four rounds, unfortunately using an array of lambdas
     # really kills performance and causes a huge number of allocations, so we make it easy on the compiler
     for i = 1:20
@@ -416,7 +288,6 @@ function transform!(context::SHA1_CTX)
             a = temp
         end
     end
-
     for i = 21:40
         @inbounds begin
             temp = UInt32(lrot(5, a, 32) + Round1And3(b,c,d) + e + context.W[i] + K1[2])
@@ -427,7 +298,6 @@ function transform!(context::SHA1_CTX)
             a = temp
         end
     end
-
     for i = 41:60
         @inbounds begin
             temp = UInt32(lrot(5, a, 32) + Round2(b,c,d) + e + context.W[i] + K1[3])
@@ -438,7 +308,6 @@ function transform!(context::SHA1_CTX)
             a = temp
         end
     end
-
     for i = 61:80
         @inbounds begin
             temp = UInt32(lrot(5, a, 32) + Round1And3(b,c,d) + e + context.W[i] + K1[4])
@@ -449,19 +318,12 @@ function transform!(context::SHA1_CTX)
             a = temp
         end
     end
-
     context.state[1] += a
     context.state[2] += b
     context.state[3] += c
     context.state[4] += d
     context.state[5] += e
 end
-
-
-#
-# expanded from: include("sha2.jl")
-#
-
 function transform!(context::T) where {T<:Union{SHA2_224_CTX,SHA2_256_CTX}}
     pbuf = buffer_pointer(context)
     # Initialize registers with the previous intermediate values (our state)
@@ -473,14 +335,12 @@ function transform!(context::T) where {T<:Union{SHA2_224_CTX,SHA2_256_CTX}}
     f = context.state[6]
     g = context.state[7]
     h = context.state[8]
-
     # Run initial rounds
     for j = 1:16
         @inbounds begin
             # We bitswap every input byte
             v = bswap(unsafe_load(pbuf, j))
             unsafe_store!(pbuf, v, j)
-
             # Apply the SHA-256 compression function to update a..h
             T1 = h + Sigma1_256(e) + Ch(e, f, g) + K256[j] + v
             T2 = Sigma0_256(a) + Maj(a, b, c)
@@ -494,7 +354,6 @@ function transform!(context::T) where {T<:Union{SHA2_224_CTX,SHA2_256_CTX}}
             a = UInt32(T1 + T2)
         end
     end
-
     for j = 17:64
         @inbounds begin
             # Implicit message block expansion:
@@ -502,7 +361,6 @@ function transform!(context::T) where {T<:Union{SHA2_224_CTX,SHA2_256_CTX}}
             s0 = sigma0_256(s0)
             s1 = unsafe_load(pbuf, mod1(j + 14, 16))
             s1 = sigma1_256(s1)
-
             # Apply the SHA-256 compression function to update a..h
             v = unsafe_load(pbuf, mod1(j, 16)) + s1 + unsafe_load(pbuf, mod1(j + 9, 16)) + s0
             unsafe_store!(pbuf, v, mod1(j, 16))
@@ -518,7 +376,6 @@ function transform!(context::T) where {T<:Union{SHA2_224_CTX,SHA2_256_CTX}}
             a = UInt32(T1 + T2)
         end
     end
-
     # Compute the current intermediate hash value
     context.state[1] += a
     context.state[2] += b
@@ -529,8 +386,6 @@ function transform!(context::T) where {T<:Union{SHA2_224_CTX,SHA2_256_CTX}}
     context.state[7] += g
     context.state[8] += h
 end
-
-
 function transform!(context::Union{SHA2_384_CTX,SHA2_512_CTX})
     pbuf = buffer_pointer(context)
     # Initialize registers with the prev. intermediate value
@@ -542,12 +397,10 @@ function transform!(context::Union{SHA2_384_CTX,SHA2_512_CTX})
     f = context.state[6]
     g = context.state[7]
     h = context.state[8]
-
     for j = 1:16
         @inbounds begin
             v = bswap(unsafe_load(pbuf, j))
             unsafe_store!(pbuf, v, j)
-
             # Apply the SHA-512 compression function to update a..h
             T1 = h + Sigma1_512(e) + Ch(e, f, g) + K512[j] + v
             T2 = Sigma0_512(a) + Maj(a, b, c)
@@ -561,7 +414,6 @@ function transform!(context::Union{SHA2_384_CTX,SHA2_512_CTX})
             a = T1 + T2
         end
     end
-
     for j = 17:80
         @inbounds begin
             # Implicit message block expansion:
@@ -569,7 +421,6 @@ function transform!(context::Union{SHA2_384_CTX,SHA2_512_CTX})
             s0 = sigma0_512(s0)
             s1 = unsafe_load(pbuf, mod1(j + 14, 16))
             s1 = sigma1_512(s1)
-
             # Apply the SHA-512 compression function to update a..h
             v = unsafe_load(pbuf, mod1(j, 16)) + s1 + unsafe_load(pbuf, mod1(j + 9, 16)) + s0
             unsafe_store!(pbuf, v, mod1(j, 16))
@@ -585,7 +436,6 @@ function transform!(context::Union{SHA2_384_CTX,SHA2_512_CTX})
             a = T1 + T2
         end
     end
-
     # Compute the current intermediate hash value
     context.state[1] += a
     context.state[2] += b
@@ -596,12 +446,6 @@ function transform!(context::Union{SHA2_384_CTX,SHA2_512_CTX})
     context.state[7] += g
     context.state[8] += h
 end
-
-
-#
-# expanded from: include("sha3.jl")
-#
-
 function transform!(context::T) where {T<:SHA3_CTX}
     # First, update state with buffer
     pbuf = Ptr{eltype(context.state)}(pointer(context.buffer))
@@ -610,14 +454,12 @@ function transform!(context::T) where {T<:SHA3_CTX}
     end
     bc = context.bc
     state = context.state
-
     # We always assume 24 rounds
     @inbounds for round in 0:23
         # Theta function
         for i in 1:5
             bc[i] = state[i] ⊻ state[i + 5] ⊻ state[i + 10] ⊻ state[i + 15] ⊻ state[i + 20]
         end
-
         for i in 0:4
             temp = bc[rem(i + 4, 5) + 1] ⊻ L64(1, bc[rem(i + 1, 5) + 1])
             j = 0
@@ -626,7 +468,6 @@ function transform!(context::T) where {T<:SHA3_CTX}
                 j += 5
             end
         end
-
         # Rho Pi
         temp = state[2]
         for i in 1:24
@@ -635,7 +476,6 @@ function transform!(context::T) where {T<:SHA3_CTX}
             state[j] = L64(SHA3_ROTC[i], temp)
             temp = bc[1]
         end
-
         # Chi
         j = 0
         while j <= 20
@@ -647,17 +487,11 @@ function transform!(context::T) where {T<:SHA3_CTX}
             end
             j += 5
         end
-
         # Iota
         state[1] = state[1] ⊻ SHA3_ROUND_CONSTS[round+1]
     end
-
     return context.state
 end
-
-
-
-# Finalize data in the buffer, append total bitlength, and return our precious hash!
 function digest!(context::T) where {T<:SHA3_CTX}
     usedspace = context.bytecount % blocklen(T)
     # If we have anything in the buffer still, pad and transform that data
@@ -672,32 +506,18 @@ function digest!(context::T) where {T<:SHA3_CTX}
         # Otherwise, we have to add on a whole new buffer just for the zeros and 0x80
         context.buffer[end] = 0x06
         transform!(context)
-
         context.buffer[1:end-1] = 0x0
         context.buffer[end] = 0x80
     end
-
     # Final transform:
     transform!(context)
-
     # Return the digest
     return reinterpret(UInt8, context.state)[1:digestlen(T)]
 end
-
-
-#
-# expanded from: include("common.jl")
-#
-
-# Common update and digest functions which work across SHA1 and SHA2
-
-# update! takes in variable-length data, buffering it into blocklen()-sized pieces,
-# calling transform!() when necessary to update the internal hash state.
 function update!(context::T, data::U) where {T<:SHA_CTX,
                                              U<:Union{Array{UInt8,1},NTuple{N,UInt8} where N}}
     # We need to do all our arithmetic in the proper bitwidth
     UIntXXX = typeof(context.bytecount)
-
     # Process as many complete blocks as possible
     len = convert(UIntXXX, length(data))
     data_idx = convert(UIntXXX, 0)
@@ -705,21 +525,17 @@ function update!(context::T, data::U) where {T<:SHA_CTX,
     while len - data_idx + usedspace >= blocklen(T)
         # Fill up as much of the buffer as we can with the data given us
         copyto!(context.buffer, usedspace + 1, data, data_idx + 1, blocklen(T) - usedspace)
-
         transform!(context)
         context.bytecount += blocklen(T) - usedspace
         data_idx += blocklen(T) - usedspace
         usedspace = convert(UIntXXX, 0)
     end
-
     # There is less than a complete block left, but we need to save the leftovers into context.buffer:
     if len > data_idx
         copyto!(context.buffer, usedspace + 1, data, data_idx + 1, len - data_idx)
         context.bytecount += len - data_idx
     end
 end
-
-# Pad the remainder leaving space for the bitcount
 function pad_remainder!(context::T) where T<:SHA_CTX
     usedspace = context.bytecount % blocklen(T)
     # If we have anything in the buffer still, pad and transform that data
@@ -727,7 +543,6 @@ function pad_remainder!(context::T) where T<:SHA_CTX
         # Begin padding with a 1 bit:
         context.buffer[usedspace+1] = 0x80
         usedspace += 1
-
         # If we have room for the bitcount, then pad up to the short blocklen
         if usedspace <= short_blocklen(T)
             for i = 1:(short_blocklen(T) - usedspace)
@@ -751,55 +566,37 @@ function pad_remainder!(context::T) where T<:SHA_CTX
         end
     end
 end
-
-
-# Clear out any saved data in the buffer, append total bitlength, and return our precious hash!
-# Note: SHA3_CTX has a more specialised method
 function digest!(context::T) where T<:SHA_CTX
     pad_remainder!(context)
     # Store the length of the input data (in bits) at the end of the padding
     bitcount_idx = div(short_blocklen(T), sizeof(context.bytecount)) + 1
     pbuf = Ptr{typeof(context.bytecount)}(pointer(context.buffer))
     unsafe_store!(pbuf, bswap(context.bytecount * 8), bitcount_idx)
-
     # Final transform:
     transform!(context)
-
     # Return the digest
     return reinterpret(UInt8, bswap!(context.state))[1:digestlen(T)]
 end
-
-
-#
-# expanded from: include("hmac.jl")
-#
-
 struct HMAC_CTX{CTX<:SHA_CTX}
     context::CTX
     outer::Vector{UInt8}
-
     function HMAC_CTX(ctx::CTX, key::Vector{UInt8}, blocksize::Integer=blocklen(CTX)) where CTX
         if length(key) > blocksize
             _ctx = CTX()
             update!(_ctx, key)
             key = digest!(_ctx)
         end
-
         pad = blocksize - length(key)
-
         if pad > 0
             key = [key; fill(0x00, pad)]
         end
-
         update!(ctx, key .⊻ 0x36)
         new{CTX}(ctx, key .⊻ 0x5c)
     end
 end
-
 function update!(ctx::HMAC_CTX, data)
     update!(ctx.context, data)
 end
-
 function digest!(ctx::HMAC_CTX{CTX}) where CTX
     digest = digest!(ctx.context)
     _ctx = CTX()
@@ -807,13 +604,9 @@ function digest!(ctx::HMAC_CTX{CTX}) where CTX
     update!(_ctx, digest)
     digest!(_ctx)
 end
-
-# Compat.jl-like shim for codeunits() on Julia <= 0.6:
 if VERSION < v"0.7.0-DEV.3213"
     codeunits(x) = x
 end
-
-# Create data types and convenience functions for each hash implemented
 for (f, ctx) in [(:sha1, :SHA1_CTX),
                  (:sha224, :SHA224_CTX),
                  (:sha256, :SHA256_CTX),
@@ -828,7 +621,6 @@ for (f, ctx) in [(:sha1, :SHA1_CTX),
                  (:sha3_384, :SHA3_384_CTX),
                  (:sha3_512, :SHA3_512_CTX),]
     g = Symbol(:hmac_, f)
-
     @eval begin
         # Our basic function is to process arrays of bytes
         function $f(data::T) where T<:Union{Array{UInt8,1},NTuple{N,UInt8} where N}
@@ -841,11 +633,9 @@ for (f, ctx) in [(:sha1, :SHA1_CTX),
             update!(ctx, data)
             return digest!(ctx)
         end
-
         # AbstractStrings are a pretty handy thing to be able to crunch through
         $f(str::AbstractString) = $f(Vector{UInt8}(codeunits(str)))
         $g(key::Vector{UInt8}, str::AbstractString) = $g(key, Vector{UInt8}(str))
-
         # Convenience function for IO devices, allows for things like:
         # open("test.txt") do f
         #     sha256(f)
@@ -870,5 +660,4 @@ for (f, ctx) in [(:sha1, :SHA1_CTX),
         end
     end
 end
-
 end #module SHA

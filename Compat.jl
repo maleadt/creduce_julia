@@ -1,30 +1,14 @@
 __precompile__()
-
 module Compat
-
-
-
-#
-# expanded from: include("compatmacro.jl")
-#
-
-# The @compat macro is used to implement compatibility rules that require
-# syntax rewriting rather than simply new function/constant/module definitions.
-
 using Base.Meta
 export @compat
-
 """Get just the function part of a function declaration."""
 withincurly(ex) = isexpr(ex, :curly) ? ex.args[1] : ex
-
 is_index_style(ex::Expr) = ex == :(Compat.IndexStyle) || ex == :(Base.IndexStyle) ||
     (ex.head == :(.) && (ex.args[1] == :Compat || ex.args[1] == :Base) &&
          ex.args[2] == Expr(:quote, :IndexStyle))
-
 is_index_style(arg) = false
-
 istopsymbol(ex, mod, sym) = ex in (sym, Expr(:(.), mod, Expr(:quote, sym)))
-
 if VERSION < v"0.6.0-dev.2782"
     function new_style_typealias(ex::ANY)
         isexpr(ex, :(=)) || return false
@@ -34,7 +18,6 @@ if VERSION < v"0.6.0-dev.2782"
 else
     new_style_typealias(ex) = false
 end
-
 function _compat(ex::Expr)
     if ex.head === :call
         f = ex.args[1]
@@ -87,9 +70,7 @@ function _compat(ex::Expr)
     end
     return Expr(ex.head, map(_compat, ex.args)...)
 end
-
 _compat(ex) = ex
-
 function _get_typebody(ex::Expr)
     args = ex.args
     if ex.head !== :type || length(args) != 3 || args[1] !== true
@@ -108,7 +89,6 @@ function _get_typebody(ex::Expr)
     end
     return name, body
 end
-
 function _compat_primitive(typedecl)
     name, body = _get_typebody(typedecl)
     if length(body) != 1
@@ -116,7 +96,6 @@ function _compat_primitive(typedecl)
     end
     return Expr(:bitstype, body[1], name)
 end
-
 function _compat_abstract(typedecl)
     name, body = _get_typebody(typedecl)
     if length(body) != 0
@@ -124,7 +103,6 @@ function _compat_abstract(typedecl)
     end
     return Expr(:abstract, name)
 end
-
 macro compat(ex...)
     if VERSION < v"0.6.0-dev.2746" && length(ex) == 2 && ex[1] === :primitive
         return esc(_compat_primitive(ex[2]))
@@ -138,7 +116,6 @@ macro compat(ex...)
     end
     esc(_compat(ex[1]))
 end
-
 @static if !isdefined(Base, :devnull) #25959
     export devnull, stdout, stdin, stderr
     const devnull = DevNull
@@ -163,7 +140,6 @@ end
         global stderr = STDERR
     end
 end
-
 @static if !isdefined(Base, Symbol("@nospecialize"))
     # 0.7
     macro nospecialize(arg)
@@ -189,12 +165,9 @@ end
     end
     export @nospecialize
 end
-
 if VERSION < v"0.6.0-dev.2043"
     Base.take!(t::Task) = consume(t)
 end
-
-# https://github.com/JuliaLang/julia/pull/22064
 @static if !isdefined(Base, Symbol("@__MODULE__"))
     # 0.7
     export @__MODULE__
@@ -208,7 +181,6 @@ end
     Base.include_string(mod::Module, code::AbstractString, fname::AbstractString="string") =
         eval(mod, :(include_string($code, $fname)))
 end
-
 if VERSION < v"0.6.0-dev.2042"
     include_string(@__MODULE__, """
         immutable ExponentialBackOff
@@ -217,17 +189,14 @@ if VERSION < v"0.6.0-dev.2042"
             max_delay::Float64
             factor::Float64
             jitter::Float64
-
             function ExponentialBackOff(n, first_delay, max_delay, factor, jitter)
                 all(x->x>=0, (n, first_delay, max_delay, factor, jitter)) || error("all inputs must be non-negative")
                 new(n, first_delay, max_delay, factor, jitter)
             end
         end
     """)
-
     """
         ExponentialBackOff(; n=1, first_delay=0.05, max_delay=10.0, factor=5.0, jitter=0.1)
-
     A [`Float64`](@ref) iterator of length `n` whose elements exponentially increase at a
     rate in the interval `factor` * (1 ± `jitter`).  The first element is
     `first_delay` and all elements are clamped to `max_delay`.
@@ -243,7 +212,6 @@ if VERSION < v"0.6.0-dev.2042"
     end
     Base.done(ebo::ExponentialBackOff, state) = state[1]<1
     Base.length(ebo::ExponentialBackOff) = ebo.n
-
     function retry(f::Function;  delays=ExponentialBackOff(), check=nothing)
         (args...; kwargs...) -> begin
             state = start(delays)
@@ -266,7 +234,6 @@ else
     import Base.ExponentialBackOff
     import Base.retry
 end
-
 import Base: redirect_stdin, redirect_stdout, redirect_stderr
 if VERSION < v"0.6.0-dev.374"
     for (F,S) in ((:redirect_stdin, :STDIN), (:redirect_stdout, :STDOUT), (:redirect_stderr, :STDERR))
@@ -277,23 +244,12 @@ if VERSION < v"0.6.0-dev.374"
         end
     end
 end
-
 @static if VERSION < v"0.6.0-dev.528"
     macro __DIR__()
         Base.source_dir()
     end
     export @__DIR__
 end
-
-# PR #17302
-# Provide a non-deprecated version of `@vectorize_(1|2)arg` macro which defines
-# deprecated version of the function so that the depwarns can be fixed without
-# breaking users.
-# Packages are expected to use this to maintain the old API until all users
-# of the deprecated vectorized function have migrated.
-# These macros should raise a depwarn when the `0.5` support is dropped from
-# `Compat` and be dropped when the support for `0.6` is dropped from `Compat`.
-# Modified based on the version copied from 0.6 Base.
 if VERSION < v"0.7.0-DEV.1211"
     macro dep_vectorize_1arg(S, f)
         S = esc(S)
@@ -306,7 +262,6 @@ if VERSION < v"0.7.0-DEV.1211"
         #         Symbol("@dep_vectorize_1arg"))
         :(@deprecate $f{$T<:$S}($x::$AbsArr{$T}) @compat($f.($x)))
     end
-
     macro dep_vectorize_2arg(S, f)
         S = esc(S)
         f = esc(f)
@@ -329,7 +284,6 @@ else
         AbstractArray = GlobalRef(Base, :AbstractArray)
         return esc(:(@deprecate $f(x::$AbstractArray{T}) where {T<:$S} $f.(x)))
     end
-
     macro dep_vectorize_2arg(S, f)
         AbstractArray = GlobalRef(Base, :AbstractArray)
         return esc(quote
@@ -339,44 +293,32 @@ else
         end)
     end
 end
-
-# broadcast over same length tuples, from julia#16986
 @static if VERSION < v"0.6.0-dev.693"
     Base.Broadcast.broadcast{N}(f, t::NTuple{N}, ts::Vararg{NTuple{N}}) = map(f, t, ts...)
 end
-
-# julia#18510
 if VERSION < v"0.6.0-dev.826"
     _Nullable_field2(x) = !x
 else
     _Nullable_field2(x) = x
 end
-
-# julia#18484
 @static if VERSION < v"0.6.0-dev.848"
     unsafe_get(x::Nullable) = x.value
     unsafe_get(x) = x
     export unsafe_get
     Base.isnull(x) = false
 end
-
-# julia#18977
 @static if !isdefined(Base, :xor)
     # 0.6
     const xor = $
     const ⊻ = xor
     export xor, ⊻
 end
-
-# julia#19246
 @static if !isdefined(Base, :numerator)
     # 0.6
     const numerator = num
     const denominator = den
     export numerator, denominator
 end
-
-# julia #19950
 @static if !isdefined(Base, :iszero)
     # 0.6
     iszero(x) = x == zero(x)
@@ -384,8 +326,6 @@ end
     iszero(x::AbstractArray) = all(iszero, x)
     export iszero
 end
-
-# julia　#20407
 @static if !isdefined(Base, :(>:))
     # 0.6
     const >: = let
@@ -393,27 +333,20 @@ end
     end
     export >:
 end
-
-# julia#19088
 if VERSION < v"0.6.0-dev.1256"
     Base.take!(io::Base.AbstractIOBuffer) = takebuf_array(io)
 end
-
-# julia #17155 function composition and negation
 @static if VERSION < v"0.6.0-dev.1883"
     export ∘
     ∘(f, g) = (x...)->f(g(x...))
     @compat Base.:!(f::Function) = (x...)->!f(x...)
 end
-
-
 if VERSION < v"0.6.0-dev.1632"
     # To work around unsupported syntax on Julia 0.4
     include_string("export .&, .|")
     include_string(".&(xs...) = broadcast(&, xs...)")
     include_string(".|(xs...) = broadcast(|, xs...)")
 end
-
 @static if VERSION < v"0.6.0-dev.2093" # Compat.isapprox to allow for NaNs
     using Base.rtoldefault
     function isapprox(x::Number, y::Number; rtol::Real=rtoldefault(x,y), atol::Real=0, nans::Bool=false)
@@ -422,30 +355,16 @@ end
 else
     import Base.isapprox
 end
-
 @static if !isdefined(Base, :isabstracttype) # VERSION < v"0.7.0-DEV.3475"
     const isabstracttype = Base.isabstract
     export isabstracttype
 end
-
 module TypeUtils
     using Base: parameter_upper_bound, typename
     using Compat: isabstracttype
     const isabstract = isabstracttype
     export isabstract, parameter_upper_bound, typename
 end # module TypeUtils
-
-# @view, @views, @__dot__
-
-
-#
-# expanded from: include("arraymacros.jl")
-#
-
-# Julia 0.6 macros to aid in vectorization: @view, @views, @__dot__ (@.),
-# backported from Julia 0.6.
-
-# prior to julia#20247, the replace_ref_end! macro had hygiene bugs
 if VERSION < v"0.6.0-dev.2406"
     function trailingsize(A, n)
         s = 1
@@ -511,7 +430,6 @@ if VERSION < v"0.6.0-dev.2406"
         ex, used_withex
     end
 end
-
 if !isdefined(Base, Symbol("@view"))
     macro view(ex)
         if Meta.isexpr(ex, :ref)
@@ -529,14 +447,12 @@ if !isdefined(Base, Symbol("@view"))
     end
     export @view
 end
-
 if !isdefined(Base, Symbol("@views"))
     maybeview(A, args...) = getindex(A, args...)
     maybeview(A::AbstractArray, args...) = view(A, args...)
     maybeview(A::AbstractArray, args::Number...) = getindex(A, args...)
     maybeview(A) = getindex(A)
     maybeview(A::AbstractArray) = getindex(A)
-
     _views(x) = x
     function _views(ex::Expr)
         if ex.head in (:(=), :(.=))
@@ -553,12 +469,10 @@ if !isdefined(Base, Symbol("@views"))
             # don't use view on the lhs of an op-assignment a[i...] += ...
             if last(h) == '=' && Meta.isexpr(ex.args[1], :ref)
                 lhs = ex.args[1]
-
                 # temp vars to avoid recomputing a and i,
                 # which will be assigned in a let block:
                 a = gensym(:a)
                 i = [gensym(:i) for k = 1:length(lhs.args)-1]
-
                 # for splatted indices like a[i, j...], we need to
                 # splat the corresponding temp var.
                 I = similar(i, Any)
@@ -570,7 +484,6 @@ if !isdefined(Base, Symbol("@views"))
                         I[k] = i[k]
                     end
                 end
-
                 Expr(:let,
                      Expr(first(h) == '.' ? :(.=) : :(=), :($a[$(I...)]),
                           Expr(:call, Symbol(h[1:end-1]),
@@ -583,15 +496,11 @@ if !isdefined(Base, Symbol("@views"))
             end
         end
     end
-
     macro views(x)
         esc(_views(replace_ref_end!(x)))
     end
     export @views
 end
-
-# we can't define @. because that doesn't parse in Julia < 0.6, but
-# we can define @__dot__, which is what @. is sugar for:
 if !isdefined(Base, Symbol("@__dot__"))
     dottable(x) = false # avoid dotting spliced objects (e.g. view calls inserted by @view)
     dottable(x::Symbol) = !Base.isoperator(x) || first(string(x)) != '.' || x == :.. # don't add dots to dot operators
@@ -643,19 +552,15 @@ else
     end
     export @dotcompat
 end
-
-# julia #18839
 if VERSION < v"0.6.0-dev.1024"
     @eval module Iterators
         export countfrom, cycle, drop, enumerate, flatten, product, repeated,
                rest, take, zip, partition
-
         import Base: eltype, start, next, done, length, size, ndims
         using Base: tuple_type_cons
         using Base: countfrom, cycle, drop, enumerate, repeated, rest, take,
                     zip
         using Compat
-
         using Base: flatten
         using Base: product
         using Base: partition
@@ -663,7 +568,6 @@ if VERSION < v"0.6.0-dev.1024"
 else
     using Base.Iterators
 end
-
 @static if VERSION < v"0.6.0-dev.2840"
     export IndexStyle, IndexLinear, IndexCartesian
     eval(Expr(:typealias, :IndexStyle, :(Base.LinearIndexing)))
@@ -672,7 +576,6 @@ end
     IndexStyle{T}(::Type{T}) = Base.linearindexing(T)
     IndexStyle(args...) = Base.linearindexing(args...)
 end
-
 if VERSION < v"0.6.0-dev.1653"
     for (fname, felt) in ((:zeros,:zero), (:ones,:one))
         @eval begin
@@ -683,42 +586,29 @@ if VERSION < v"0.6.0-dev.1653"
         end
     end
 end
-
-# https://github.com/JuliaLang/julia/pull/25646
 @static if VERSION < v"0.7.0-DEV.3510"
     # not exported
     # chomp parameter preserved for compatibility with earliear Compat versions
     readline(s::IO=STDIN; chomp::Bool=true, keep::Bool=!chomp) = Base.readline(s; chomp=!keep)
 end
-
-# https://github.com/JuliaLang/julia/pull/18727
 @static if VERSION < v"0.6.0-dev.838"
     Base.convert{T}(::Type{Set{T}}, s::Set{T}) = s
     Base.convert{T}(::Type{Set{T}}, s::Set) = Set{T}(s)
 end
-
-# https://github.com/JuliaLang/julia/pull/18082
 if VERSION < v"0.6.0-dev.2347"
     Base.isassigned(x::Base.RefValue) = isdefined(x, :x)
 end
-
 @static if VERSION < v"0.6.0-dev.735"
     Base.unsafe_trunc{T<:Integer}(::Type{T}, x::Integer) = rem(x, T)
 end
-
-# https://github.com/JuliaLang/julia/pull/21346
 if VERSION < v"0.6.0-pre.beta.102"
     Base.bswap(z::Complex) = Complex(bswap(real(z)), bswap(imag(z)))
 end
-
-# https://github.com/JuliaLang/julia/pull/19449
 @static if VERSION < v"0.6.0-dev.1988"
     StringVector(n::Integer) = Vector{UInt8}(n)
 else
     using Base: StringVector
 end
-
-# https://github.com/JuliaLang/julia/pull/19784
 @static if isdefined(Base, :invokelatest)
     # https://github.com/JuliaLang/julia/pull/22646
     if VERSION < v"0.7.0-DEV.1139"
@@ -735,8 +625,6 @@ else
         eval(current_module(), Expr(:call, f, map(QuoteNode, args)..., kw...))
     end
 end
-
-# https://github.com/JuliaLang/julia/pull/21257
 @static if VERSION < v"0.6.0-pre.beta.28"
     collect(A) = collect_indices(indices(A), A)
     collect_indices(::Tuple{}, A) = copy!(Array{eltype(A)}(), A)
@@ -749,8 +637,6 @@ end
 else
     const collect = Base.collect
 end
-
-# https://github.com/JuliaLang/julia/pull/21197
 if VERSION < v"0.7.0-DEV.257"
     # allow the elements of the Cmd to be accessed as an array or iterator
     for f in (:length, :endof, :start, :eachindex, :eltype, :first, :last)
@@ -760,22 +646,16 @@ if VERSION < v"0.7.0-DEV.257"
         @eval Base.$f(cmd::Cmd, i) = $f(cmd.exec, i)
     end
 end
-
-# https://github.com/JuliaLang/julia/pull/21378
 if VERSION < v"0.6.0-pre.beta.455"
     import Base: ==, isless
-
     ==(x::Dates.Period, y::Dates.Period) = (==)(promote(x, y)...)
     isless(x::Dates.Period, y::Dates.Period) = isless(promote(x,y)...)
-
     # disallow comparing fixed to other periods
     ==(x::Dates.FixedPeriod, y::Dates.OtherPeriod) = throw(MethodError(==, (x, y)))
     ==(x::Dates.OtherPeriod, y::Dates.FixedPeriod) = throw(MethodError(==, (x, y)))
     isless(x::Dates.FixedPeriod, y::Dates.OtherPeriod) = throw(MethodError(isless, (x, y)))
     isless(x::Dates.OtherPeriod, y::Dates.FixedPeriod) = throw(MethodError(isless, (x, y)))
 end
-
-# https://github.com/JuliaLang/julia/pull/22475
 @static if VERSION < v"0.7.0-DEV.843"
     import Base: Val
     (::Type{Val})(x) = (Base.@_pure_meta; Val{x}())
@@ -785,24 +665,16 @@ end
     import Base: ntuple
     ntuple{F,N}(f::F, ::Val{N}) = ntuple(f, Val{N})
 end
-
-# https://github.com/JuliaLang/julia/pull/22629
 if VERSION < v"0.7.0-DEV.848"
     import Base: logdet
     logdet(A) = log(det(A))
 end
-
-# https://github.com/JuliaLang/julia/pull/22633
 if VERSION < v"0.7.0-DEV.1041"
     import Base.LinAlg: chol, chol!
     chol!(J::UniformScaling, uplo) = UniformScaling(chol!(J.λ, uplo))
     chol(J::UniformScaling, args...) = UniformScaling(chol(J.λ, args...))
 end
-
-# https://github.com/JuliaLang/julia/pull/21746
 const macros_have_sourceloc = VERSION >= v"0.7-" && length(:(@test).args) == 2
-
-# https://github.com/JuliaLang/julia/pull/22182
 module Sys
     const KERNEL = Base.Sys.KERNEL
     @static if VERSION < v"0.7.0-DEV.914"
@@ -814,7 +686,6 @@ module Sys
     else
         import Base.Sys: isapple, isbsd, islinux, isunix, iswindows
     end
-
     # https://github.com/JuliaLang/julia/pull/25102
     # NOTE: This needs to be in an __init__ because JULIA_HOME is not
     # defined when building system images.
@@ -822,34 +693,25 @@ module Sys
         global BINDIR = VERSION < v"0.7.0-DEV.3073" ? JULIA_HOME : Base.Sys.BINDIR
     end
 end
-
 @static if VERSION < v"0.7.0-DEV.892"
     fieldcount(t) = nfields(t)
     export fieldcount
 end
-
 if VERSION < v"0.7.0-DEV.1053"
     Base.read(obj::IO, ::Type{String}) = readstring(obj)
     Base.read(obj::AbstractString, ::Type{String}) = readstring(obj)
     Base.read(obj::Cmd, ::Type{String}) = readstring(obj)
 end
-
-# https://github.com/JuliaLang/julia/pull/20005
 if VERSION < v"0.7.0-DEV.896"
     Base.InexactError(name::Symbol, T, val) = InexactError()
 end
-
-# https://github.com/JuliaLang/julia/pull/22751
 if VERSION < v"0.7.0-DEV.924"
     Base.DomainError(val) = DomainError()
     Base.DomainError(val, msg) = DomainError()
 end
-
-# https://github.com/JuliaLang/julia/pull/22761
 if VERSION < v"0.7.0-DEV.1285"
     Base.OverflowError(msg) = OverflowError()
 end
-
 if VERSION < v"0.7.0-DEV.755"
     # This is a hack to only add keyword signature that won't work on all julia versions.
     # However, since we really only need to support a few (0.5, 0.6 and early 0.7) versions
@@ -879,15 +741,11 @@ if VERSION < v"0.7.0-DEV.755"
         end
     end
 end
-
-# 0.7.0-DEV.1415
 @static if !isdefined(Base, :adjoint)
     const adjoint = ctranspose
     const adjoint! = ctranspose!
     export adjoint, adjoint!
 end
-
-# 0.7.0-DEV.1592
 @static if !isdefined(Base, :MathConstants)
     @eval module MathConstants
     # All other ones are already exported by Base (so should be already in the users namespace)
@@ -900,8 +758,6 @@ end
 else
     import Base.MathConstants
 end
-
-# 0.7.0-DEV.1535
 @static if !isdefined(Base, :partialsort)
     const partialsort = select
     const partialsort! = select!
@@ -909,12 +765,9 @@ end
     const partialsortperm! = selectperm!
     export partialsort, partialsort!, partialsortperm, partialsortperm!
 end
-
-# 0.7.0-DEV.1660
 @static if !isdefined(Base, :pairs)
     pairs(collection) = Base.Generator(=>, keys(collection), values(collection))
     pairs(a::Associative) = a
-
     # 0.6.0-dev+2834
     @static if !isdefined(Iterators, :IndexValue)
         include_string(@__MODULE__, """
@@ -923,7 +776,6 @@ end
                 itr::I
             end
         """)
-
         Base.length(v::IndexValue)  = length(v.itr)
         Base.indices(v::IndexValue) = indices(v.itr)
         Base.size(v::IndexValue)    = size(v.itr)
@@ -934,33 +786,24 @@ end
             (indx => item), n
         end
         @inline Base.done(v::IndexValue, state) = done(v.itr, state)
-
         Base.eltype{I,A}(::Type{IndexValue{I,A}}) = Pair{eltype(I), eltype(A)}
-
         Base.iteratorsize{I}(::Type{IndexValue{I}}) = iteratorsize(I)
         Base.iteratoreltype{I}(::Type{IndexValue{I}}) = iteratoreltype(I)
-
         Base.reverse(v::IndexValue) = IndexValue(v.data, reverse(v.itr))
     else
         const IndexValue = Iterators.IndexValue
     end
-
     pairs(::IndexLinear,    A::AbstractArray) = IndexValue(A, linearindices(A))
     pairs(::IndexCartesian, A::AbstractArray) = IndexValue(A, CartesianRange(indices(A)))
-
     Base.keys(a::AbstractArray) = CartesianRange(indices(a))
     Base.keys(a::AbstractVector) = linearindices(a)
     Base.keys(s::IndexStyle, A::AbstractArray, B::AbstractArray...) = eachindex(s, A, B...)
-
     Base.values(itr) = itr
 end
-
-# 0.7.0-DEV.1721
 @static if !isdefined(Base, :AbstractRange)
     const AbstractRange = Range
     export AbstractRange
 end
-
 if VERSION < v"0.7.0-DEV.1325"
     function Base.rtoldefault(x, y, atol::Real)
         T = isa(x, Type) ? x : typeof(x)
@@ -969,9 +812,6 @@ if VERSION < v"0.7.0-DEV.1325"
         return atol > 0 ? zero(rtol) : rtol
     end
 end
-
-
-# 0.7.0-DEV.3475
 @static if !isdefined(Base, :isconcretetype)
     # 0.7.0-DEV.1775
     @static if !isdefined(Base, :isconcrete)
@@ -983,8 +823,6 @@ end
     end
     export isconcretetype
 end
-
-# 0.7.0-DEV.2005
 if VERSION < v"0.7.0-DEV.2005"
     const Mmap = Base.Mmap
     const Test = Base.Test
@@ -1001,44 +839,33 @@ if VERSION < v"0.7.0-DEV.2005"
 else
     import Test, SharedArrays, Mmap, DelimitedFiles
 end
-
 if VERSION < v"0.7.0-DEV.2575"
     const Dates = Base.Dates
 else
     import Dates
 end
-
 if VERSION < v"0.7.0-DEV.3382"
     const Libdl = Base.Libdl
 else
     import Libdl
 end
-
-# https://github.com/JuliaLang/julia/pull/24182
 if VERSION < v"0.7.0-DEV.2402"
     const ConvertiblePeriod = Union{Compat.Dates.TimePeriod, Compat.Dates.Week, Compat.Dates.Day}
     const TimeTypeOrPeriod = Union{Compat.Dates.TimeType, Compat.ConvertiblePeriod}
-
     """
         floor(x::Period, precision::T) where T <: Union{TimePeriod, Week, Day} -> T
-
     Rounds `x` down to the nearest multiple of `precision`. If `x` and `precision` are different
     subtypes of `Period`, the return value will have the same type as `precision`.
-
     For convenience, `precision` may be a type instead of a value: `floor(x, Dates.Hour)` is a
     shortcut for `floor(x, Dates.Hour(1))`.
-
     ```jldoctest
     julia> floor(Dates.Day(16), Dates.Week)
     2 weeks
-
     julia> floor(Dates.Minute(44), Dates.Minute(15))
     30 minutes
-
     julia> floor(Dates.Hour(36), Dates.Day)
     1 day
     ```
-
     Rounding to a `precision` of `Month`s or `Year`s is not supported, as these `Period`s are of
     inconsistent length.
     """
@@ -1047,27 +874,20 @@ if VERSION < v"0.7.0-DEV.2402"
         _x, _precision = promote(x, precision)
         return T(_x - mod(_x, _precision))
     end
-
     """
         ceil(x::Period, precision::T) where T <: Union{TimePeriod, Week, Day} -> T
-
     Rounds `x` up to the nearest multiple of `precision`. If `x` and `precision` are different
     subtypes of `Period`, the return value will have the same type as `precision`.
-
     For convenience, `precision` may be a type instead of a value: `ceil(x, Dates.Hour)` is a
     shortcut for `ceil(x, Dates.Hour(1))`.
-
     ```jldoctest
     julia> ceil(Dates.Day(16), Dates.Week)
     3 weeks
-
     julia> ceil(Dates.Minute(44), Dates.Minute(15))
     45 minutes
-
     julia> ceil(Dates.Hour(36), Dates.Day)
     3 days
     ```
-
     Rounding to a `precision` of `Month`s or `Year`s is not supported, as these `Period`s are of
     inconsistent length.
     """
@@ -1075,10 +895,8 @@ if VERSION < v"0.7.0-DEV.2402"
         f = Base.floor(x, precision)
         return (x == f) ? f : f + precision
     end
-
     """
         floorceil(x::Period, precision::T) where T <: Union{TimePeriod, Week, Day} -> (T, T)
-
     Simultaneously return the `floor` and `ceil` of `Period` at resolution `p`.  More efficient
     than calling both `floor` and `ceil` individually.
     """
@@ -1086,32 +904,24 @@ if VERSION < v"0.7.0-DEV.2402"
         f = Base.floor(x, precision)
         return f, (x == f) ? f : f + precision
     end
-
     """
         round(x::Period, precision::T, [r::RoundingMode]) where T <: Union{TimePeriod, Week, Day} -> T
-
     Rounds `x` to the nearest multiple of `precision`. If `x` and `precision` are different
     subtypes of `Period`, the return value will have the same type as `precision`. By default
     (`RoundNearestTiesUp`), ties (e.g., rounding 90 minutes to the nearest hour) will be rounded
     up.
-
     For convenience, `precision` may be a type instead of a value: `round(x, Dates.Hour)` is a
     shortcut for `round(x, Dates.Hour(1))`.
-
     ```jldoctest
     julia> round(Dates.Day(16), Dates.Week)
     2 weeks
-
     julia> round(Dates.Minute(44), Dates.Minute(15))
     45 minutes
-
     julia> round(Dates.Hour(36), Dates.Day)
     3 days
     ```
-
     Valid rounding modes for `round(::Period, ::T, ::RoundingMode)` are `RoundNearestTiesUp`
     (default), `RoundDown` (`floor`), and `RoundUp` (`ceil`).
-
     Rounding to a `precision` of `Month`s or `Year`s is not supported, as these `Period`s are of
     inconsistent length.
     """
@@ -1120,10 +930,8 @@ if VERSION < v"0.7.0-DEV.2402"
         _x, _f, _c = promote(x, f, c)
         return (_x - _f) < (_c - _x) ? f : c
     end
-
     Base.round(x::Compat.TimeTypeOrPeriod, p::Compat.Dates.Period, r::RoundingMode{:Down}) = Base.floor(x, p)
     Base.round(x::Compat.TimeTypeOrPeriod, p::Compat.Dates.Period, r::RoundingMode{:Up}) = Base.ceil(x, p)
-
     Base.round(::Compat.TimeTypeOrPeriod, p::Compat.Dates.Period, ::RoundingMode) = throw(DomainError(p))
     Base.round(x::Compat.TimeTypeOrPeriod, p::Compat.Dates.Period) = Base.round(x, p, RoundNearestTiesUp)
     Base.floor(x::Compat.TimeTypeOrPeriod, ::Type{P}) where P <: Compat.Dates.Period = Base.floor(x, oneunit(P))
@@ -1132,19 +940,16 @@ if VERSION < v"0.7.0-DEV.2402"
         return Base.round(x, oneunit(P), r)
     end
 end
-
 if VERSION < v"0.7.0-DEV.3216"
     const AbstractDateTime = Compat.Dates.TimeType
 else
     const AbstractDateTime = Compat.Dates.AbstractDateTime
 end
-
 if VERSION < v"0.7.0-DEV.3052"
     const Printf = Base.Printf
 else
     import Printf
 end
-
 if VERSION < v"0.7.0-DEV.2655"
     @eval module IterativeEigensolvers
         using Base: eigs, svds
@@ -1158,31 +963,26 @@ elseif VERSION < v"0.7.0-DEV.3019"
 else
     import IterativeEigensolvers
 end
-
 @static if VERSION < v"0.7.0-DEV.3449"
     const LinearAlgebra = Base.LinAlg
 else
     import LinearAlgebra
 end
-
 if VERSION < v"0.7.0-DEV.3389"
     const SparseArrays = Base.SparseArrays
 else
     import SparseArrays
 end
-
 if VERSION < v"0.7.0-DEV.3406"
     const Random = Base.Random
 else
     import Random
 end
-
 if VERSION < v"0.7.0-DEV.3589"
     const Markdown = Base.Markdown
 else
     import Markdown
 end
-
 if VERSION < v"0.7.0-DEV.2609"
     @eval module SuiteSparse
         if Base.USE_GPL_LIBS
@@ -1193,13 +993,11 @@ if VERSION < v"0.7.0-DEV.2609"
 else
     import SuiteSparse
 end
-
 @static if VERSION < v"0.7.0-DEV.3500"
     const REPL = Base.REPL
 else
     import REPL
 end
-
 if VERSION < v"0.7.0-DEV.3476"
     @eval module Serialization
         import Base.Serializer: serialize, deserialize, SerializationState
@@ -1208,7 +1006,6 @@ if VERSION < v"0.7.0-DEV.3476"
 else
     import Serialization
 end
-
 @static if VERSION < v"0.7.0-DEV.4592"
     struct Fix2{F,T} <: Function
         f::F
@@ -1217,7 +1014,6 @@ end
         Fix2(f::Type{F}, x::T) where {F,T} = new{F,T}(f, x)
     end
     (f::Fix2)(y) = f.f(y, f.x)
-
     Base.:(==)(x) = Fix2(==, x)
     @static if VERSION >= v"0.7.0-DEV.1993"
         Base.isequal(x) = Base.equalto(x)
@@ -1232,7 +1028,6 @@ end
 else
     import Base: Fix2
 end
-# keep these definitions to be non breaking for 0.6 usage
 @static if VERSION < v"0.7.0-DEV.1993"
     const EqualTo{T} = Fix2{typeof(isequal),T}
     export equalto
@@ -1243,8 +1038,6 @@ end
     export occursin
     occursin(x) = in(x)
 end
-
-# PR #26283
 if VERSION < v"0.7.0-DEV.4639"
     if isdefined(Base, :occursin)
         import Base: occursin
@@ -1262,21 +1055,14 @@ if VERSION < v"0.7.0-DEV.4639"
         occursin(needle::Char, haystack::AbstractString) = searchindex(haystack,needle) != 0
     end
 end
-
-
-# 0.7.0-DEV.912
 if VERSION < v"0.7.0-DEV.912"
     import Base.*
     (*)(s1::Union{Char,AbstractString}, ss::Union{Char,AbstractString}...) = string(s1, ss...)
 end
-
-# 0.7.0-DEV.2318
 @static if !isdefined(Base, :BitSet)
     const BitSet = IntSet
     export BitSet
 end
-
-# 0.7.0-DEV.2116
 @static if VERSION < v"0.7.0-DEV.2116"
     import Compat.SparseArrays: spdiagm
     function spdiagm(kv::Pair...)
@@ -1285,8 +1071,6 @@ end
         return sparse(I, J, V, m, m)
     end
 end
-
-# 0.7.0-DEV.2161
 @static if VERSION < v"0.7.0-DEV.2161"
     import Base: diagm
     function diagm(kv::Pair...)
@@ -1302,18 +1086,14 @@ end
         return A
     end
 end
-
-# 0.7.0-DEV.2338
 @static if VERSION >= v"0.7.0-DEV.2338"
     import Base64
 else
     import Base.Base64
 end
-
 @static if VERSION < v"0.7.0-DEV.2377"
     (::Type{Matrix{T}}){T}(s::UniformScaling, dims::Dims{2}) = setindex!(zeros(T, dims), T(s.λ), diagind(dims...))
     (::Type{Matrix{T}}){T}(s::UniformScaling, m::Integer, n::Integer) = Matrix{T}(s, Dims((m, n)))
-
     (::Type{SparseMatrixCSC{Tv,Ti}}){Tv,Ti}(s::UniformScaling, m::Integer, n::Integer) = SparseMatrixCSC{Tv,Ti}(s, Dims((m, n)))
     (::Type{SparseMatrixCSC{Tv}}){Tv}(s::UniformScaling, m::Integer, n::Integer) = SparseMatrixCSC{Tv}(s, Dims((m, n)))
     (::Type{SparseMatrixCSC{Tv}}){Tv}(s::UniformScaling, dims::Dims{2}) = SparseMatrixCSC{Tv,Int}(s, dims)
@@ -1336,15 +1116,11 @@ end
 @static if VERSION < v"0.7.0-DEV.2541"
     (::Type{Matrix})(s::UniformScaling{T}, dims...) where {T} = Matrix{T}(s, dims...)
 end
-
-# https://github.com/JuliaLang/julia/pull/23271
 @static if VERSION < v"0.7.0-DEV.1472"
     Base.IOContext(io::IO, arg1::Pair, arg2::Pair, args::Pair...) = IOContext(IOContext(io, arg1), arg2, args...)
     # needed for ambiguity resolution
     Base.IOContext(io::IOContext, arg1::Pair, arg2::Pair) = IOContext(IOContext(io, arg1), arg2)
 end
-
-# 0.7.0-DEV.4527
 @static if !isdefined(Base, :UndefInitializer)
     import Base: Array, Matrix, Vector
     @static if isdefined(Base, :Uninitialized)
@@ -1361,7 +1137,6 @@ end
     Array{T,N}(::UndefInitializer, args...) where {T,N} = Array{T,N}(useuninit(args)...)
     Vector(::UndefInitializer, args...) = Vector(useuninit(args)...)
     Matrix(::UndefInitializer, args...) = Matrix(useuninit(args)...)
-
     BitArray{N}(::UndefInitializer, args...) where {N} = BitArray{N}(useuninit(args)...)
     BitArray(::UndefInitializer, args...) = BitArray(useuninit(args)...)
 end
@@ -1370,15 +1145,11 @@ end
     const uninitialized = undef
     const Uninitialized = UndefInitializer
 end
-
-# 0.7.0-DEV.1499
 if VERSION < v"0.7.0-DEV.1499"
     function Base.get(f::Base.Callable, ::Base.EnvHash, k::AbstractString)
         Base.access_env(k->f(), k)
     end
 end
-
-# 0.7.0-DEV.2919
 @static if !isdefined(Base, :ComplexF16)
     const ComplexF16 = Complex{Float16}
     export ComplexF16
@@ -1391,31 +1162,25 @@ end
     const ComplexF64 = Complex{Float64}
     export ComplexF64
 end
-
-# 0.7.0-DEV.2915
 module Unicode
     export graphemes, textwidth, isvalid,
            islower, isupper, isalpha, isdigit, isxdigit, isnumeric, isalnum,
            iscntrl, ispunct, isspace, isprint, isgraph,
            lowercase, uppercase, titlecase, lcfirst, ucfirst
-
     if VERSION < v"0.7.0-DEV.2915"
         # 0.7.0-DEV.1930
         if !isdefined(Base, :textwidth)
             textwidth(c::Char) = charwidth(c)
             textwidth(c::AbstractString) = strwidth(c)
         end
-
         isnumeric(c::Char) = isnumber(c)
         isassigned(c) = is_assigned_char(c)
         normalize(s::AbstractString; kws...) = normalize_string(s; kws...)
         normalize(s::AbstractString, nf::Symbol) = normalize_string(s, nf)
-
         # 0.6.0-dev.1404 (https://github.com/JuliaLang/julia/pull/19469)
         if !isdefined(Base, :titlecase)
             titlecase(c::Char) = isascii(c) ? ('a' <= c <= 'z' ? c - 0x20 : c) :
                 Char(ccall(:utf8proc_totitle, UInt32, (UInt32,), c))
-
             function titlecase(s::AbstractString)
                 startword = true
                 b = IOBuffer()
@@ -1436,27 +1201,20 @@ module Unicode
         import Unicode: isassigned, normalize # not exported from Unicode module due to conflicts
     end
 end
-
-# 0.7.0-DEV.2951
 @static if !isdefined(Base, :AbstractDict)
     const AbstractDict = Associative
     export AbstractDict
 end
-
-# 0.7.0-DEV.2978
 @static if !isdefined(Base, :axes)
     const axes = Base.indices
     # NOTE: Intentionally not exported to avoid conflicts with AxisArrays
     #export axes
 end
-
-# 0.7.0-DEV.3137
 @static if !isdefined(Base, :Nothing)
     const Nothing = Void
     const Cvoid = Void
     export Nothing, Cvoid
 end
-
 @static if !isdefined(Base, :Some)
     import Base: promote_rule, convert
     if VERSION >= v"0.6.0"
@@ -1498,15 +1256,11 @@ end
 else
     import Base: notnothing
 end
-
-# 0.7.0-DEV.3155
 @static if !isdefined(Base, :pushfirst!)
     const pushfirst! = unshift!
     const popfirst! = shift!
     export pushfirst!, popfirst!
 end
-
-# 0.7.0-DEV.3309
 @static if VERSION < v"0.7.0-DEV.3309"
     const IteratorSize = Base.iteratorsize
     const IteratorEltype = Base.iteratoreltype
@@ -1514,39 +1268,29 @@ else
     const IteratorSize = Base.IteratorSize
     const IteratorEltype = Base.IteratorEltype
 end
-
-# 0.7.0-DEV.3173
 @static if !isdefined(Base, :invpermute!)
     const invpermute! = ipermute!
     export invpermute!
 end
-
 @static if VERSION < v"0.7.0-DEV.3172"
     Base.replace(s::AbstractString, pat_rep::Pair; count::Integer=typemax(Int)) =
         replace(s, first(pat_rep), last(pat_rep), count)
 end
-
-# 0.7.0-DEV.3057
 @static if !isdefined(Base, :copyto!)
     const copyto! = Base.copy!
     const unsafe_copyto! = Base.unsafe_copy!
     export copyto!, unsafe_copyto!
 end
-
-# 0.7.0-DEV.3272, keep this definition for 0.6 compatibility
 @static if VERSION < v"0.7.0-DEV.3272"
     Base.contains(str::AbstractString, r::Regex) = ismatch(r, str)
 end
-
 @static if VERSION < v"0.7.0-DEV.3025"
     import Base: convert, ndims, getindex, size, length, eltype,
                  start, next, done, first, last, in, tail
     export CartesianIndices, LinearIndices
-
     struct CartesianIndices{N,R<:NTuple{N,AbstractUnitRange{Int}}} <: AbstractArray{CartesianIndex{N},N}
         indices::R
     end
-
     CartesianIndices(::Tuple{}) = CartesianIndices{0,typeof(())}(())
     CartesianIndices(inds::NTuple{N,AbstractUnitRange{Int}}) where {N} =
         CartesianIndices{N,typeof(inds)}(inds)
@@ -1556,18 +1300,14 @@ end
         CartesianIndices(map(r->convert(AbstractUnitRange{Int}, r), inds))
     CartesianIndices(inds::Vararg{AbstractUnitRange{<:Integer},N}) where {N} =
         CartesianIndices(inds)
-
     CartesianIndices(index::CartesianIndex) = CartesianIndices(index.I)
     CartesianIndices(sz::NTuple{N,<:Integer}) where {N} = CartesianIndices(map(Base.OneTo, sz))
     CartesianIndices(inds::NTuple{N,Union{<:Integer,AbstractUnitRange{<:Integer}}}) where {N} =
         CartesianIndices(map(i->first(i):last(i), inds))
-
     CartesianIndices(A::AbstractArray) = CartesianIndices(axes(A))
-
     convert(::Type{Tuple{}}, R::CartesianIndices{0}) = ()
     convert(::Type{NTuple{N,AbstractUnitRange{Int}}}, R::CartesianIndices{N}) where {N} =
         R.indices
-
     convert(::Type{NTuple{N,AbstractUnitRange}}, R::CartesianIndices{N}) where {N} =
         convert(NTuple{N,AbstractUnitRange{Int}}, R)
     convert(::Type{NTuple{N,UnitRange{Int}}}, R::CartesianIndices{N}) where {N} =
@@ -1582,20 +1322,16 @@ end
         convert(NTuple{N,UnitRange{Int}}, R)
     convert(::Type{Tuple{Vararg{UnitRange}}}, R::CartesianIndices) =
         convert(Tuple{Vararg{UnitRange{Int}}}, R)
-
     # AbstractArray implementation
     Base.IndexStyle(::Type{CartesianIndices{N,R}}) where {N,R} = IndexCartesian()
     @inline Base.getindex(iter::CartesianIndices{N,R}, I::Vararg{Int, N}) where {N,R} = CartesianIndex(first.(iter.indices) .- 1 .+ I)
-
     ndims(R::CartesianIndices) = ndims(typeof(R))
     ndims(::Type{CartesianIndices{N}}) where {N} = N
     ndims(::Type{CartesianIndices{N,TT}}) where {N,TT} = N
-
     eltype(R::CartesianIndices) = eltype(typeof(R))
     eltype(::Type{CartesianIndices{N}}) where {N} = CartesianIndex{N}
     eltype(::Type{CartesianIndices{N,TT}}) where {N,TT} = CartesianIndex{N}
     Base.iteratorsize(::Type{<:CartesianIndices}) = Base.HasShape()
-
     @inline function start(iter::CartesianIndices)
         iterfirst, iterlast = first(iter), last(iter)
         if Base.any(map(>, iterfirst.I, iterlast.I))
@@ -1617,30 +1353,23 @@ end
         (start[1], newtail...)
     end
     @inline done(iter::CartesianIndices, state) = state.I[end] > last(iter.indices[end])
-
     # 0-d cartesian ranges are special-cased to iterate once and only once
     start(iter::CartesianIndices{0}) = false
     next(iter::CartesianIndices{0}, state) = CartesianIndex(), true
     done(iter::CartesianIndices{0}, state) = state
-
     size(iter::CartesianIndices) = map(dimlength, first(iter).I, last(iter).I)
     dimlength(start, stop) = stop-start+1
-
     length(iter::CartesianIndices) = Base.prod(size(iter))
-
     first(iter::CartesianIndices) = CartesianIndex(map(first, iter.indices))
     last(iter::CartesianIndices)  = CartesianIndex(map(last, iter.indices))
-
     @inline function in(i::CartesianIndex{N}, r::CartesianIndices{N}) where {N}
         _in(true, i.I, first(r).I, last(r).I)
     end
     _in(b, ::Tuple{}, ::Tuple{}, ::Tuple{}) = b
     @inline _in(b, i, start, stop) = _in(b & (start[1] <= i[1] <= stop[1]), tail(i), tail(start), tail(stop))
-
     struct LinearIndices{N,R<:NTuple{N,AbstractUnitRange{Int}}} <: AbstractArray{Int,N}
         indices::R
     end
-
     LinearIndices(inds::CartesianIndices{N,R}) where {N,R} = LinearIndices{N,R}(inds.indices)
     LinearIndices(::Tuple{}) = LinearIndices(CartesianIndices(()))
     LinearIndices(inds::NTuple{N,AbstractUnitRange{Int}}) where {N} = LinearIndices(CartesianIndices(inds))
@@ -1651,7 +1380,6 @@ end
     LinearIndices(sz::NTuple{N,<:Integer}) where {N} = LinearIndices(CartesianIndices(sz))
     LinearIndices(inds::NTuple{N,Union{<:Integer,AbstractUnitRange{<:Integer}}}) where {N} = LinearIndices(CartesianIndices(inds))
     LinearIndices(A::AbstractArray) = LinearIndices(CartesianIndices(A))
-
     # AbstractArray implementation
     Base.IndexStyle(::Type{LinearIndices{N,R}}) where {N,R} = IndexCartesian()
     Compat.axes(iter::LinearIndices{N,R}) where {N,R} = iter.indices
@@ -1665,7 +1393,6 @@ end
 elseif VERSION < v"0.7.0-DEV.3395"
     Base.size(iter::LinearIndices{N,R}) where {N,R} = length.(iter.indices)
 end
-
 @static if !isdefined(Base, Symbol("@info"))
     macro info(msg, args...)
         return :(info($(esc(msg)), prefix = "Info: "))
@@ -1680,7 +1407,6 @@ end
 else
     @eval const $(Symbol("@warn")) = Base.$(Symbol("@warn"))
 end
-
 const DEBUG = Ref(false) # debug printing off by default, as on 0.7
 enable_debug(x::Bool) = DEBUG[] = x
 @static if !isdefined(Base, Symbol("@debug"))
@@ -1714,13 +1440,10 @@ end
 else
     @eval const $(Symbol("@error")) = Base.$(Symbol("@error"))
 end
-
-# 0.7.0-DEV.3415
 if !isdefined(Base, :findall)
     const findall = find
     export findall
 end
-
 @static if !isdefined(Base, :argmin)
     if VERSION >= v"0.7.0-DEV.1660" # indmin/indmax return key
         const argmin = indmin
@@ -1735,7 +1458,6 @@ end
     end
     export argmin, argmax
 end
-
 @static if !isdefined(Base, :parentmodule)
     parentmodule(m::Module) = Base.module_parent(m)
     parentmodule(f::Function) = Base.function_module(f)
@@ -1744,22 +1466,18 @@ end
     parentmodule(t::UnionAll) = Base.datatype_module(Base.unwrap_unionall(t))
     export parentmodule
 end
-
 @static if !isdefined(Base, :codeunits)
     codeunits(s::String) = Vector{UInt8}(s)
     ncodeunits(s::Union{String,SubString{String}}) = sizeof(s)
     codeunits(s::SubString{String}) = view(codeunits(s.string),1+s.offset:s.offset+sizeof(s))
     export codeunits, ncodeunits
 end
-
 @static if !isdefined(Base, :nameof)
     nameof(m::Module) = Base.module_name(m)
     nameof(f::Function) = Base.function_name(f)
     nameof(t::Union{DataType,UnionAll}) = Base.datatype_name(t)
     export nameof
 end
-
-# 0.7.0-DEV.3469
 @static if !isdefined(Base, :GC)
     @eval module GC
         using Base: gc
@@ -1767,19 +1485,16 @@ end
     end
     export GC
 end
-
 if VERSION < v"0.7.0-DEV.2954"
     const Distributed = Base.Distributed
 else
     import Distributed
 end
-
 @static if VERSION < v"0.7.0-DEV.3656"
     const Pkg = Base.Pkg
 else
     import Pkg
 end
-
 @static if VERSION < v"0.7.0-DEV.3630"
     @eval module InteractiveUtils
         using Base: @code_llvm, @code_lowered, @code_native, @code_typed,
@@ -1790,7 +1505,6 @@ end
                @code_warntype, @edit, @functionloc, @less, @which,
                apropos, code_llvm, code_native, code_warntype, edit,
                less, methodswith, subtypes, versioninfo
-
         @static if VERSION >= v"0.7.0-DEV.2582"
             using Base: varinfo
             export varinfo
@@ -1802,26 +1516,19 @@ end
 else
     import InteractiveUtils
 end
-
 @static if VERSION < v"0.7.0-DEV.3724"
     const LibGit2 = Base.LibGit2
 else
     import LibGit2
 end
-
-# 0.7.0-DEV.2695
 @static if !isdefined(Base, :AbstractDisplay)
     const AbstractDisplay = Display
     export AbstractDisplay
 end
-
-# 0.7.0-DEV.3481
 @static if !isdefined(Base, :bytesavailable)
     const bytesavailable = nb_available
     export bytesavailable
 end
-
-# 0.7.0-DEV.3583
 @static if !isdefined(Base, :lastindex)
     const lastindex = endof
     export lastindex
@@ -1834,8 +1541,6 @@ end
     firstindex(t::Tuple) = 1
     export firstindex
 end
-
-# 0.7.0-DEV.3585
 @static if !isdefined(Base, :printstyled)
     printstyled(io::IO, msg...; bold=false, color=:normal) =
         Base.print_with_color(color, io, msg...; bold=bold)
@@ -1843,8 +1548,6 @@ end
         Base.print_with_color(color, STDOUT, msg...; bold=bold)
     export printstyled
 end
-
-# 0.7.0-DEV.3455
 @static if !isdefined(Base, :hasmethod)
     const hasmethod = method_exists
     export hasmethod
@@ -1853,7 +1556,6 @@ end
     const objectid = object_id
     export objectid
 end
-
 @static if VERSION >= v"0.7.0-DEV.3272"
     findnext(xs...) = Base.findnext(xs...)
     findfirst(xs...) = Base.findfirst(xs...)
@@ -1863,12 +1565,10 @@ else
     zero2nothing(x::Integer) = x == 0 ? nothing : x
     zero2nothing(x::AbstractUnitRange{<:Integer}) = x == 0:-1 ? nothing : x
     zero2nothing(x) = x
-
     findnext(xs...) = zero2nothing(Base.findnext(xs...))
     findfirst(xs...) = zero2nothing(Base.findfirst(xs...))
     findprev(xs...) = zero2nothing(Base.findprev(xs...))
     findlast(xs...) = zero2nothing(Base.findlast(xs...))
-
     Base.findnext(r::Regex, s::AbstractString, idx::Integer) = search(s, r, idx)
     Base.findfirst(r::Regex, s::AbstractString) = search(s, r)
     Base.findnext(c::Fix2{typeof(isequal),Char}, s::AbstractString, i::Integer) = search(s, c.x, i)
@@ -1877,7 +1577,6 @@ else
         search(a, b.x, i)
     Base.findfirst(b::Fix2{typeof(isequal),<:Union{Int8,UInt8}}, a::Vector{<:Union{Int8,UInt8}}) =
         search(a, b.x)
-
     Base.findnext(c::Fix2{typeof(in),<:Union{Tuple{Vararg{Char}},AbstractVector{Char},Set{Char}}},
              s::AbstractString, i::Integer) =
         search(s, c.x, i)
@@ -1886,44 +1585,35 @@ else
         search(s, c.x)
     Base.findnext(t::AbstractString, s::AbstractString, i::Integer) = search(s, t, i)
     Base.findfirst(t::AbstractString, s::AbstractString) = search(s, t)
-
     Base.findfirst(delim::Fix2{typeof(isequal),UInt8}, buf::Base.IOBuffer) = search(buf, delim.x)
-
     Base.findprev(c::Fix2{typeof(isequal),Char}, s::AbstractString, i::Integer) = rsearch(s, c.x, i)
     Base.findlast(c::Fix2{typeof(isequal),Char}, s::AbstractString) = rsearch(s, c.x)
     Base.findprev(b::Fix2{typeof(isequal),<:Union{Int8,UInt8}}, a::Vector{<:Union{Int8,UInt8}}, i::Integer) =
         rsearch(a, b.x, i)
     Base.findlast(b::Fix2{typeof(isequal),<:Union{Int8,UInt8}}, a::Vector{<:Union{Int8,UInt8}}) =
         rsearch(a, b.x)
-
     Base.findprev(c::Fix2{typeof(in),<:Union{Tuple{Vararg{Char}},AbstractVector{Char},Set{Char}}},
              s::AbstractString, i::Integer) = rsearch(s, c.x, i)
     Base.findlast(c::Fix2{typeof(in),<:Union{Tuple{Vararg{Char}},AbstractVector{Char},Set{Char}}},
              s::AbstractString) = rsearch(s, c.x)
     Base.findprev(t::AbstractString, s::AbstractString, i::Integer) = rsearch(s, t, i)
     Base.findlast(t::AbstractString, s::AbstractString) = rsearch(s, t)
-
     findall(b::Fix2{typeof(in)}, a) = findin(a, b.x)
     # To fix ambiguity
     findall(b::Fix2{typeof(in)}, a::Number) = a in b.x ? [1] : Vector{Int}()
 end
-
 @static if VERSION < v"0.7.0-DEV.4047" #26089
     showable(mime, x) = mimewritable(mime, x)
     export showable
 end
-
 @static if VERSION < v"0.7.0-DEV.4010" #25990
     Base.repr(mime::Union{AbstractString,MIME}, x) = reprmime(mime, x)
 end
-
-# https://github.com/JuliaLang/julia/pull/25647
 @static if VERSION < v"0.7.0-DEV.3526"
     names(m; all=false, imported=false) = Base.names(m, all, imported)
 else
     import Base: names
 end
-
 if VERSION >= v"0.7.0-DEV.3666"
     import UUIDs
 else
@@ -1932,8 +1622,6 @@ else
         export uuid1, uuid4, uuid_version, UUID
     end
 end
-
-# https://github.com/JuliaLang/julia/pull/26156
 @static if VERSION < v"0.7.0-DEV.4062"
     trunc(x, digits; base = base) = Base.trunc(x, digits, base)
     floor(x, digits; base = base) = Base.floor(x, digits, base)
@@ -1941,8 +1629,6 @@ end
     round(x, digits; base = base) = Base.round(x, digits, base)
     signif(x, digits; base = base) = Base.signif(x, digits, base)
 end
-
-# https://github.com/JuliaLang/julia/pull/25872
 if VERSION < v"0.7.0-DEV.3734"
     if isdefined(Base, :open_flags)
         import Base.open_flags
@@ -1992,16 +1678,13 @@ if VERSION < v"0.7.0-DEV.3734"
         return buf
     end
 end
-
 @static if VERSION < v"0.7.0-DEV.3986"
     const LinRange = Base.LinSpace
     export LinRange
-
     function range(start; step=nothing, stop=nothing, length=nothing)
         have_step = step !== nothing
         have_stop = stop !== nothing
         have_length = length !== nothing
-
         if !(have_stop || have_length)
             throw(ArgumentError("At least one of `length` or `stop` must be specified"))
         elseif have_step && have_stop && have_length
@@ -2009,7 +1692,6 @@ end
         elseif start === nothing
             throw(ArgumentError("Can't start a range at `nothing`"))
         end
-
         if have_stop && !have_length
             return have_step ? (start:step:stop) : (start:stop)
         elseif have_length && !have_stop
@@ -2021,14 +1703,12 @@ end
 else
     import Base: range, LinRange
 end
-
 @static if VERSION < v"0.7.0-DEV.3995"
     cp(src::AbstractString, dst::AbstractString; force::Bool=false, follow_symlinks::Bool=false) =
         Base.cp(src, dst; remove_destination = force, follow_symlinks = follow_symlinks)
     mv(src::AbstractString, dst::AbstractString; force::Bool=false) =
         Base.mv(src, dst; remove_destination = force)
 end
-
 if VERSION < v"0.7.0-DEV.3972"
     function indexin(a, b::AbstractArray)
         inds = keys(b)
@@ -2043,7 +1723,6 @@ if VERSION < v"0.7.0-DEV.3972"
 else
     const indexin = Base.indexin
 end
-
 if VERSION < v"0.7.0-DEV.4585"
     export isuppercase, islowercase, uppercasefirst, lowercasefirst
     const isuppercase = isupper
@@ -2051,7 +1730,6 @@ if VERSION < v"0.7.0-DEV.4585"
     const uppercasefirst = ucfirst
     const lowercasefirst = lcfirst
 end
-
 if VERSION < v"0.7.0-DEV.4064"
     for f in (:mean, :cumsum, :cumprod, :sum, :prod, :maximum, :minimum, :all, :any, :median)
         @eval begin
@@ -2118,7 +1796,6 @@ if VERSION < v"0.7.0-DEV.4534"
     reverse(a::AbstractArray; dims=nothing) =
         dims===nothing ? Base.reverse(a) : Base.flipdim(a, dims)
 end
-
 if !isdefined(Base, :selectdim) # 0.7.0-DEV.3976
     export selectdim
     @inline selectdim(A::AbstractArray, d::Integer, i) = _selectdim(A, d, i, Base.setindex(axes(A), i, d))
@@ -2129,13 +1806,6 @@ if !isdefined(Base, :selectdim) # 0.7.0-DEV.3976
         return view(A, idxs...)
     end
 end
-
-
-
-#
-# expanded from: include("deprecated.jl")
-#
-
 function depwarn_ex(msg, name)
     return quote
         if VERSION >= v"0.6.0"
@@ -2143,7 +1813,6 @@ function depwarn_ex(msg, name)
         end
     end
 end
-
 function primarytype(@nospecialize(t))
     tn = t.name
     if isdefined(tn, :primary)
@@ -2152,7 +1821,6 @@ function primarytype(@nospecialize(t))
         return tn.wrapper
     end
 end
-
 export @functorize
 macro functorize(f)
     code = f === :scalarmax          ? :(Base.scalarmax) :
@@ -2165,7 +1833,6 @@ macro functorize(f)
         $code
     end
 end
-
 @static if VERSION >= v"0.6.0"
     Base.@deprecate_binding KERNEL Sys.KERNEL
     Base.@deprecate_binding UTF8String Core.String
@@ -2189,10 +1856,8 @@ else
     import Base.@irrational
     import Base.LinAlg.BLAS.@blasfunc
 end
-
 if VERSION < v"0.7.0-DEV.2915"
     const textwidth = Compat.Unicode.textwidth
     export textwidth
 end
-
 end # module Compat
