@@ -973,11 +973,9 @@ function nextreme(comp::Comp, n::Int, arr::AbstractVector{T}) where {T, Comp}
     end
     return extract_all_rev!(buffer)
 end
-
 function nlargest(n::Int, arr::AbstractVector{T}) where T
     return nextreme(LessThan(), n, arr)
 end
-
 function nsmallest(n::Int, arr::AbstractVector{T}) where T
     return nextreme(GreaterThan(), n, arr)
 end

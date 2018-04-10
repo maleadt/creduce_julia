@@ -1495,7 +1495,6 @@ function addcounts!(cm::Dict{T}, x::AbstractArray{T}; alg = :auto) where T
     end
     return cm
 end
-
 function addcounts_dict!(cm::Dict{T}, x::AbstractArray{T}) where T
     for v in x
         index = ht_keyindex2!(cm, v)
