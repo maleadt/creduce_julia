@@ -1,0 +1,18 @@
+#!/bin/bash -uxe
+
+TEMP=$(pwd)
+
+ROOT=$HOME/Julia
+REPRO=$ROOT/repro
+JULIA=$ROOT/julia-dev/build/release/julia
+
+# if [[ $TEMP != $REPRO ]]; then
+#     cp -n $REPRO/*.jl $TEMP
+# else
+#     rm -rf $TEMP/.julia
+# fi
+
+JULIA_LOAD_PATH=$TEMP \
+JULIA_PKGDIR=$TEMP/.julia \
+JULIA_DEPOT_PATH=$TEMP/.julia \
+$JULIA -e 'using DataFrames' |& grep jl_method_instance_add_backedge
