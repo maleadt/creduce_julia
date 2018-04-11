@@ -3,4 +3,4 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $DIR
 
-creduce --n $(nproc) --not-c ./run src/*.jl
+creduce --tidy --n $(nproc) --not-c ./run src/*.jl

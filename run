@@ -2,7 +2,6 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 REPRO=$DIR/src
-JULIA=$DIR/julia/bin/julia
 
 if [[ $(pwd) == $DIR ]]; then
     cd $REPRO
@@ -16,4 +15,4 @@ TEMP=$(pwd)
 JULIA_LOAD_PATH=$TEMP \
 JULIA_PKGDIR=$TEMP/.julia \
 JULIA_DEPOT_PATH=$TEMP/.julia \
-$JULIA --depwarn=no -O0 -g0 -e 'using DataFrames' |& grep jl_method_instance_add_backedge
+julia --depwarn=no -O0 -g0 -e 'using DataFrames' |& grep jl_method_instance_add_backedge
