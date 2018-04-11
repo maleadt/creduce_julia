@@ -96,7 +96,7 @@ Base.done(itr::EachFailMissing, state) = done(itr.x, state)
 Base.eltype(itr::EachFailMissing) = Missings.T(eltype(itr.x))
 @inline function Base.next(itr::EachFailMissing, state)
     v, s = next(itr.x, state)
-    ismissing(v) && throw(MissingException("missing value encountered by Missings.fail"))
+    ismissing(v) && throw(MissingException(""))
     (v::eltype(itr), s)
 end
 function levels(x)

@@ -21,14 +21,14 @@ end
 function _compat_primitive(typedecl)
     name, body = _get_typebody(typedecl)
     if length(body) != 1
-        throw(ArgumentError("Invalid primitive type declaration: $typedecl"))
+        throw(ArgumentError(""))
     end
     return Expr(:bitstype, body[1], name)
 end
 function _compat_abstract(typedecl)
     name, body = _get_typebody(typedecl)
     if length(body) != 0
-        throw(ArgumentError("Invalid abstract type declaration: $typedecl"))
+        throw(ArgumentError(""))
     end
     return Expr(:abstract, name)
 end
