@@ -31,29 +31,6 @@ export AbstractDataFrame,
        describe,
        dropmissing,
        dropmissing!,
-       eachcol,
-       eachrow,
-       eltypes,
-       groupby,
-       head,
-       melt,
-       meltdf,
-       names!,
-       ncol,
-       nonunique,
-       nrow,
-       order,
-       rename!,
-       rename,
-       showcols,
-       stack,
-       stackdf,
-       unique!,
-       unstack,
-       head,
-       tail,
-       # Remove after deprecation period
-       pool,
        pool!
 import Base: isidentifier, is_id_start_char, is_id_char
 const RESERVED_WORDS = Set(["begin", "while", "if", "for", "try",
@@ -100,29 +77,6 @@ end
 function make_unique(names::Vector{Symbol}; makeunique::Bool=false)
     seen = Set{Symbol}()
     names = copy(names)
-    dups = Int[]
-    for i in 1:length(names)
-        name = names[i]
-        in(name, seen) ? push!(dups, i) : push!(seen, name)
-    end
-    if length(dups) > 0
-        if !makeunique
-            Base.depwarn("Duplicate variable names are deprecated: pass makeunique=true to add a suffix automatically.", :make_unique)
-        end
-    end
-    for i in dups
-        nm = names[i]
-        k = 1
-        while true
-            newnm = Symbol("$(nm)_$k")
-            if !in(newnm, seen)
-                names[i] = newnm
-                push!(seen, newnm)
-                break
-            end
-            k += 1
-        end
-    end
     return names
 end
 function gennames(n::Integer)
@@ -194,29 +148,6 @@ function names!(x::Index, nms::Vector{Symbol}; allow_duplicates=false, makeuniqu
     x.lookup = newindex.lookup
     return x
 end
-function rename!(x::Index, nms)
-    for (from, to) in nms
-        from == to && continue # No change, nothing to do
-        if haskey(x, to)
-            error("Tried renaming $from to $to, when $to already exists in the Index.")
-        end
-        x.lookup[to] = col = pop!(x.lookup, from)
-        x.names[col] = to
-    end
-    return x
-end
-rename!(x::Index, nms::Pair{Symbol,Symbol}...) = rename!(x::Index, collect(nms))
-rename!(f::Function, x::Index) = rename!(x, [(x=>f(x)) for x in x.names])
-rename(x::Index, args...) = rename!(copy(x), args...)
-rename(f::Function, x::Index) = rename!(f, copy(x))
-Base.haskey(x::Index, key::Symbol) = haskey(x.lookup, key)
-Base.haskey(x::Index, key::Real) = 1 <= key <= length(x.names)
-Base.keys(x::Index) = names(x)
-function Base.push!(x::Index, nm::Symbol)
-    x.lookup[nm] = length(x) + 1
-    push!(x.names, nm)
-    return x
-end
 function Base.merge!(x::Index, y::Index; makeunique::Bool=false)
     adds = add_names(x, y, makeunique=makeunique)
     i = length(x)
@@ -233,99 +164,6 @@ function Base.delete!(x::Index, idx::Integer)
     # reset the lookup's beyond the deleted item
     for i in (idx + 1):length(x.names)
         x.lookup[x.names[i]] = i - 1
-    end
-    delete!(x.lookup, x.names[idx])
-    deleteat!(x.names, idx)
-    return x
-end
-function Base.delete!(x::Index, nm::Symbol)
-    if !haskey(x.lookup, nm)
-        return x
-    end
-    idx = x.lookup[nm]
-    return delete!(x, idx)
-end
-function Base.empty!(x::Index)
-    empty!(x.lookup)
-    empty!(x.names)
-    x
-end
-function Base.insert!(x::Index, idx::Integer, nm::Symbol)
-    1 <= idx <= length(x.names)+1 || error(BoundsError())
-    for i = idx:length(x.names)
-        x.lookup[x.names[i]] = i + 1
-    end
-    x.lookup[nm] = idx
-    insert!(x.names, idx, nm)
-    x
-end
-Base.getindex(x::AbstractIndex, idx::Symbol) = x.lookup[idx]
-Base.getindex(x::AbstractIndex, idx::AbstractVector{Symbol}) = [x.lookup[i] for i in idx]
-Base.getindex(x::AbstractIndex, idx::Integer) = Int(idx)
-Base.getindex(x::AbstractIndex, idx::AbstractVector{Int}) = idx
-Base.getindex(x::AbstractIndex, idx::AbstractRange{Int}) = idx
-Base.getindex(x::AbstractIndex, idx::AbstractRange{<:Integer}) = collect(Int, idx)
-function Base.getindex(x::AbstractIndex, idx::AbstractVector{Bool})
-    length(x) == length(idx) || throw(BoundsError(x, idx))
-    find(idx)
-end
-function Base.getindex(x::AbstractIndex, idx::AbstractVector{Union{Bool, Missing}})
-    if any(ismissing, idx)
-        # TODO: this line should be changed to throw an error after deprecation
-        Base.depwarn("using missing in column indexing is deprecated", :getindex)
-    end
-    getindex(x, collect(Missings.replace(idx, false)))
-end
-function Base.getindex(x::AbstractIndex, idx::AbstractVector{<:Integer})
-    # TODO: this line should be changed to throw an error after deprecation
-    if any(v -> v isa Bool, idx)
-        Base.depwarn("Indexing with Bool values is deprecated except for Vector{Bool}")
-    end
-    Vector{Int}(idx)
-end
-function Base.getindex(x::AbstractIndex, idx::AbstractVector)
-    # TODO: passing missing will throw an error after deprecation
-    idxs = filter(!ismissing, idx)
-    if length(idxs) != length(idx)
-        Base.depwarn("using missing in column indexing is deprecated", :getindex)
-    end
-    length(idxs) == 0 && return Int[] # special case of empty idxs
-    if idxs[1] isa Real
-        if !all(v -> v isa Integer && !(v isa Bool), idxs)
-            # TODO: this line should be changed to throw an error after deprecation
-            Base.depwarn("indexing by vector of numbers other than Integer is deprecated", :getindex)
-        end
-        return Vector{Int}(idxs)
-    end
-    idxs[1] isa Symbol && return getindex(x, Vector{Symbol}(idxs))
-    throw(ArgumentError("idx[1] has type $(typeof(idx[1])); "*
-                        "DataFrame only supports indexing columns with integers, symbols or boolean vectors"))
-end
-function add_names(ind::Index, add_ind::Index; makeunique::Bool=false)
-    u = names(add_ind)
-    seen = Set(_names(ind))
-    dups = Int[]
-    for i in 1:length(u)
-        name = u[i]
-        in(name, seen) ? push!(dups, i) : push!(seen, name)
-    end
-    if length(dups) > 0
-        if !makeunique
-            Base.depwarn("Duplicate variable names are deprecated: pass makeunique=true to add a suffix automatically.", :add_names)
-        end
-    end
-    for i in dups
-        nm = u[i]
-        k = 1
-        while true
-            newnm = Symbol("$(nm)_$k")
-            if !in(newnm, seen)
-                u[i] = newnm
-                push!(seen, newnm)
-                break
-            end
-            k += 1
-        end
     end
     return u
 end
@@ -354,29 +192,6 @@ end
 function rename!(df::AbstractDataFrame, args...)
     rename!(index(df), args...)
     return df
-end
-function rename!(f::Function, df::AbstractDataFrame)
-    rename!(f, index(df))
-    return df
-end
-rename(df::AbstractDataFrame, args...) = rename!(copy(df), args...)
-rename(f::Function, df::AbstractDataFrame) = rename!(f, copy(df))
-(rename!, rename)
-eltypes(df::AbstractDataFrame) = map!(eltype, Vector{Type}(size(df,2)), columns(df))
-Base.size(df::AbstractDataFrame) = (nrow(df), ncol(df))
-function Base.size(df::AbstractDataFrame, i::Integer)
-    if i == 1
-        nrow(df)
-    elseif i == 2
-        ncol(df)
-    else
-        throw(ArgumentError("DataFrames only have two dimensions"))
-    end
-end
-Base.length(df::AbstractDataFrame) = ncol(df)
-Base.endof(df::AbstractDataFrame) = ncol(df)
-Base.ndims(::AbstractDataFrame) = 2
-function Base.similar(df::AbstractDataFrame, rows::Integer = size(df, 1))
     rows < 0 && throw(ArgumentError("the number of rows must be positive"))
     DataFrame(Any[similar(x, rows) for x in columns(df)], copy(index(df)))
 end
@@ -584,215 +399,6 @@ function Base.getindex(df::DataFrame, col_ind::ColumnIndex)
     return df.columns[selected_column]
 end
 function Base.getindex(df::DataFrame, col_inds::AbstractVector)
-    selected_columns = index(df)[col_inds]
-    new_columns = df.columns[selected_columns]
-    return DataFrame(new_columns, Index(_names(df)[selected_columns]))
-end
-Base.getindex(df::DataFrame, col_inds::Colon) = copy(df)
-function Base.getindex(df::DataFrame, row_ind::Real, col_ind::ColumnIndex)
-    selected_column = index(df)[col_ind]
-    return df.columns[selected_column][row_ind]
-end
-function Base.getindex(df::DataFrame, row_ind::Real, col_inds::AbstractVector)
-    selected_columns = index(df)[col_inds]
-    new_columns = Any[dv[[row_ind]] for dv in df.columns[selected_columns]]
-    return DataFrame(new_columns, Index(_names(df)[selected_columns]))
-end
-function Base.getindex(df::DataFrame, row_inds::AbstractVector, col_ind::ColumnIndex)
-    selected_column = index(df)[col_ind]
-    return df.columns[selected_column][row_inds]
-end
-function Base.getindex(df::DataFrame, row_inds::AbstractVector, col_inds::AbstractVector)
-    selected_columns = index(df)[col_inds]
-    new_columns = Any[dv[row_inds] for dv in df.columns[selected_columns]]
-    return DataFrame(new_columns, Index(_names(df)[selected_columns]))
-end
-Base.getindex(df::DataFrame, row_ind::Colon, col_inds) = df[col_inds]
-Base.getindex(df::DataFrame, row_ind::Real, col_inds::Colon) = df[[row_ind], col_inds]
-function Base.getindex(df::DataFrame, row_inds::AbstractVector, col_inds::Colon)
-    new_columns = Any[dv[row_inds] for dv in df.columns]
-    return DataFrame(new_columns, copy(index(df)))
-end
-Base.getindex(df::DataFrame, ::Colon, ::Colon) = copy(df)
-isnextcol(df::DataFrame, col_ind::Symbol) = true
-function isnextcol(df::DataFrame, col_ind::Real)
-    return ncol(df) + 1 == Int(col_ind)
-end
-function nextcolname(df::DataFrame)
-    return Symbol(string("x", ncol(df) + 1))
-end
-function insert_single_column!(df::DataFrame,
-                               dv::AbstractVector,
-                               col_ind::ColumnIndex)
-    if ncol(df) != 0 && nrow(df) != length(dv)
-        error("New columns must have the same length as old columns")
-    end
-    if haskey(index(df), col_ind)
-        j = index(df)[col_ind]
-        df.columns[j] = dv
-    else
-        if typeof(col_ind) <: Symbol
-            push!(index(df), col_ind)
-            push!(df.columns, dv)
-        else
-            if isnextcol(df, col_ind)
-                push!(index(df), nextcolname(df))
-                push!(df.columns, dv)
-            else
-                error("Cannot assign to non-existent column: $col_ind")
-            end
-        end
-    end
-    return dv
-end
-function insert_single_entry!(df::DataFrame, v::Any, row_ind::Real, col_ind::ColumnIndex)
-    if haskey(index(df), col_ind)
-        df.columns[index(df)[col_ind]][row_ind] = v
-        return v
-    else
-        error("Cannot assign to non-existent column: $col_ind")
-    end
-end
-function insert_multiple_entries!(df::DataFrame,
-                                  v::Any,
-                                  row_inds::AbstractVector{<:Real},
-                                  col_ind::ColumnIndex)
-    if haskey(index(df), col_ind)
-        df.columns[index(df)[col_ind]][row_inds] = v
-        return v
-    else
-        error("Cannot assign to non-existent column: $col_ind")
-    end
-end
-function upgrade_scalar(df::DataFrame, v::AbstractArray)
-    msg = "setindex!(::DataFrame, ...) only broadcasts scalars, not arrays"
-    throw(ArgumentError(msg))
-end
-function upgrade_scalar(df::DataFrame, v::Any)
-    n = (ncol(df) == 0) ? 1 : nrow(df)
-    fill(v, n)
-end
-function Base.setindex!(df::DataFrame, v::AbstractVector, col_ind::ColumnIndex)
-    insert_single_column!(df, v, col_ind)
-end
-function Base.setindex!(df::DataFrame, v, col_ind::ColumnIndex)
-    if haskey(index(df), col_ind)
-        fill!(df[col_ind], v)
-    else
-        insert_single_column!(df, upgrade_scalar(df, v), col_ind)
-    end
-    return df
-end
-function Base.setindex!(df::DataFrame, new_df::DataFrame, col_inds::AbstractVector{Bool})
-    setindex!(df, new_df, find(col_inds))
-end
-function Base.setindex!(df::DataFrame,
-                        new_df::DataFrame,
-                        col_inds::AbstractVector{<:ColumnIndex})
-    for j in 1:length(col_inds)
-        insert_single_column!(df, new_df[j], col_inds[j])
-    end
-    return df
-end
-function Base.setindex!(df::DataFrame, v::AbstractVector, col_inds::AbstractVector{Bool})
-    setindex!(df, v, find(col_inds))
-end
-function Base.setindex!(df::DataFrame,
-                        v::AbstractVector,
-                        col_inds::AbstractVector{<:ColumnIndex})
-    for col_ind in col_inds
-        df[col_ind] = v
-    end
-    return df
-end
-function Base.setindex!(df::DataFrame,
-                        val::Any,
-                        col_inds::AbstractVector{Bool})
-    setindex!(df, val, find(col_inds))
-end
-function Base.setindex!(df::DataFrame,
-                        new_df::DataFrame,
-                        row_inds::Colon,
-                        col_inds::Colon=Colon())
-    df.columns = copy(new_df.columns)
-    df.colindex = copy(new_df.colindex)
-    df
-end
-Base.setindex!(df::DataFrame, v, ::Colon, ::Colon) =
-    (df[1:size(df, 1), 1:size(df, 2)] = v; df)
-Base.setindex!(df::DataFrame, v, row_inds, ::Colon) =
-    (df[row_inds, 1:size(df, 2)] = v; df)
-Base.setindex!(df::DataFrame, v, ::Colon, col_inds) =
-    (df[col_inds] = v; df)
-Base.setindex!(df::DataFrame, x::Void, col_ind::Int) = delete!(df, col_ind)
-Base.empty!(df::DataFrame) = (empty!(df.columns); empty!(index(df)); df)
-function Base.insert!(df::DataFrame, col_ind::Int, item::AbstractVector, name::Symbol;
-                      makeunique::Bool=false)
-    0 < col_ind <= ncol(df) + 1 || throw(BoundsError())
-    size(df, 1) == length(item) || size(df, 1) == 0 || error("number of rows does not match")
-    if haskey(df, name)
-        if makeunique
-            k = 1
-            while true
-                # we only make sure that new column name is unique
-                # if df originally had duplicates in names we do not fix it
-                nn = Symbol("$(name)_$k")
-                if !haskey(df, nn)
-                    name = nn
-                    break
-                end
-                k += 1
-            end
-        else
-            # TODO: remove depwarn and uncomment ArgumentError below
-            Base.depwarn("Inserting duplicate column name is deprecated, use makeunique=true.", :insert!)
-        end
-    end
-    insert!(index(df), col_ind, name)
-    insert!(df.columns, col_ind, item)
-    df
-end
-function Base.insert!(df::DataFrame, col_ind::Int, item, name::Symbol; makeunique::Bool=false)
-    insert!(df, col_ind, upgrade_scalar(df, item), name, makeunique=makeunique)
-end
-function Base.merge!(df::DataFrame, others::AbstractDataFrame...)
-    for other in others
-        for n in _names(other)
-            df[n] = other[n]
-        end
-    end
-    return df
-end
-Base.copy(df::DataFrame) = DataFrame(copy(columns(df)), copy(index(df)))
-function Base.deepcopy(df::DataFrame)
-    DataFrame(deepcopy(columns(df)), deepcopy(index(df)))
-end
-function Base.delete!(df::DataFrame, inds::Vector{Int})
-    for ind in sort(inds, rev = true)
-        if 1 <= ind <= ncol(df)
-            splice!(df.columns, ind)
-            delete!(index(df), ind)
-        else
-            throw(ArgumentError("Can't delete a non-existent DataFrame column"))
-        end
-    end
-    return df
-end
-Base.delete!(df::DataFrame, c::Int) = delete!(df, [c])
-Base.delete!(df::DataFrame, c::Any) = delete!(df, index(df)[c])
-function deleterows!(df::DataFrame, ind::Union{Integer, UnitRange{Int}})
-    for i in 1:ncol(df)
-        df.columns[i] = deleteat!(df.columns[i], ind)
-    end
-    df
-end
-function deleterows!(df::DataFrame, ind::AbstractVector{Int})
-    ind2 = sort(ind)
-    n = size(df, 1)
-    idf = 1
-    iind = 1
-    ikeep = 1
-    keep = Vector{Int}(n-length(ind2))
     while idf <= n && iind <= length(ind2)
         1 <= ind2[iind] <= n || error(BoundsError())
         if idf == ind2[iind]
@@ -816,29 +422,6 @@ function hcat!(df1::DataFrame, df2::AbstractDataFrame; makeunique::Bool=false)
     end
     return df1
 end
-function hcat!(df1::DataFrame, df2::DataFrame; makeunique::Bool=false)
-    invoke(hcat!, Tuple{DataFrame, AbstractDataFrame}, df1, df2, makeunique=makeunique)
-end
-hcat!(df::DataFrame, x::AbstractVector; makeunique::Bool=false) =
-    hcat!(df, DataFrame(Any[x]), makeunique=makeunique)
-hcat!(x::AbstractVector, df::DataFrame; makeunique::Bool=false) =
-    hcat!(DataFrame(Any[x]), df, makeunique=makeunique)
-function hcat!(x, df::DataFrame; makeunique::Bool=false)
-    throw(ArgumentError("x must be AbstractVector or AbstractDataFrame"))
-end
-function hcat!(df::DataFrame, x; makeunique::Bool=false)
-    throw(ArgumentError("x must be AbstractVector or AbstractDataFrame"))
-end
-hcat!(df::DataFrame; makeunique::Bool=false) = df
-hcat!(a::DataFrame, b, c...; makeunique::Bool=false) =
-    hcat!(hcat!(a, b, makeunique=makeunique), c..., makeunique=makeunique)
-Base.hcat(df::DataFrame, x; makeunique::Bool=false) =
-    hcat!(copy(df), x, makeunique=makeunique)
-Base.hcat(df1::DataFrame, df2::AbstractDataFrame; makeunique::Bool=false) =
-    hcat!(copy(df1), df2, makeunique=makeunique)
-Base.hcat(df1::DataFrame, df2::AbstractDataFrame, dfn::AbstractDataFrame...;
-          makeunique::Bool=false) =
-    hcat!(hcat(df1, df2, makeunique=makeunique), dfn..., makeunique=makeunique)
 function allowmissing! end
 function allowmissing!(df::DataFrame, col::ColumnIndex)
     df[col] = allowmissing(df[col])
@@ -862,29 +445,6 @@ function categorical!(df::DataFrame, cnames::Vector{<:Union{Integer, Symbol}})
 end
 function categorical!(df::DataFrame)
     for i in 1:size(df, 2)
-        if eltype(df[i]) <: AbstractString
-            df[i] = CategoricalVector(df[i])
-        end
-    end
-    df
-end
-function Base.append!(df1::DataFrame, df2::AbstractDataFrame)
-   _names(df1) == _names(df2) || error("Column names do not match")
-   eltypes(df1) == eltypes(df2) || error("Column eltypes do not match")
-   ncols = size(df1, 2)
-   # TODO: This needs to be a sort of transaction to be 100% safe
-   for j in 1:ncols
-       append!(df1[j], df2[j])
-   end
-   return df1
-end
-Base.convert(::Type{DataFrame}, A::AbstractMatrix) = DataFrame(A)
-function Base.convert(::Type{DataFrame}, d::Associative)
-    colnames = keys(d)
-    if isa(d, Dict)
-        colnames = sort!(collect(keys(d)))
-    else
-        colnames = keys(d)
     end
     colindex = Index(Symbol[k for k in colnames])
     columns = Any[d[c] for c in colnames]
@@ -1230,29 +790,6 @@ function hashrows_col!(h::Vector{UInt},
                        n::Vector{Bool},
                        v::AbstractCategoricalVector{>: Missing})
     # TODO is it possible to optimize by hashing the pool values once?
-    @inbounds for (i, ref) in enumerate(v.refs)
-        if ref == 0
-            h[i] = hash(missing, h[i])
-            length(n) > 0 && (n[i] = true)
-        else
-            h[i] = hash(CategoricalArrays.index(v.pool)[ref], h[i])
-        end
-    end
-    h
-end
-function hashrows(df::AbstractDataFrame, skipmissing::Bool)
-    rhashes = zeros(UInt, nrow(df))
-    missings = fill(false, skipmissing ? nrow(df) : 0)
-    for col in columns(df)
-        hashrows_col!(rhashes, missings, col)
-    end
-    return (rhashes, missings)
-end
-function row_group_slots(df::AbstractDataFrame,
-                         groups::Union{Vector{Int}, Void} = nothing,
-                         skipmissing::Bool = false)
-    rhashes, missings = hashrows(df, skipmissing)
-    row_group_slots(ntuple(i -> df[i], ncol(df)), rhashes, missings, groups, skipmissing)
 end
 function row_group_slots(cols::Tuple{Vararg{AbstractVector}},
                          rhashes::AbstractVector{UInt},
@@ -1299,98 +836,6 @@ function row_group_slots(cols::Tuple{Vararg{AbstractVector}},
     return ngroups, rhashes, gslots
 end
 function group_rows(df::AbstractDataFrame, skipmissing::Bool = false)
-    groups = Vector{Int}(nrow(df))
-    ngroups, rhashes, gslots = row_group_slots(df, groups, skipmissing)
-    # count elements in each group
-    stops = zeros(Int, ngroups)
-    @inbounds for g_ix in groups
-        stops[g_ix] += 1
-    end
-    # group start positions in a sorted table
-    starts = Vector{Int}(ngroups)
-    if !isempty(starts)
-        starts[1] = 1
-        @inbounds for i in 1:(ngroups-1)
-            starts[i+1] = starts[i] + stops[i]
-        end
-    end
-    # define row permutation that sorts them into groups
-    rperm = Vector{Int}(length(groups))
-    copy!(stops, starts)
-    @inbounds for (i, gix) in enumerate(groups)
-        rperm[stops[gix]] = i
-        stops[gix] += 1
-    end
-    stops .-= 1
-    # drop group 1 which contains rows with missings in grouping columns
-    if skipmissing
-        splice!(starts, 1)
-        splice!(stops, 1)
-        ngroups -= 1
-    end
-    return RowGroupDict(df, ngroups, rhashes, gslots, groups, rperm, starts, stops)
-end
-function findrow(gd::RowGroupDict,
-                 df::DataFrame,
-                 gd_cols::Tuple{Vararg{AbstractVector}},
-                 df_cols::Tuple{Vararg{AbstractVector}},
-                 row::Int)
-    (gd.df === df) && return row # same table, return itself
-    # different tables, content matching required
-    rhash = rowhash(df_cols, row)
-    szm1 = length(gd.gslots)-1
-    slotix = ini_slotix = rhash & szm1 + 1
-    while true
-        g_row = gd.gslots[slotix]
-        if g_row == 0 || # not found
-            (rhash == gd.rhashes[g_row] &&
-            isequal_row(gd_cols, g_row, df_cols, row)) # found
-            return g_row
-        end
-        slotix = (slotix & szm1) + 1 # miss, try the next slot
-        (slotix == ini_slotix) && break
-    end
-    return 0 # not found
-end
-function findrows(gd::RowGroupDict,
-                  df::DataFrame,
-                  gd_cols::Tuple{Vararg{AbstractVector}},
-                  df_cols::Tuple{Vararg{AbstractVector}},
-                  row::Int)
-    g_row = findrow(gd, df, gd_cols, df_cols, row)
-    (g_row == 0) && return view(gd.rperm, 0:-1)
-    gix = gd.groups[g_row]
-    return view(gd.rperm, gd.starts[gix]:gd.stops[gix])
-end
-function Base.getindex(gd::RowGroupDict, dfr::DataFrameRow)
-    g_row = findrow(gd, dfr.df, ntuple(i -> gd.df[i], ncol(gd.df)),
-                    ntuple(i -> dfr.df[i], ncol(dfr.df)), dfr.row)
-    (g_row == 0) && throw(KeyError(dfr))
-    gix = gd.groups[g_row]
-    return view(gd.rperm, gd.starts[gix]:gd.stops[gix])
-end
-struct DFRowIterator{T <: AbstractDataFrame}
-    df::T
-end
-eachrow(df::AbstractDataFrame) = DFRowIterator(df)
-Base.start(itr::DFRowIterator) = 1
-Base.done(itr::DFRowIterator, i::Int) = i > size(itr.df, 1)
-Base.next(itr::DFRowIterator, i::Int) = (DataFrameRow(itr.df, i), i + 1)
-Base.size(itr::DFRowIterator) = (size(itr.df, 1), )
-Base.length(itr::DFRowIterator) = size(itr.df, 1)
-Base.getindex(itr::DFRowIterator, i::Any) = DataFrameRow(itr.df, i)
-Base.map(f::Function, dfri::DFRowIterator) = [f(row) for row in dfri]
-struct DFColumnIterator{T <: AbstractDataFrame}
-    df::T
-end
-eachcol(df::AbstractDataFrame) = DFColumnIterator(df)
-Base.start(itr::DFColumnIterator) = 1
-Base.done(itr::DFColumnIterator, j::Int) = j > size(itr.df, 2)
-Base.next(itr::DFColumnIterator, j::Int) = ((_names(itr.df)[j], itr.df[j]), j + 1)
-Base.size(itr::DFColumnIterator) = (size(itr.df, 2), )
-Base.length(itr::DFColumnIterator) = size(itr.df, 2)
-Base.getindex(itr::DFColumnIterator, j::Any) = itr.df[:, j]
-function Base.map(f::Function, dfci::DFColumnIterator)
     # note: `f` must return a consistent length
     res = DataFrame()
     for (n, v) in eachcol(dfci.df)
@@ -1437,29 +882,6 @@ function compose_joined_table(joiner::DataFrameJoiner, kind::Symbol,
                               makeunique::Bool=false)
     @assert length(left_ixs) == length(right_ixs)
     # compose left half of the result taking all left columns
-    all_orig_left_ixs = vcat(left_ixs.orig, leftonly_ixs.orig)
-    ril = length(right_ixs)
-    lil = length(left_ixs)
-    loil = length(leftonly_ixs)
-    roil = length(rightonly_ixs)
-    if loil > 0
-        # combine the matched (left_ixs.orig) and non-matched (leftonly_ixs.orig) indices of the left table rows
-        # preserving the original rows order
-        all_orig_left_ixs = similar(left_ixs.orig, lil + loil)
-        @inbounds all_orig_left_ixs[left_ixs.join] = left_ixs.orig
-        @inbounds all_orig_left_ixs[leftonly_ixs.join] = leftonly_ixs.orig
-    else
-        # the result contains only the left rows that are matched to right rows (left_ixs)
-        all_orig_left_ixs = left_ixs.orig # no need to copy left_ixs.orig as it's not used elsewhere
-    end
-    # permutation to swap rightonly and leftonly rows
-    right_perm = vcat(1:ril, ril+roil+1:ril+roil+loil, ril+1:ril+roil)
-    if length(leftonly_ixs) > 0
-        # compose right_perm with the permutation that restores left rows order
-        right_perm[vcat(right_ixs.join, leftonly_ixs.join)] = right_perm[1:ril+loil]
-    end
-    all_orig_right_ixs = vcat(right_ixs.orig, rightonly_ixs.orig)
-    # compose right half of the result taking all right columns excluding on
     dfr_noon = without(joiner.dfr, joiner.right_on)
     nrow = length(all_orig_left_ixs) + roil
     @assert nrow == length(all_orig_right_ixs) + loil
@@ -1529,52 +951,6 @@ function update_row_maps!(left_table::AbstractDataFrame,
     @inline update!(mask::Vector{Bool}, orig_ixs::AbstractArray) = (mask[orig_ixs] = false)
     # iterate over left rows and compose the left<->right index map
     right_dict_cols = ntuple(i -> right_dict.df[i], ncol(right_dict.df))
-    left_table_cols = ntuple(i -> left_table[i], ncol(left_table))
-    next_join_ix = 1
-    for l_ix in 1:nrow(left_table)
-        r_ixs = findrows(right_dict, left_table, right_dict_cols, left_table_cols, l_ix)
-        if isempty(r_ixs)
-            update!(leftonly_ixs, l_ix, next_join_ix)
-            next_join_ix += 1
-        else
-            update!(left_ixs, l_ix, next_join_ix, length(r_ixs))
-            update!(right_ixs, r_ixs, next_join_ix)
-            update!(rightonly_mask, r_ixs)
-            next_join_ix += length(r_ixs)
-        end
-    end
-end
-function update_row_maps!(left_table::AbstractDataFrame,
-                          right_table::AbstractDataFrame,
-                          right_dict::RowGroupDict,
-                          map_left::Bool, map_leftonly::Bool,
-                          map_right::Bool, map_rightonly::Bool)
-    init_map(df::AbstractDataFrame, init::Bool) = init ?
-        RowIndexMap(sizehint!(Vector{Int}(), nrow(df)),
-                    sizehint!(Vector{Int}(), nrow(df))) : nothing
-    to_bimap(x::RowIndexMap) = x
-    to_bimap(::Void) = RowIndexMap(Vector{Int}(), Vector{Int}())
-    # init maps as requested
-    left_ixs = init_map(left_table, map_left)
-    leftonly_ixs = init_map(left_table, map_leftonly)
-    right_ixs = init_map(right_table, map_right)
-    rightonly_mask = map_rightonly ? fill(true, nrow(right_table)) : nothing
-    update_row_maps!(left_table, right_table, right_dict, left_ixs, leftonly_ixs, right_ixs, rightonly_mask)
-    if map_rightonly
-        rightonly_orig_ixs = find(rightonly_mask)
-        rightonly_ixs = RowIndexMap(rightonly_orig_ixs,
-                                    collect(length(right_ixs.orig) +
-                                            (leftonly_ixs === nothing ? 0 : length(leftonly_ixs)) +
-                                            (1:length(rightonly_orig_ixs))))
-    else
-        rightonly_ixs = nothing
-    end
-    return to_bimap(left_ixs), to_bimap(leftonly_ixs), to_bimap(right_ixs), to_bimap(rightonly_ixs)
-end
-function unstack(df::AbstractDataFrame, rowkey::Int, colkey::Int, value::Int)
-    refkeycol = categorical(df[rowkey])
-    droplevels!(refkeycol)
-    keycol = categorical(df[colkey])
     droplevels!(keycol)
     valuecol = df[value]
     _unstack(df, rowkey, colkey, value, keycol, valuecol, refkeycol)
@@ -1621,29 +997,6 @@ function _unstack(df::AbstractDataFrame, rowkey::Int,
         unstacked_val[j][i] = valuecol[k]
         mask_filled[i, j] = true
     end
-    levs = levels(refkeycol)
-    # we have to handle a case with missings in refkeycol as levs will skip missing
-    col = similar(df[rowkey], length(levs) + hadmissing)
-    copy!(col, levs)
-    hadmissing && (col[end] = missing)
-    df2 = DataFrame(unstacked_val, map(Symbol, levels(keycol)))
-    insert!(df2, 1, col, _names(df)[rowkey])
-end
-unstack(df::AbstractDataFrame, rowkey::ColumnIndex,
-        colkey::ColumnIndex, value::ColumnIndex) =
-    unstack(df, index(df)[rowkey], index(df)[colkey], index(df)[value])
-unstack(df::AbstractDataFrame, colkey::ColumnIndex, value::ColumnIndex) =
-    unstack(df, index(df)[colkey], index(df)[value])
-unstack(df::AbstractDataFrame, colkey::Int, value::Int) =
-    unstack(df, setdiff(_names(df), _names(df)[[colkey, value]]), colkey, value)
-unstack(df::AbstractDataFrame, rowkeys, colkey::ColumnIndex, value::ColumnIndex) =
-    unstack(df, rowkeys, index(df)[colkey], index(df)[value])
-unstack(df::AbstractDataFrame, rowkeys::AbstractVector{<:Real}, colkey::Int, value::Int) =
-    unstack(df, names(df)[rowkeys], colkey, value)
-function unstack(df::AbstractDataFrame, rowkeys::AbstractVector{Symbol}, colkey::Int, value::Int)
-    length(rowkeys) == 0 && throw(ArgumentError("No key column found"))
-    length(rowkeys) == 1 && return unstack(df, rowkeys[1], colkey, value)
-    g = groupby(df, rowkeys, sort=true)
     keycol = categorical(df[colkey])
     droplevels!(keycol)
     valuecol = df[value]
@@ -1690,29 +1043,6 @@ unstack(df::AbstractDataFrame) = unstack(df, :id, :variable, :value)
 mutable struct StackedVector <: AbstractVector{Any}
     components::Vector{Any}
 end
-function Base.getindex(v::StackedVector,i::Real)
-    lengths = [length(x)::Int for x in v.components]
-    cumlengths = [0; cumsum(lengths)]
-    j = searchsortedlast(cumlengths .+ 1, i)
-    if j > length(cumlengths)
-        error("indexing bounds error")
-    end
-    k = i - cumlengths[j]
-    if k < 1 || k > length(v.components[j])
-        error("indexing bounds error")
-    end
-    v.components[j][k]
-end
-function Base.getindex(v::StackedVector,i::AbstractVector{I}) where I<:Real
-    result = similar(v.components[1], length(i))
-    for idx in 1:length(i)
-        result[idx] = v[i[idx]]
-    end
-    result
-end
-Base.size(v::StackedVector) = (length(v),)
-Base.length(v::StackedVector) = sum(map(length, v.components))
-Base.ndims(v::StackedVector) = 1
 Base.eltype(v::StackedVector) = promote_type(map(eltype, v.components)...)
 Base.similar(v::StackedVector, T::Type, dims::Union{Integer, AbstractUnitRange}...) =
     similar(v.components[1], T, dims...)
@@ -1759,29 +1089,6 @@ function stackdf(df::AbstractDataFrame, measure_vars::AbstractVector{<:Integer},
 end
 function stackdf(df::AbstractDataFrame, measure_var::Int, id_var::Int;
                  variable_name::Symbol=:variable, value_name::Symbol=:value)
-    stackdf(df, [measure_var], [id_var]; variable_name=variable_name,
-            value_name=value_name)
-end
-function stackdf(df::AbstractDataFrame, measure_vars, id_var::Int;
-                 variable_name::Symbol=:variable, value_name::Symbol=:value)
-    stackdf(df, measure_vars, [id_var]; variable_name=variable_name,
-            value_name=value_name)
-end
-function stackdf(df::AbstractDataFrame, measure_var::Int, id_vars;
-                 variable_name::Symbol=:variable, value_name::Symbol=:value)
-    stackdf(df, [measure_var], id_vars; variable_name=variable_name,
-            value_name=value_name)
-end
-function stackdf(df::AbstractDataFrame, measure_vars, id_vars;
-                 variable_name::Symbol=:variable, value_name::Symbol=:value)
-    stackdf(df, index(df)[measure_vars], index(df)[id_vars];
-            variable_name=variable_name, value_name=value_name)
-end
-function stackdf(df::AbstractDataFrame, measure_vars = numeric_vars(df);
-                 variable_name::Symbol=:variable, value_name::Symbol=:value)
-    m_inds = index(df)[measure_vars]
-    stackdf(df, m_inds, setdiff(1:ncol(df), m_inds);
-            variable_name=variable_name, value_name=value_name)
 end
 function meltdf(df::AbstractDataFrame, id_vars; variable_name::Symbol=:variable,
                 value_name::Symbol=:value)
@@ -1851,75 +1158,6 @@ function printtable(df::AbstractDataFrame;
                     separator::Char = ',',
                     quotemark::Char = '"',
                     nastring::AbstractString = "missing")
-    printtable(STDOUT,
-               df,
-               header = header,
-               separator = separator,
-               quotemark = quotemark,
-               nastring = nastring)
-    return
-end
-function html_escape(cell::AbstractString)
-    cell = replace(cell, "&", "&amp;")
-    cell = replace(cell, "<", "&lt;")
-    cell = replace(cell, ">", "&gt;")
-    return cell
-end
-function Base.show(io::IO, ::MIME"text/html", df::AbstractDataFrame)
-    cnames = _names(df)
-    write(io, "<table class=\"data-frame\">")
-    write(io, "<thead>")
-    write(io, "<tr>")
-    write(io, "<th></th>")
-    for column_name in cnames
-        write(io, "<th>$column_name</th>")
-    end
-    write(io, "</tr>")
-    write(io, "</thead>")
-    write(io, "<tbody>")
-    haslimit = get(io, :limit, true)
-    n = size(df, 1)
-    if haslimit
-        tty_rows, tty_cols = displaysize(io)
-        mxrow = min(n,tty_rows)
-    else
-        mxrow = n
-    end
-    for row in 1:mxrow
-        write(io, "<tr>")
-        write(io, "<th>$row</th>")
-        for column_name in cnames
-            cell = sprint(ourshowcompact, df[row, column_name])
-            write(io, "<td>$(html_escape(cell))</td>")
-        end
-        write(io, "</tr>")
-    end
-    if n > mxrow
-        write(io, "<tr>")
-        write(io, "<th>&vellip;</th>")
-        for column_name in cnames
-            write(io, "<td>&vellip;</td>")
-        end
-        write(io, "</tr>")
-    end
-    write(io, "</tbody>")
-    write(io, "</table>")
-end
-function latex_char_escape(char::AbstractString)
-    if char == "\\"
-        return "\\textbackslash{}"
-    elseif char == "~"
-        return "\\textasciitilde{}"
-    else
-        return string("\\", char)
-    end
-end
-function latex_escape(cell::AbstractString)
-    cell = replace(cell, ['\\','~','#','$','%','&','_','^','{','}'], latex_char_escape)
-    return cell
-end
-function Base.show(io::IO, ::MIME"text/latex", df::AbstractDataFrame)
-    nrows = size(df, 1)
     ncols = size(df, 2)
     cnames = _names(df)
     alignment = repeat("c", ncols)
@@ -1966,29 +1204,6 @@ function Data.schema(df::DataFrame)
                        string.(names(df)), length(df) == 0 ? 0 : length(df.columns[1]))
 end
 Data.isdone(source::DataFrame, row, col, rows, cols) = row > rows || col > cols
-function Data.isdone(source::DataFrame, row, col)
-    cols = length(source)
-    return Data.isdone(source, row, col, cols == 0 ? 0 : length(source.columns[1]), cols)
-end
-Data.streamtype(::Type{DataFrame}, ::Type{Data.Column}) = true
-Data.streamtype(::Type{DataFrame}, ::Type{Data.Field}) = true
-Data.streamfrom(source::DataFrame, ::Type{Data.Column}, ::Type{T}, row, col) where {T} =
-    source[col]
-Data.streamfrom(source::DataFrame, ::Type{Data.Field}, ::Type{T}, row, col) where {T} =
-    source[col][row]
-Data.streamtypes(::Type{DataFrame}) = [Data.Column, Data.Field]
-Data.weakrefstrings(::Type{DataFrame}) = true
-allocate(::Type{T}, rows, ref) where {T} = Vector{T}(uninitialized, rows)
-allocate(::Type{CategoricalString{R}}, rows, ref) where {R} = CategoricalArray{String, 1, R}(rows)
-allocate(::Type{Union{CategoricalString{R}, Missing}}, rows, ref) where {R} = CategoricalArray{Union{String, Missing}, 1, R}(rows)
-allocate(::Type{CategoricalValue{T, R}}, rows, ref) where {T, R} =
-    CategoricalArray{T, 1, R}(rows)
-allocate(::Type{Union{Missing, CategoricalValue{T, R}}}, rows, ref) where {T, R} =
-    CategoricalArray{Union{Missing, T}, 1, R}(rows)
-allocate(::Type{WeakRefString{T}}, rows, ref) where {T} =
-    WeakRefStringArray(ref, WeakRefString{T}, rows)
-allocate(::Type{Union{Missing, WeakRefString{T}}}, rows, ref) where {T} =
-    WeakRefStringArray(ref, Union{Missing, WeakRefString{T}}, rows)
 allocate(::Type{Missing}, rows, ref) = missings(rows)
 function DataFrame(sch::Data.Schema{R}, ::Type{S}=Data.Field,
                    append::Bool=false, args...;
@@ -2049,17 +1264,6 @@ DataFrame(sink, sch::Data.Schema, ::Type{S}, append::Bool;
     sink.columns[col][row] = val
 @inline function Data.streamto!(sink::DataFrameStream, ::Type{Data.Column}, column,
                        row, col::Int, knownrows)
-    append!(sink.columns[col], column)
-end
-Data.close!(df::DataFrameStream) =
-    DataFrame(collect(Any, df.columns), Symbol.(df.header), makeunique=true)
-function Base.summary(df::AbstractDataFrame) # -> String
-    nrows, ncols = size(df)
-    return @sprintf("%d×%d %s", nrows, ncols, typeof(df))
-end
-let
-    local io = IOBuffer(Vector{UInt8}(80), true, true)
-    global ourstrwidth
     function ourstrwidth(x::Any) # -> Int
         truncate(io, 0)
         ourshowcompact(io, x)
@@ -2115,41 +1319,7 @@ function showrows(io::IO,
         if displaysummary
             println(io, summary(df))
         end
-        return
-    end
-    rowmaxwidth = maxwidths[ncols + 1]
-    chunkbounds = getchunkbounds(maxwidths, splitchunks, displaysize(io)[2])
-    nchunks = allcols ? length(chunkbounds) - 1 : min(length(chunkbounds) - 1, 1)
-    header = displaysummary ? summary(df) : ""
-    if !allcols && length(chunkbounds) > 2
-        header *= ". Omitted printing of $(chunkbounds[end] - chunkbounds[2]) columns"
-    end
-    println(io, header)
-    for chunkindex in 1:nchunks
         leftcol = chunkbounds[chunkindex] + 1
-        rightcol = chunkbounds[chunkindex + 1]
-        # Print column names
-        @printf io "│ %s" rowlabel
-        padding = rowmaxwidth - ourstrwidth(rowlabel)
-        for itr in 1:padding
-            write(io, ' ')
-        end
-        @printf io " │ "
-        for j in leftcol:rightcol
-            s = _names(df)[j]
-            ourshowcompact(io, s)
-            padding = maxwidths[j] - ourstrwidth(s)
-            for itr in 1:padding
-                write(io, ' ')
-            end
-            if j == rightcol
-                print(io, " │\n")
-            else
-                print(io, " │ ")
-            end
-        end
-        # Print table bounding line
-        write(io, '├')
         for itr in 1:(rowmaxwidth + 2)
             write(io, '─')
         end
@@ -2242,46 +1412,12 @@ function Base.showall(io::IO,
              displaysummary)
     return
 end
-function Base.showall(df::AbstractDataFrame,
-                      allcols::Bool = true) # -> Void
-    showall(STDOUT, df, allcols)
-    return
-end
-function showcols(io::IO, df::AbstractDataFrame, all::Bool = false,
-                  values::Bool = true) # -> Void
-    print(io, summary(df))
-    metadata = DataFrame(Name = _names(df),
-                         Eltype = eltypes(df),
-                         Missing = colmissing(df))
-    nrows, ncols = size(df)
-    if values && nrows > 0
-        if nrows == 1
-            metadata[:Values] = [sprint(ourshowcompact, df[1, i]) for i in 1:ncols]
-        else
-            metadata[:Values] = [sprint(ourshowcompact, df[1, i]) * "  …  " *
-                                 sprint(ourshowcompact, df[end, i]) for i in 1:ncols]
-        end
-    end
-    (all ? showall : show)(io, metadata, true, Symbol("Col #"), false)
-    return
-end
 function showcols(df::AbstractDataFrame, all::Bool=false, values::Bool=true)
     showcols(STDOUT, df, all, values) # -> Void
 end
 function Base.show(io::IO, gd::GroupedDataFrame)
     N = length(gd)
     println(io, "$(typeof(gd))  $N groups with keys: $(gd.cols)")
-    if N > 0
-        println(io, "First Group:")
-        show(io, gd[1])
-    end
-    if N > 1
-        print(io, "\n⋮\n")
-        println(io, "Last Group:")
-        show(io, gd[N])
-    end
-end
-function Base.showall(io::IO, gd::GroupedDataFrame)
     N = length(gd)
     println(io, "$(typeof(gd))  $N groups with keys: $(gd.cols)")
     for i = 1:N
@@ -2334,52 +1470,6 @@ Base.@propagate_inbounds Base.getindex(o::DFPerm, i::Int, j::Int) = o.df[i, j]
 Base.@propagate_inbounds Base.getindex(o::DFPerm, a::DataFrameRow, j::Int) = a[j]
 function Sort.lt(o::DFPerm, a, b)
     @inbounds for i = 1:ncol(o.df)
-        ord = col_ordering(o, i)
-        va = o[a, i]
-        vb = o[b, i]
-        lt(ord, va, vb) && return true
-        lt(ord, vb, va) && return false
-    end
-    false # a and b are equal
-end
-ordering(df::AbstractDataFrame, lt::Function, by::Function, rev::Bool, order::Ordering) =
-    DFPerm(Order.ord(lt, by, rev, order), df)
-function ordering(df::AbstractDataFrame,
-                  lt::AbstractVector{S}, by::AbstractVector{T},
-                  rev::AbstractVector{Bool}, order::AbstractVector) where {S<:Function, T<:Function}
-    if !(length(lt) == length(by) == length(rev) == length(order) == size(df,2))
-        throw(ArgumentError("Orderings must be specified for all DataFrame columns"))
-    end
-    DFPerm([Order.ord(_lt, _by, _rev, _order) for (_lt, _by, _rev, _order) in zip(lt, by, rev, order)], df)
-end
-ordering(df::AbstractDataFrame, col::ColumnIndex, lt::Function, by::Function, rev::Bool, order::Ordering) =
-    Perm(Order.ord(lt, by, rev, order), df[col])
-ordering(df::AbstractDataFrame, col_ord::UserColOrdering, lt::Function, by::Function, rev::Bool, order::Ordering) =
-    Perm(ordering(col_ord, lt, by, rev, order), df[col_ord.col])
-function ordering(df::AbstractDataFrame, cols::AbstractVector, lt::Function, by::Function, rev::Bool, order::Ordering)
-    if length(cols) == 0
-        return ordering(df, lt, by, rev, order)
-    end
-    if length(cols) == 1
-        return ordering(df, cols[1], lt, by, rev, order)
-    end
-    # Collect per-column ordering info
-    ords = Ordering[]
-    newcols = Int[]
-    for col in cols
-        push!(ords, ordering(col, lt, by, rev, order))
-        push!(newcols, index(df)[(_getcol(col))])
-    end
-    # Simplify ordering when all orderings are the same
-    if all([ords[i] == ords[1] for i = 2:length(ords)])
-        return DFPerm(ords[1], df[newcols])
-    end
-    return DFPerm(ords, df[newcols])
-end
-function ordering(df::AbstractDataFrame, cols::AbstractVector,
-                  lt::AbstractVector{S}, by::AbstractVector{T},
-                  rev::AbstractVector{Bool}, order::AbstractVector) where {S<:Function, T<:Function}
-    if !(length(lt) == length(by) == length(rev) == length(order))
         throw(ArgumentError("All ordering arguments must be 1 or the same length."))
     end
     if length(cols) == 0
@@ -2394,17 +1484,6 @@ function ordering(df::AbstractDataFrame, cols::AbstractVector,
     # Collect per-column ordering info
     ords = Ordering[]
     newcols = Int[]
-    for i in 1:length(cols)
-        push!(ords, ordering(cols[i], lt[i], by[i], rev[i], order[i]))
-        push!(newcols, index(df)[(_getcol(cols[i]))])
-    end
-    # Simplify ordering when all orderings are the same
-    if all([ords[i] == ords[1] for i = 2:length(ords)])
-        return DFPerm(ords[1], df[newcols])
-    end
-    return DFPerm(ords, df[newcols])
-end
-function ordering(df::AbstractDataFrame, cols::AbstractVector, lt, by, rev, order)
     to_array(src::AbstractVector, dims) = src
     to_array(src::Tuple, dims) = [src...]
     to_array(src, dims) = fill(src, dims)
@@ -2416,17 +1495,6 @@ function ordering(df::AbstractDataFrame, cols::AbstractVector, lt, by, rev, orde
              to_array(order, dims))
 end
 ordering(df::AbstractDataFrame, cols::Tuple, args...) = ordering(df, [cols...], args...)
-Sort.defalg(df::AbstractDataFrame) = size(df, 1) < 8192 ? Sort.MergeSort : SortingAlgorithms.TimSort
-function Sort.defalg(df::AbstractDataFrame, ::Type{T}, o::Ordering) where T<:Real
-    # If we're sorting a single numerical column in forward or reverse,
-    # RadixSort will generally be the fastest stable sort
-    if isbits(T) && sizeof(T) <= 8 && (o==Order.Forward || o==Order.Reverse)
-        SortingAlgorithms.RadixSort
-    else
-        Sort.defalg(df)
-    end
-end
-Sort.defalg(df::AbstractDataFrame,        ::Type,            o::Ordering) = Sort.defalg(df)
 Sort.defalg(df::AbstractDataFrame, col    ::ColumnIndex,     o::Ordering) = Sort.defalg(df, eltype(df[col]), o)
 Sort.defalg(df::AbstractDataFrame, col_ord::UserColOrdering, o::Ordering) = Sort.defalg(df, col_ord.col, o)
 Sort.defalg(df::AbstractDataFrame, cols,                     o::Ordering) = Sort.defalg(df)
@@ -2472,52 +1540,6 @@ function Base.sort!(df::DataFrame, a::Base.Sort.Algorithm, o::Base.Sort.Ordering
         if any(j -> c[j]===col, 1:i-1)
             continue
         end
-        copy!(pp,p)
-        Base.permute!!(col, pp)
-    end
-    df
-end
-import Base: @deprecate
-function DataFrame(columns::AbstractVector)
-    Base.depwarn("calling vector of vectors constructor without passing column names is deprecated", :DataFrame)
-    DataFrame(columns, gennames(length(columns)))
-end
-@deprecate by(d::AbstractDataFrame, cols, s::Vector{Symbol}) aggregate(d, cols, map(eval, s))
-@deprecate by(d::AbstractDataFrame, cols, s::Symbol) aggregate(d, cols, eval(s))
-@deprecate nullable!(df::AbstractDataFrame, col::ColumnIndex) allowmissing!(df, col)
-@deprecate nullable!(df::AbstractDataFrame, cols::Vector{<:ColumnIndex}) allowmissing!(df, cols)
-@deprecate nullable!(colnames::Array{Symbol,1}, df::AbstractDataFrame) allowmissing!(df, colnames)
-@deprecate nullable!(colnums::Array{Int,1}, df::AbstractDataFrame) allowmissing!(df, colnums)
-import Base: keys, values, insert!
-@deprecate keys(df::AbstractDataFrame) names(df)
-@deprecate values(df::AbstractDataFrame) DataFrames.columns(df)
-@deprecate insert!(df::DataFrame, df2::AbstractDataFrame) merge!(df, df2)
-@deprecate pool categorical
-@deprecate pool! categorical!
-@deprecate complete_cases! dropmissing!
-@deprecate complete_cases completecases
-@deprecate sub(df::AbstractDataFrame, rows) view(df, rows)
-export writetable
-function writetable(filename::AbstractString,
-                    df::AbstractDataFrame;
-                    header::Bool = true,
-                    separator::Char = getseparator(filename),
-                    quotemark::Char = '"',
-                    nastring::AbstractString = "NA",
-                    append::Bool = false)
-    Base.depwarn("writetable is deprecated, use CSV.write from the CSV package instead",
-                 :writetable)
-    if endswith(filename, ".bz") || endswith(filename, ".bz2")
-        throw(ArgumentError("BZip2 compression not yet implemented"))
-    end
-    if append && isfile(filename) && filesize(filename) > 0
-        file_df = readtable(filename, header = false, nrows = 1)
-        # Check if number of columns matches
-        if size(file_df, 2) != size(df, 2)
-            throw(DimensionMismatch("Number of columns differ between file and DataFrame"))
-        end
-        # When 'append'-ing to a nonempty file,
-        # 'header' triggers a check for matching colnames
         if header
             if any(i -> Symbol(file_df[1, i]) != index(df)[i], 1:size(df, 2))
                 throw(KeyError("Column names don't match names in file"))
@@ -2539,77 +1561,10 @@ end
 struct ParsedCSV
     bytes::Vector{UInt8} # Raw bytes from CSV file
     bounds::Vector{Int}  # Right field boundary indices
-    lines::Vector{Int}   # Line break indices
-    quoted::BitVector    # Was field quoted in text
-end
-struct ParseOptions{S <: String, T <: String}
-    header::Bool
-    separator::Char
-    quotemarks::Vector{Char}
-    decimal::Char
-    nastrings::Vector{S}
-    truestrings::Vector{T}
-    falsestrings::Vector{T}
-    makefactors::Bool
-    names::Vector{Symbol}
-    eltypes::Vector
-    allowcomments::Bool
-    commentmark::Char
-    ignorepadding::Bool
-    skipstart::Int
-    skiprows::AbstractVector{Int}
-    skipblanks::Bool
-    encoding::Symbol
-    allowescapes::Bool
-    normalizenames::Bool
-end
-struct ParseType{ALLOWCOMMENTS, SKIPBLANKS, ALLOWESCAPES, SPC_SEP} end
-ParseType(o::ParseOptions) = ParseType{o.allowcomments, o.skipblanks, o.allowescapes, o.separator == ' '}()
-macro read_peek_eof(io, nextchr)
-    io = esc(io)
-    nextchr = esc(nextchr)
-    quote
-        nextnext = eof($io) ? 0xff : read($io, UInt8)
-        $nextchr, nextnext, nextnext == 0xff
-    end
-end
-macro skip_within_eol(io, chr, nextchr, endf)
-    io = esc(io)
-    chr = esc(chr)
-    nextchr = esc(nextchr)
-    endf = esc(endf)
-    quote
-        if $chr == UInt32('\r') && $nextchr == UInt32('\n')
-            $chr, $nextchr, $endf = @read_peek_eof($io, $nextchr)
-        end
-    end
 end
 macro skip_to_eol(io, chr, nextchr, endf)
     io = esc(io)
     chr = esc(chr)
-    nextchr = esc(nextchr)
-    endf = esc(endf)
-    quote
-        while !$endf && !@atnewline($chr, $nextchr)
-            $chr, $nextchr, $endf = @read_peek_eof($io, $nextchr)
-        end
-        @skip_within_eol($io, $chr, $nextchr, $endf)
-    end
-end
-macro atnewline(chr, nextchr)
-    chr = esc(chr)
-    nextchr = esc(nextchr)
-    quote
-        $chr == UInt32('\n') || $chr == UInt32('\r')
-    end
-end
-macro atblankline(chr, nextchr)
-    chr = esc(chr)
-    nextchr = esc(nextchr)
-    quote
-        ($chr == UInt32('\n') || $chr == UInt32('\r')) &&
-        ($nextchr == UInt32('\n') || $nextchr == UInt32('\r'))
-    end
 end
 macro atescape(chr, nextchr, quotemarks)
     chr = esc(chr)
@@ -2651,99 +1606,6 @@ macro mergechr(chr, nextchr)
                 '\r'
             elseif $nextchr == UInt32('a')
                 '\a'
-            elseif $nextchr == UInt32('b')
-                '\b'
-            elseif $nextchr == UInt32('f')
-                '\f'
-            elseif $nextchr == UInt32('v')
-                '\v'
-            elseif $nextchr == UInt32('\\')
-                '\\'
-            else
-                msg = @sprintf("Invalid escape character '%s%s' encountered",
-                               $chr,
-                               $nextchr)
-                error(msg)
-            end
-        else
-            msg = @sprintf("Invalid escape character '%s%s' encountered",
-                           $chr,
-                           $nextchr)
-            error(msg)
-        end
-    end
-end
-macro isspace(byte)
-    byte = esc(byte)
-    quote
-        0x09 <= $byte <= 0x0d || $byte == 0x20
-    end
-end
-macro push(count, a, val, l)
-    count = esc(count) # Number of items in array
-    a = esc(a)         # Array to update
-    val = esc(val)     # Value to insert
-    l = esc(l)         # Length of array
-    quote
-        $count += 1
-        if $l < $count
-            $l *= 2
-            resize!($a, $l)
-        end
-        $a[$count] = $val
-    end
-end
-function getseparator(filename::AbstractString)
-    m = match(r"\.(\w+)(\.(gz|bz|bz2))?$", filename)
-    ext = isa(m, RegexMatch) ? m.captures[1] : ""
-    if ext == "csv"
-        return ','
-    elseif ext == "tsv"
-        return '\t'
-    elseif ext == "wsv"
-        return ' '
-    else
-        return ','
-    end
-end
-tf = (true, false)
-for allowcomments in tf, skipblanks in tf, allowescapes in tf, wsv in tf
-    dtype = ParseType{allowcomments, skipblanks, allowescapes, wsv}
-    @eval begin
-        # Read CSV file's rows into buffer while storing field boundary information
-        # TODO: Experiment with mmaping input
-        function readnrows!(p::ParsedCSV,
-                            io::IO,
-                            nrows::Integer,
-                            o::ParseOptions,
-                            dispatcher::$(dtype),
-                            firstchr::UInt8=0xff)
-            # TODO: Use better variable names
-            # Information about parse results
-            n_bytes = 0
-            n_bounds = 0
-            n_lines = 0
-            n_fields = 1
-            l_bytes = length(p.bytes)
-            l_lines = length(p.lines)
-            l_bounds = length(p.bounds)
-            l_quoted = length(p.quoted)
-            # Current state of the parser
-            in_quotes = false
-            in_escape = false
-            $(if allowcomments quote at_start = true end end)
-            $(if wsv quote skip_white = true end end)
-            chr = 0xff
-            nextchr = (firstchr == 0xff && !eof(io)) ? read(io, UInt8) : firstchr
-            endf = nextchr == 0xff
-            # 'in' does not work if passed UInt8 and Vector{Char}
-            quotemarks = convert(Vector{UInt8}, o.quotemarks)
-            # Insert a dummy field bound at position 0
-            @push(n_bounds, p.bounds, 0, l_bounds)
-            @push(n_bytes, p.bytes, '\n', l_bytes)
-            @push(n_lines, p.lines, 0, l_lines)
-            # Loop over bytes from the input until we've read requested rows
-            while !endf && ((nrows == -1) || (n_lines < nrows + 1))
                 chr, nextchr, endf = @read_peek_eof(io, nextchr)
                 # === Debugging ===
                 # if in_quotes
@@ -2754,28 +1616,6 @@ for allowcomments in tf, skipblanks in tf, allowescapes in tf, wsv in tf
                 $(if allowcomments
                     quote
                         # Ignore text inside comments completely
-                        if !in_quotes && chr == UInt32(o.commentmark)
-                            @skip_to_eol(io, chr, nextchr, endf)
-                            # Skip the linebreak if the comment began at the start of a line
-                            if at_start
-                                continue
-                            end
-                        end
-                    end
-                end)
-                $(if skipblanks
-                    quote
-                        # Skip blank lines
-                        if !in_quotes
-                            while !endf && @atblankline(chr, nextchr)
-                                chr, nextchr, endf = @read_peek_eof(io, nextchr)
-                                @skip_within_eol(io, chr, nextchr, endf)
-                            end
-                        end
-                    end
-                end)
-                $(if allowescapes
-                    quote
                         # Merge chr and nextchr here if they're a c-style escape
                         if @atcescape(chr, nextchr) && !in_escape
                             chr = @mergechr(chr, nextchr)
@@ -2795,29 +1635,6 @@ for allowcomments in tf, skipblanks in tf, allowescapes in tf, wsv in tf
                         p.quoted[n_fields] = true
                         $(if wsv quote skip_white = false end end)
                     # Finished reading a field
-                    elseif $(if wsv
-                                quote chr == UInt32(' ') || chr == UInt32('\t') end
-                            else
-                                quote chr == UInt32(o.separator) end
-                            end)
-                        $(if wsv
-                            quote
-                                if !(nextchr in UInt32[' ', '\t', '\n', '\r']) && !skip_white
-                                    @push(n_bounds, p.bounds, n_bytes, l_bounds)
-                                    @push(n_bytes, p.bytes, '\n', l_bytes)
-                                    @push(n_fields, p.quoted, false, l_quoted)
-                                    skip_white = false
-                                end
-                            end
-                        else
-                            quote
-                                @push(n_bounds, p.bounds, n_bytes, l_bounds)
-                                @push(n_bytes, p.bytes, '\n', l_bytes)
-                                @push(n_fields, p.quoted, false, l_quoted)
-                            end
-                        end)
-                    # Finished reading a row
-                    elseif @atnewline(chr, nextchr)
                         @skip_within_eol(io, chr, nextchr, endf)
                         $(if allowcomments quote at_start = true end end)
                         @push(n_bounds, p.bounds, n_bytes, l_bounds)
@@ -2876,17 +1693,6 @@ function bytematch(bytes::Vector{UInt8},
         end
     end
     return false
-end
-function bytestotype(::Type{N},
-                     bytes::Vector{UInt8},
-                     left::Integer,
-                     right::Integer,
-                     nastrings::Vector{T},
-                     wasquoted::Bool = false,
-                     truestrings::Vector{P} = P[],
-                     falsestrings::Vector{P} = P[]) where {N <: Integer,
-                                                           T <: String,
-                                                           P <: String}
     if left > right
         return 0, true, true
     end
@@ -2898,51 +1704,6 @@ function bytestotype(::Type{N},
     index = right
     byte = bytes[index]
     while index > left
-        if UInt32('0') <= byte <= UInt32('9')
-            value += (byte - UInt8('0')) * power
-            power *= 10
-        else
-            return value, false, false
-        end
-        index -= 1
-        byte = bytes[index]
-    end
-    if byte == UInt32('-')
-        return -value, left < right, false
-    elseif byte == UInt32('+')
-        return value, left < right, false
-    elseif UInt32('0') <= byte <= UInt32('9')
-        value += (byte - UInt8('0')) * power
-        return value, true, false
-    else
-        return value, false, false
-    end
-end
-let out = Vector{Float64}(1)
-    global bytestotype
-    function bytestotype(::Type{N},
-                         bytes::Vector{UInt8},
-                         left::Integer,
-                         right::Integer,
-                         nastrings::Vector{T},
-                         wasquoted::Bool = false,
-                         truestrings::Vector{P} = P[],
-                         falsestrings::Vector{P} = P[]) where {N <: AbstractFloat,
-                                                               T <: String,
-                                                               P <: String}
-        if left > right
-            return 0.0, true, true
-        end
-        if bytematch(bytes, left, right, nastrings)
-            return 0.0, true, true
-        end
-        wasparsed = ccall(:jl_substrtod,
-                          Int32,
-                          (Ptr{UInt8}, Csize_t, Int, Ptr{Float64}),
-                          bytes,
-                          convert(Csize_t, left - 1),
-                          right - left + 1,
-                          out) == 0
         return out[1], wasparsed, false
     end
 end
@@ -2987,17 +1748,6 @@ function bytestotype(::Type{N},
             return "", true, true
         end
     end
-    if bytematch(bytes, left, right, nastrings)
-        return "", true, true
-    end
-    return String(bytes[left:right]), true, false
-end
-function builddf(rows::Integer,
-                 cols::Integer,
-                 bytes::Integer,
-                 fields::Integer,
-                 p::ParsedCSV,
-                 o::ParseOptions)
     columns = Vector{Any}(cols)
     for j in 1:cols
         if isempty(o.eltypes)
@@ -3025,52 +1775,6 @@ function findcorruption(rows::Integer,
     t = 1
     for i in 1:rows
         bound = p.lines[i + 1]
-        f = 0
-        while t <= n && p.bounds[t] < bound
-            f += 1
-            t += 1
-        end
-        lengths[i] = f
-    end
-    m = median(lengths)
-    corruptrows = find(lengths .!= m)
-    l = corruptrows[1]
-    error(@sprintf("Saw %d rows, %d columns and %d fields\n * Line %d has %d columns\n",
-                   rows,
-                   cols,
-                   fields,
-                   l,
-                   lengths[l] + 1))
-end
-function readtable!(p::ParsedCSV,
-                    io::IO,
-                    nrows::Integer,
-                    o::ParseOptions)
-    chr, nextchr = 0xff, 0xff
-    skipped_lines = 0
-    # Skip lines at the start
-    if o.skipstart != 0
-        while skipped_lines < o.skipstart
-            chr, nextchr, endf = @read_peek_eof(io, nextchr)
-            @skip_to_eol(io, chr, nextchr, endf)
-            skipped_lines += 1
-        end
-    else
-        chr, nextchr, endf = @read_peek_eof(io, nextchr)
-    end
-    if o.allowcomments || o.skipblanks
-        while true
-            if o.allowcomments && nextchr == UInt32(o.commentmark)
-                chr, nextchr, endf = @read_peek_eof(io, nextchr)
-                @skip_to_eol(io, chr, nextchr, endf)
-            elseif o.skipblanks && @atnewline(nextchr, nextchr)
-                chr, nextchr, endf = @read_peek_eof(io, nextchr)
-                @skip_within_eol(io, chr, nextchr, endf)
-            else
-                break
-            end
-            skipped_lines += 1
-        end
     end
     # Use ParseOptions to pick the right method of readnrows!
     d = ParseType(o)
@@ -3099,39 +1803,6 @@ function readtable(pathname::AbstractString;
                    makefactors::Bool = false,
                    nrows::Integer = -1,
                    names::Vector = Symbol[],
-                   eltypes::Vector = [],
-                   allowcomments::Bool = false,
-                   commentmark::Char = '#',
-                   ignorepadding::Bool = true,
-                   skipstart::Integer = 0,
-                   skiprows::AbstractVector{Int} = Int[],
-                   skipblanks::Bool = true,
-                   encoding::Symbol = :utf8,
-                   allowescapes::Bool = false,
-                   normalizenames::Bool = true)
-    Base.depwarn("readtable is deprecated, use CSV.read from the CSV package instead",
-                 :readtable)
-    _r(io) = readtable(io,
-                       nbytes,
-                       header = header,
-                       separator = separator,
-                       quotemark = quotemark,
-                       decimal = decimal,
-                       nastrings = nastrings,
-                       truestrings = truestrings,
-                       falsestrings = falsestrings,
-                       makefactors = makefactors,
-                       nrows = nrows,
-                       names = names,
-                       eltypes = eltypes,
-                       allowcomments = allowcomments,
-                       commentmark = commentmark,
-                       ignorepadding = ignorepadding,
-                       skipstart = skipstart,
-                       skiprows = skiprows,
-                       skipblanks = skipblanks,
-                       encoding = encoding,
-                       allowescapes = allowescapes,
                        normalizenames = normalizenames)
     # Open an IO stream based on pathname
     # (1) Path is an HTTP or FTP URL
@@ -3187,17 +1858,6 @@ end
 import Base: |>
 @deprecate (|>)(gd::GroupedDataFrame, fs::Function) aggregate(gd, fs)
 @deprecate (|>)(gd::GroupedDataFrame, fs::Vector{T}) where {T<:Function} aggregate(gd, fs)
-@deprecate colwise(f) x -> colwise(f, x)
-@deprecate groupby(cols::Vector{T}; sort::Bool = false, skipmissing::Bool = false) where {T} x -> groupby(x, cols, sort = sort, skipmissing = skipmissing)
-@deprecate groupby(cols; sort::Bool = false, skipmissing::Bool = false) x -> groupby(x, cols, sort = sort, skipmissing = skipmissing)
-function Base.getindex(x::AbstractIndex, idx::Bool)
-    Base.depwarn("Indexing with Bool values is deprecated except for Vector{Bool}", :getindex)
-    1
-end
-function Base.getindex(x::AbstractIndex, idx::Real)
-    Base.depwarn("Indexing with values that are not Integer is deprecated", :getindex)
-    Int(idx)
-end
 function Base.getindex(x::AbstractIndex, idx::AbstractRange)
     Base.depwarn("Indexing with range of values that are not Integer is deprecated", :getindex)
     getindex(x, collect(idx))
