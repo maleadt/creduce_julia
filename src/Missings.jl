@@ -80,7 +80,7 @@ end
     @inbounds v = itr.x[i]::eltype(itr)
     (v, _next_nonmissing_ind(itr.x, state))
 end
-end # isdefined
+end
 fail(itr) = EachFailMissing(itr)
 struct EachFailMissing{T}
     x::T
@@ -96,7 +96,6 @@ Base.done(itr::EachFailMissing, state) = done(itr.x, state)
 Base.eltype(itr::EachFailMissing) = Missings.T(eltype(itr.x))
 @inline function Base.next(itr::EachFailMissing, state)
     v, s = next(itr.x, state)
-    # NOTE: v isa Missing currently gives incorrect code, cf. JuliaLang/julia#24177
     ismissing(v) && throw(MissingException("missing value encountered by Missings.fail"))
     (v::eltype(itr), s)
 end
@@ -109,4 +108,4 @@ function levels(x)
     levs
 end
 @deprecate skip(itr) skipmissing(itr) false
-end # module
+end

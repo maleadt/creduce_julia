@@ -2,17 +2,15 @@ __precompile__()
 module CategoricalArrays
     using Compat
     using Missings
-    if VERSION >= v"0.7.0-DEV.3052"
-        using Printf
-    end
-    using JSON # FIXME make JSON optional dependency when core Julia will support that
+    using Printf
+    using JSON
 const DefaultRefType = UInt32
 mutable struct CategoricalPool{T, R <: Integer, V}
-    index::Vector{T}        # category levels ordered by their reference codes
-    invindex::Dict{T, R}    # map from category levels to their reference codes
-    order::Vector{R}        # 1-to-1 map from `index` to `level` (position of i-th category in `levels`)
-    levels::Vector{T}       # category levels ordered by externally specified order
-    valindex::Vector{V}     # "category value" objects 1-to-1 matching `index`
+    index::Vector{T}
+    invindex::Dict{T, R}
+    order::Vector{R}
+    levels::Vector{T}
+    valindex::Vector{V}
     ordered::Bool
     function CategoricalPool{T, R, V}(index::Vector{T},
                                       invindex::Dict{T, R},
@@ -111,7 +109,7 @@ function CategoricalPool(index::Vector{S},
                          ordered::Bool=false) where {S, T <: Integer, R <: Integer}
     invindex = convert(Dict{S, R}, invindex)
     C = catvaluetype(S, R)
-    V = leveltype(C) # might be different from S (e.g. S == SubString, V == String)
+    V = leveltype(C)
     CategoricalPool{V, R, C}(index, invindex, order, ordered)
 end
 CategoricalPool{T, R, C}(ordered::Bool=false) where {T, R, C} =
@@ -242,8 +240,6 @@ function levels!(pool::CategoricalPool{S, R}, newlevels::Vector) where {S, R}
     if n > typemax(R)
         throw(LevelsException{S, R}(setdiff(levs, levels(pool))[typemax(R)-length(levels(pool))+1:end]))
     end
-    # No deletions: can preserve position of existing levels
-    # equivalent to issubset but faster due to JuliaLang/julia#24624
     if isempty(setdiff(pool.index, levs))
         append!(pool, setdiff(levs, pool.index))
     else
@@ -280,7 +276,7 @@ end
 const CatValue{R} = Union{CategoricalValue{T, R} where T,
                           CategoricalString{R}}
 iscatvalue(::Type) = false
-iscatvalue(::Type{Union{}}) = false # prevent incorrect dispatch to Type{<:CatValue} method
+iscatvalue(::Type{Union{}}) = false
 iscatvalue(::Type{<:CatValue}) = true
 iscatvalue(x::Any) = iscatvalue(typeof(x))
 leveltype(::Type{<:CategoricalValue{T}}) where {T} = T
@@ -294,15 +290,15 @@ level(x::CatValue) = x.level
 unwrap_catvaluetype(::Type{T}) where {T} = T
 unwrap_catvaluetype(::Type{T}) where {T >: Missing} =
     Union{unwrap_catvaluetype(Missings.T(T)), Missing}
-unwrap_catvaluetype(::Type{Union{}}) = Union{} # prevent incorrect dispatch to T<:CatValue method
-unwrap_catvaluetype(::Type{Any}) = Any # prevent recursion in T>:Missing method
+unwrap_catvaluetype(::Type{Union{}}) = Union{}
+unwrap_catvaluetype(::Type{Any}) = Any
 unwrap_catvaluetype(::Type{T}) where {T <: CatValue} = leveltype(T)
 catvaluetype(::Type{T}, ::Type{R}) where {T >: Missing, R} =
     catvaluetype(Missings.T(T), R)
 catvaluetype(::Type{T}, ::Type{R}) where {T <: CatValue, R} =
     catvaluetype(leveltype(T), R)
 catvaluetype(::Type{Any}, ::Type{R}) where {R} =
-    CategoricalValue{Any, R}  # prevent recursion in T>:Missing method
+    CategoricalValue{Any, R}
 catvaluetype(::Type{T}, ::Type{R}) where {T, R} =
     CategoricalValue{T, R}
 catvaluetype(::Type{<:AbstractString}, ::Type{R}) where {R} =
@@ -320,9 +316,8 @@ Base.convert(::Type{Ref}, x::CatValue) = RefValue{leveltype(x)}(x)
 Base.convert(::Type{String}, x::CatValue) = convert(String, get(x))
 Base.convert(::Type{Any}, x::CatValue) = x
 Base.convert(::Type{T}, x::T) where {T <: CatValue} = x
-Base.convert(::Type{Union{T, Missing}}, x::T) where {T <: CatValue} = x # override the convert() below
-Base.convert(::Type{S}, x::CatValue) where {S} = convert(S, get(x)) # fallback
-if VERSION >= v"0.7.0-DEV.2797"
+Base.convert(::Type{Union{T, Missing}}, x::T) where {T <: CatValue} = x
+Base.convert(::Type{S}, x::CatValue) where {S} = convert(S, get(x))
     function Base.show(io::IO, x::CatValue)
         if get(io, :typeinfo, Any) === typeof(x)
             print(io, repr(x))
@@ -334,19 +329,6 @@ if VERSION >= v"0.7.0-DEV.2797"
             @printf(io, "%s %s", typeof(x), repr(x))
         end
     end
-else
-    function Base.show(io::IO, x::CatValue)
-        if get(io, :compact, false)
-            print(io, repr(x))
-        elseif isordered(pool(x))
-            @printf(io, "%s %s (%i/%i)",
-                    typeof(x), repr(x),
-                    order(x), length(pool(x)))
-        else
-            @printf(io, "%s %s", typeof(x), repr(x))
-        end
-    end
-end
 Base.print(io::IO, x::CatValue) = print(io, get(x))
 Base.repr(x::CatValue) = repr(get(x))
 @inline function Base.:(==)(x::CatValue, y::CatValue)
@@ -387,7 +369,7 @@ end
 function Base.:<(x::CatValue, y::CatValue)
     if pool(x) !== pool(y)
         throw(ArgumentError("CategoricalValue objects with different pools cannot be tested for order"))
-    elseif !isordered(pool(x)) # !isordered(pool(y)) is implied by pool(x) === pool(y)
+    elseif !isordered(pool(x))
         throw(ArgumentError("Unordered CategoricalValue objects cannot be tested for order using <. Use isless instead, or call the ordered! function on the parent array to change this"))
     else
         return order(x) < order(y)
@@ -409,15 +391,8 @@ Base.isvalid(x::CategoricalString, i::Integer) = isvalid(get(x), i)
 Base.match(r::Regex, s::CategoricalString,
            idx::Integer=start(s), add_opts::UInt32=UInt32(0)) =
     match(r, get(s), idx, add_opts)
-if VERSION > v"0.7.0-DEV.3526"
     Base.matchall(r::Regex, s::CategoricalString; overlap::Bool=false) =
         matchall(r, get(s); overlap=overlap)
-else
-    Base.matchall(r::Regex, s::CategoricalString; overlap::Bool=false) =
-        matchall(r, get(s), overlap)
-    Base.matchall(r::Regex, s::CategoricalString, overlap::Bool) =
-        matchall(r, get(s), overlap)
-end
 Base.collect(x::CategoricalString) = collect(get(x))
 Base.reverse(x::CategoricalString) = reverse(get(x))
 Compat.ncodeunits(x::CategoricalString) = ncodeunits(get(x))

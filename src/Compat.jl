@@ -59,10 +59,9 @@ module Unicode
            iscntrl, ispunct, isspace, isprint, isgraph,
            lowercase, uppercase, titlecase, lcfirst, ucfirst
         using Unicode
-        import Unicode: isassigned, normalize # not exported from Unicode module due to conflicts
+        import Unicode: isassigned, normalize
 end
 const IteratorSize = Base.IteratorSize
 const IteratorEltype = Base.IteratorEltype
-
 const indexin = Base.indexin
-end # module Compat
+end
