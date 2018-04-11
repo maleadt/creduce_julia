@@ -1,7 +1,8 @@
 __precompile__(true)
 module WeakRefStrings
 export WeakRefString, WeakRefStringArray
-using Missings, Compat
+using Missings
+using Compat
 struct WeakRefString{T} <: AbstractString
     ptr::Ptr{T}
     len::Int # of code units

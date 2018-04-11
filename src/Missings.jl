@@ -8,25 +8,7 @@ using Base: ismissing, missing, Missing, MissingException
 @static if isdefined(Base, :adjoint) && !applicable(adjoint, missing)
     Base.adjoint(::Missing) = missing
 end
-if VERSION < v"0.7.0-DEV.3711"
-    # Rounding and related functions from non-Missing type to Union{T, Missing}
-    for f in (:(Base.ceil), :(Base.floor), :(Base.round), :(Base.trunc))
-        @eval begin
-            ($f)(::Type{T}, x::Any) where {T>:Missing} = $f(Missings.T(T), x)
-            # to fix ambiguities
-            ($f)(::Type{T}, x::Rational) where {T>:Missing} = $f(Missings.T(T), x)
-            ($f)(::Type{T}, x::Rational{Bool}) where {T>:Missing} = $f(Missings.T(T), x)
-        end
-    end
-end
-if VERSION > v"0.7.0-DEV.3420"
     T(::Type{S}) where {S} = Core.Compiler.typesubtract(S, Missing)
-else
-    T(::Type{Union{T1, Missing}}) where {T1} = T1
-    T(::Type{Missing}) = Union{}
-    T(::Type{Any}) = Any
-    T(::Type{S}) where {S} = Core.Inference.typesubtract(S, Missing)
-end
 missings(dims::Dims) = fill(missing, dims)
 missings(::Type{T}, dims::Dims) where {T >: Missing} = fill!(Array{T}(undef, dims), missing)
 missings(::Type{T}, dims::Dims) where {T} = fill!(Array{Union{T, Missing}}(undef, dims), missing)
