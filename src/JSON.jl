@@ -104,7 +104,6 @@ end
 module Parser  # JSON
 using Compat
 using Compat.Mmap
-using Nullables
 using ..Common
 isjsonspace(b::UInt8) = b == SPACE || b == TAB || b == NEWLINE || b == RETURN
 isjsondigit(b::UInt8) = DIGIT_ZERO ≤ b ≤ DIGIT_NINE
@@ -321,12 +320,6 @@ function hasleadingzero(bytes, from::Int, to::Int)
     from < to && to > from + 1 && c == DIGIT_ZERO &&
             isjsondigit(bytes[from + 1])
 end
-function float_from_bytes(bytes, from::Int, to::Int)
-    # The ccall is not ideal (Base.tryparse would be better), but it actually
-    # makes an 2× difference to performance
-    ccall(:jl_try_substrtod, Nullable{Float64},
-            (Ptr{UInt8}, Csize_t, Csize_t), bytes, from - 1, to - from + 1)
-end
 function int_from_bytes(pc::ParserContext{<:AbstractDict,IntType},
                         ps::ParserState,
                         bytes,
@@ -539,7 +532,6 @@ end
 module Writer
 using Compat
 using Compat.Dates
-using Nullables
 using ..Common
 using ..Serializations: Serialization, StandardSerialization,
                         CommonSerialization
@@ -677,13 +669,6 @@ function show_json(io::SC, s::CS, x::Union{Integer, AbstractFloat})
     end
 end
 show_json(io::SC, ::CS, ::Nothing) = show_null(io)
-function show_json(io::SC, s::CS, a::Nullable)
-    if isnull(a)
-        Base.print(io, "null")
-    else
-        show_json(io, s, get(a))
-    end
-end
 function show_json(io::SC, s::CS, a::AbstractDict)
     begin_object(io)
     for kv in a

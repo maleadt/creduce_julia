@@ -20,10 +20,6 @@ end
 function _compat(ex::Expr)
     if ex.head === :call
         f = ex.args[1]
-        if VERSION < v"0.6.0-dev.826" && length(ex.args) == 3 && # julia#18510
-                istopsymbol(withincurly(ex.args[1]), :Base, :Nullable)
-            ex = Expr(:call, f, ex.args[2], Expr(:call, :(Compat._Nullable_field2), ex.args[3]))
-        end
     elseif ex.head === :curly
         f = ex.args[1]
         if VERSION < v"0.6.0-dev.2575" #20414
@@ -294,17 +290,6 @@ else
 end
 @static if VERSION < v"0.6.0-dev.693"
     Base.Broadcast.broadcast{N}(f, t::NTuple{N}, ts::Vararg{NTuple{N}}) = map(f, t, ts...)
-end
-if VERSION < v"0.6.0-dev.826"
-    _Nullable_field2(x) = !x
-else
-    _Nullable_field2(x) = x
-end
-@static if VERSION < v"0.6.0-dev.848"
-    unsafe_get(x::Nullable) = x.value
-    unsafe_get(x) = x
-    export unsafe_get
-    Base.isnull(x) = false
 end
 @static if !isdefined(Base, :xor)
     # 0.6
