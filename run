@@ -12,8 +12,6 @@ fi
 
 TEMP=$(pwd)
 
-julia -e "versioninfo()"
-
 JULIA_LOAD_PATH=$TEMP \
 JULIA_PKGDIR=$TEMP/.julia \
 JULIA_DEPOT_PATH=$TEMP/.julia \
