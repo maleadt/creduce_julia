@@ -1,14 +1,10 @@
 module CategoricalArrays
-    using Compat
-    using JSON
+using Compat
+using JSON
 mutable struct CategoricalPool{T, R <: Integer, V}
     index::Vector{T}
     invindex::Dict{T, R}
-    function CategoricalPool{T, R, V}(index::Vector{T},
-                                      ordered::Bool) where {T, R, V}
-        if iscatvalue(T)
-        end
-    end
+    function CategoricalPool{T, R, V}(index::Vector{T}, ordered::Bool) where {T, R, V} end
 end
 struct LevelsException{T, R} <: Exception
 end
@@ -28,8 +24,9 @@ end
 function CategoricalPool(invindex::Dict{S, R},
                          ordered::Bool=false) where {S, R <: Integer}
 end
-Base.convert(::Type{CategoricalPool{S}}, pool::CategoricalPool{T, R}) where {S, T, R <: Integer} =
+function Base.convert(::Type{CategoricalPool{S}}, pool::CategoricalPool{T, R}) where {S, T, R <: Integer}
     convert(CategoricalPool{S, R}, pool)
+end
 function Base.convert(::Type{CategoricalPool{S, R}}, pool::CategoricalPool) where {S, R <: Integer}
     get!(pool.invindex, level) do
         if isordered(pool)
@@ -49,15 +46,26 @@ function Base.append!(pool::CategoricalPool, levels)
         end
     end
 end
-index(pool::CategoricalPool) = pool.index
+function index(pool::CategoricalPool)
+    pool.index
+end
 function Base.showerror(io::IO, err::LevelsException{T, R}) where {T, R}
 end
 const CatValue{R} = Union{CategoricalValue{T, R} where T,
                           CategoricalString{R}}
-pool(x::CatValue) = x.pool
-level(x::CatValue) = x.level
-catvaluetype(::Type{T}, ::Type{R}) where {T >: Missing, R} =
+function pool(x::CatValue)
+    x.pool
+end
+function level(x::CatValue)
+    x.level
+end
+function catvaluetype(::Type{T}, ::Type{R}) where {T >: Missing, R}
     CategoricalString{R}
-Base.get(x::CatValue) = index(pool(x))[level(x)]
-Compat.lastindex(x::CategoricalString) = lastindex(get(x))
+end
+function Base.get(x::CatValue)
+    index(pool(x))[level(x)]
+end
+function Compat.lastindex(x::CategoricalString)
+    lastindex(get(x))
+end
 end
