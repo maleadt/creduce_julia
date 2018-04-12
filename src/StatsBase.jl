@@ -1,4 +1,1 @@
-__precompile__()
-module StatsBase
-using SortingAlgorithms
-end
+module StatsBase using SortingAlgorithms end 
