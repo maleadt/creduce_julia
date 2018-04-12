@@ -6,9 +6,5 @@ git -C $DIR submodule init
 git -C $DIR submodule update
 
 make -C $DIR/julia -j$(nproc) \
-    MARCH=x86-64 \
-    JULIA_CPU_TARGET="generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)" \
     LLVM_ASSERTIONS=1 \
-    LLVM_CMAKE_BUILDTYPE=RelWithDebInfo \
-    CMAKE_GENERATOR=Ninja \
     FORCE_ASSERTIONS=1
