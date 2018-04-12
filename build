@@ -2,6 +2,9 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+git -C $DIR submodule init
+git -C $DIR submodule update
+
 make -C $DIR/julia -j$(nproc) \
     MARCH=x86-64 \
     JULIA_CPU_TARGET="generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)" \
