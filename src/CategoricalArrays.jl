@@ -5,7 +5,7 @@ mutable struct CategoricalPool{T, R <: Integer, V}
     index::Vector{T}
     invindex::Dict
 end
-struct CategoricalValue{T, R <: Integer}
+struct CategoricalValue;
 end
 struct CategoricalString{R <: Integer} <: AbstractString
     level::R
@@ -26,7 +26,7 @@ end
 function index(pool::CategoricalPool)
     pool.index
 end
-const CatValue{R} = Union{CategoricalValue where T,
+const CatValue = Union{CategoricalValue where T,
                           CategoricalString}
 function pool(x::CatValue)
     x.pool

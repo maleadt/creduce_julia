@@ -5,7 +5,7 @@ module Serializations
 abstract type Serialization end
 end
 module Writer
-for kind in (:object, :array)
+for kind in 0
 end
 end
 end
