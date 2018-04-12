@@ -3,15 +3,15 @@ using Compat
 using JSON
 mutable struct CategoricalPool{T, R <: Integer, V}
     index::Vector{T}
-    invindex::Dict{T, R}
+    invindex::Dict
 end
 struct CategoricalValue{T, R <: Integer}
 end
 struct CategoricalString{R <: Integer} <: AbstractString
     level::R
-    pool::CategoricalPool{String, R, CategoricalString{R}}
+    pool::CategoricalPool{String, R, CategoricalString}
 end
-abstract type AbstractCategoricalArray{T, N, R, V, C, U} <: AbstractArray{Union{C, U}, N} end
+abstract type AbstractCategoricalArray{T, N, R, V, C, U} <: AbstractArray{Union, N} end
 struct CategoricalArray{T, N, R <: Integer, V, C, U} <: AbstractCategoricalArray{T, N, R, V, C, U}
 end
 @inline function Base.push!(pool::CategoricalPool, level)
@@ -26,8 +26,8 @@ end
 function index(pool::CategoricalPool)
     pool.index
 end
-const CatValue{R} = Union{CategoricalValue{T, R} where T,
-                          CategoricalString{R}}
+const CatValue{R} = Union{CategoricalValue where T,
+                          CategoricalString}
 function pool(x::CatValue)
     x.pool
 end
