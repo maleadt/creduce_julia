@@ -12,7 +12,9 @@ fi
 
 TEMP=$(pwd)
 
+julia -e "versioninfo()"
+
 JULIA_LOAD_PATH=$TEMP \
 JULIA_PKGDIR=$TEMP/.julia \
 JULIA_DEPOT_PATH=$TEMP/.julia \
-julia --depwarn=no -O0 -g0 -e 'using DataFrames' |& grep jl_method_instance_add_backedge
+julia --depwarn=no -O0 -g0 -e 'using DataFrames'
