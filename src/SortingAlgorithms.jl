@@ -1,3 +1,1 @@
-module SortingAlgorithms
-using DataStructures
-end 
+module SortingAlgorithms using DataStructures end   
