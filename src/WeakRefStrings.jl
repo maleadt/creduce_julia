@@ -1,7 +1,5 @@
 module WeakRefStrings
-struct WeakRefString <: AbstractString
+struct a <: AbstractString
 end
-Base.String(x::WeakRefString) = string
-struct WeakRefStringArray{T<:WeakRefString, N, U} <: AbstractArray{Union, N}
-end
+Base.String(::a) = string
 end

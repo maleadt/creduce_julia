@@ -1,36 +1,27 @@
 module CategoricalArrays
 using Compat
 using JSON
-mutable struct CategoricalPool{T, R <: Integer, V}
-    index::Vector{T}
-    invindex::Dict
+struct a
+    b::Vector
 end
-struct CategoricalValue;
+struct c  <: AbstractString
 end
-struct CategoricalString{R <: Integer} <: AbstractString
-    pool::CategoricalPool{String, R, CategoricalString}
-end
-@inline function Base.push!(pool::CategoricalPool, level)
-    get!(pool.invindex, level) do
+function d!(e, f)
+    get!(j, f) do
     end
 end
-function Base.append!(pool::CategoricalPool, levels)
-    for level in levels
-        push!(pool, level)
+function Base.append!(e, g)
+    for f in 
+        d!(j, f)
     end
 end
-function index(pool::CategoricalPool)
-    pool.index
+function b(j::a)
+    j.b
 end
-const CatValue = Union{CategoricalValue where T,
-                          CategoricalString}
-function pool(x::CatValue)
-    x.pool
+function get(h)
+    b(i)[]
 end
-function Base.get(x::CatValue)
-    index(pool(x))[]
-end
-function Compat.lastindex(x::CategoricalString)
-    lastindex(get(x))
+function Compat.lastindex(::c)
+    get(i)
 end
 end

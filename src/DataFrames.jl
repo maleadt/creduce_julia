@@ -1,5 +1,5 @@
 __precompile__()
-module DataFrames
+module a
 using StatsBase
 using CategoricalArrays
 using DataStreams
