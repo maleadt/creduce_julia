@@ -16,4 +16,4 @@ JULIA_LOAD_PATH=$TEMP \
 JULIA_PKGDIR=$TEMP/.julia \
 JULIA_DEPOT_PATH=$TEMP/.julia \
 PATH=$DIR/julia/usr/bin:$PATH \
-julia --compiled-modules=no --depwarn=no -O0 main.jl
+julia --compiled-modules=no --depwarn=no -O0 main.jl |& grep 'callee->def.method->min_world <= caller->min_world && callee->max_world >= caller->max_world'
