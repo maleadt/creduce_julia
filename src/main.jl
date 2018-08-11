@@ -1,38 +1,19 @@
-module a
-function b!(c, d, e)
-    if isa(e, SubArray)
-        for f in g
-            e[] = !
-        end
-    end
+function bug(something::SubArray)
+    something[] = !
+end
 
-    end
-function ag!(h,
-                       : )
-    b!(v, w) do e end
+function generator(unused...)
+    bug(whatever)
 end
-function ah(j, ai, k, l)
-    ag!(aj, j)
-end
+
 @eval begin
-    function ak(m, al...) where i
-        $(Expr(:meta,
-               :generated,
-               Expr(:new,
-                    Core.GeneratedFunctionStub,
-                    :ah,
-                    [],
-                    [],
-                    0,
-                    QuoteNode(:am),
-                    true)))
+    function stub(unused...) where T
+        $(Expr(:meta, :generated,
+               Expr(:new, Core.GeneratedFunctionStub,
+                    :generator, [], [], 0, QuoteNode(:am), true)))
     end
 end
-macro an(ao)
-    esc(quote
-        ao = a
-        end)
-end
-end  
-a.@an ao
-a.ak(ao)
+
+macro unused() end
+
+stub(nothing)
