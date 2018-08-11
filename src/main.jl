@@ -1,19 +1,7 @@
-function bug(something::SubArray)
-    something[] = !
-end
+bar(x::SubArray) = x[] = 42
 
-function generator(unused...)
-    bug(whatever)
-end
-
-@eval begin
-    function stub(unused...) where T
-        $(Expr(:meta, :generated,
-               Expr(:new, Core.GeneratedFunctionStub,
-                    :generator, [], [], 0, QuoteNode(:am), true)))
-    end
-end
+@generated foo() = bar(whatever)
 
 macro unused() end
 
-stub(nothing)
+foo()
