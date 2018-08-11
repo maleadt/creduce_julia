@@ -15,4 +15,5 @@ TEMP=$(pwd)
 JULIA_LOAD_PATH=$TEMP \
 JULIA_PKGDIR=$TEMP/.julia \
 JULIA_DEPOT_PATH=$TEMP/.julia \
-julia --depwarn=no -O0 -g0 -e 'using DataFrames'
+PATH=$DIR/julia/usr/bin:$PATH \
+julia --compiled-modules=no --depwarn=no -O0 main.jl
