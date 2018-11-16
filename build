@@ -1,7 +1,0 @@
-#!/bin/bash -uxe
-
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-make -C $DIR/julia -j$(nproc) \
-    LLVM_ASSERTIONS=1 \
-    FORCE_ASSERTIONS=1
