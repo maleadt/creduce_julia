@@ -1,6 +1,19 @@
-#!/bin/bash -uxe
+#!/usr/bin/env bash
+set -ue
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd $DIR
+cd "$DIR"
 
-nice -n 20 creduce --tidy --n $(nproc) --not-c ./run src/*.jl
+SOURCES=$(find src -type f -name "*.jl")
+
+# make sure inputs are uniquely named
+for path in $SOURCES; do
+    file=$(basename "$path")
+    count=$(find src -type f -name "$file" | wc -l)
+    if [[ "$count" -gt 1 ]]; then
+        echo "Source filenames are not unique: $file occurs multiple times" >&2
+        exit 1
+    fi
+done
+
+nice -n 20 creduce --tidy --n $(nproc) --not-c ./run $SOURCES

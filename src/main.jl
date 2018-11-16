@@ -1,7 +1,3 @@
-bar(x::SubArray) = x[] = 42
+using Foo
 
-@generated foo() = bar(whatever)
-
-macro unused() end
-
-foo()
+println("Never reached if it crashes")
