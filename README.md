@@ -67,7 +67,3 @@ options:
 LLVM_ASSERTIONS=1
 FORCE_ASSERTIONS=1
 ```
-
-For a greatly improved user experience, we would need something similar to `gcc
--E` that makes Julia spit out all processed sources for each (pre)compilation
-job, eg. with expanded `include`s ready to be fed to C-Reduce.
