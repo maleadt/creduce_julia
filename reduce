@@ -28,7 +28,7 @@ echo "Reducing the following sources:"
 for path in "${SOURCES[@]}"; do
     echo "- $path"
     echo $path >> src.lst
-    cp -ar "$path" "src/$i.jl"
+    ln -s "../$path" "src/$i.jl"
     (( i++ ))
 done
 

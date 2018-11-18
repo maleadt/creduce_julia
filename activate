@@ -5,6 +5,8 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # ensure the depot dir exists
 DEPOT="$DIR/depot"
 mkdir -p "$DEPOT/dev"
+mkdir -p "$DEPOT/packages"
+mkdir -p "$DEPOT/environments"
 
 if [[ "$(pwd)" == "$DIR" ]]; then
     # in-tree execution, not by creduce
