@@ -1,33 +1,9 @@
 #!/usr/bin/env bash
 set -ue
 
+# script to prepare the environment and execute the main.jl script
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-REPRO=$DIR/src
+source "$DIR/activate"
 
-if [[ "$(pwd)" == "$DIR" ]]; then
-    # in-tree execution
-    cd "$REPRO"
-    rm -rf .julia
-else
-    # out-of-tree execution by C-Reduce
-    #
-    # C-Reduce only copies the files that are to be reduced to this dir,
-    # and does not preserve the original directory structure.
-    # try to recover from that
-    mkdir reconstructed
-    cp -ar "$REPRO"/* reconstructed
-    for path in $(find . -maxdepth 1 -type f); do
-        path=$(readlink -m "$path")
-        file=$(basename "$path")
-        find reconstructed -type f -name "$file" -exec ln -sf $path {} \;
-    done
-    cd reconstructed
-fi
-
-TEMP=$(pwd)
-
-JULIA_LOAD_PATH=$TEMP \
-JULIA_PKGDIR=$TEMP/.julia \
-JULIA_DEPOT_PATH=$TEMP/.julia \
-PATH=$DIR/julia/usr/bin:$PATH \
 julia --compiled-modules=no -O0 main.jl |& grep "example error message"

@@ -1,2 +1,3 @@
-.julia
-*.orig
+depot/
+src/
+src.lst

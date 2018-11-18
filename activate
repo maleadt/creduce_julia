@@ -1,0 +1,30 @@
+# script to prepare the environment to load packages from the creduce depot
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# ensure the depot dir exists
+DEPOT="$DIR/depot"
+mkdir -p "$DEPOT/dev"
+
+if [[ "$(pwd)" == "$DIR" ]]; then
+    # in-tree execution, not by creduce
+    export JULIA_DEPOT_PATH=$DEPOT
+    export JULIA_PKG_DEVDIR=$DEPOT/dev
+else
+    # out-of-tree execution, by creduce
+
+    # start with the initial depot (only copying relevant files)
+    mkdir depot
+    cp -ar "$DEPOT/packages" "$DEPOT/environments" depot/
+
+    # link in the files created by creduce
+    i=1
+    IFS=$'\n'
+    for path in $(cat "$DIR/src.lst") ; do
+        ln -sf "$i.jl" "$path"
+        (( i++ ))
+    done
+
+    export JULIA_DEPOT_PATH="$DIR/depot"
+    export JULIA_PKG_DEVDIR="$DIR/depot/dev"
+fi
