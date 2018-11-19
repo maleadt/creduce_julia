@@ -2,11 +2,7 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# ensure the depot dir exists
 DEPOT="$DIR/depot"
-mkdir -p "$DEPOT/dev"
-mkdir -p "$DEPOT/packages"
-mkdir -p "$DEPOT/environments"
 
 if [[ "$(pwd)" == "$DIR" ]]; then
     # in-tree execution, not by creduce
@@ -16,8 +12,10 @@ else
     # out-of-tree execution, by creduce
 
     # start with the initial depot (only copying relevant files)
-    mkdir depot
-    cp -ar "$DEPOT/packages" "$DEPOT/environments" depot/
+    if [[ -d "$DEPOT" ]]; then
+        mkdir depot
+        cp -ar "$DEPOT/packages" "$DEPOT/environments" depot/
+    fi
 
     # link in the files created by creduce
     i=1
