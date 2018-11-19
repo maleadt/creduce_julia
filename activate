@@ -19,11 +19,10 @@ else
 
     # link in the files created by creduce
     i=1
-    IFS=$'\n'
-    for path in $(cat "$DIR/src.lst") ; do
+    while IFS= read -r path; do
         ln -sf "$i.jl" "$path"
         (( i++ ))
-    done
+    done < "$DIR/src.lst"
 
     export JULIA_DEPOT_PATH="$DIR/depot"
     export JULIA_PKG_DEVDIR="$DIR/depot/dev"

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -ue
-shopt -s globstar nullglob
 
 # script to prepare and start the testcase reduction process
 
@@ -18,7 +17,7 @@ rm -f src.lst
 # during execution, we'll use that file to recover the original file hierarchy.
 
 SOURCES=(main.jl)
-while IFS=  read -r -d $'\0'; do
+while IFS= read -r -d $'\0'; do
     SOURCES+=("$REPLY")
 done < <(find depot/packages -type f -name "*.jl" -print0)
 
@@ -27,7 +26,7 @@ mkdir src
 echo "Reducing the following sources:"
 for path in "${SOURCES[@]}"; do
     echo "- $path"
-    echo $path >> src.lst
+    echo "$path" >> src.lst
     ln -s "../$path" "src/$i.jl"
     (( i++ ))
 done
