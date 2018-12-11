@@ -1,5 +1,5 @@
-depot/registries
-depot/compiled
-depot/logs
-src/
-src.lst
+/depot/registries
+/depot/compiled
+/depot/logs
+/src/
+/src.lst
