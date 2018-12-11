@@ -1,3 +1,5 @@
-depot/
+depot/registries
+depot/compiled
+depot/logs
 src/
 src.lst
