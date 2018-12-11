@@ -4,8 +4,7 @@ set -ue
 # script to prepare the environment and execute the main.jl script
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR"
+source "$DIR"/activate
 
-source "activate"
 
 julia --compiled-modules=no -O0 main.jl |& grep "example error message"
