@@ -9,6 +9,10 @@ cd "$DIR"
 rm -rf src
 rm -f src.lst
 
+if [[ -d depot ]]; then
+    mkdir -p depot/{dev,packages,environments}
+fi
+
 # creduce works with flat files, and doesn't respect directories.
 #
 # to overcome this, we first discover which files to reduce,
@@ -19,7 +23,7 @@ rm -f src.lst
 SOURCES=(main.jl)
 while IFS= read -r -d $'\0'; do
     SOURCES+=("$REPLY")
-done < <(find depot/packages -type f -name "*.jl" -print0)
+done < <(find depot/dev depot/packages -type f -name "*.jl" -print0)
 
 i=1
 mkdir src

@@ -14,7 +14,7 @@ else
     # start with the initial depot (only copying relevant files)
     if [[ -d "$DEPOT" ]]; then
         mkdir depot
-        cp -ar "$DEPOT/packages" "$DEPOT/environments" depot/
+        cp -ar "$DEPOT"/{dev,packages,environments} depot/
     fi
 
     # link in the files created by creduce
