@@ -1,1 +1,2 @@
-println("example error message")
+using Phylo
+@assert parsenewick("((,),(,));") isa Phylo.BinaryTree
