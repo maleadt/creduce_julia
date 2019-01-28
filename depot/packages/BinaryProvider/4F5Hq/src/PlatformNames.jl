@@ -144,89 +144,22 @@ struct FreeBSD <: Platform
         return new(arch, libc, call_abi, compiler_abi)
     end
 end
-"""
-    platform_name(p::Platform)
-Get the "platform name" of the given platform.  E.g. returns "Linux" for a
-`Linux` object, or "Windows" for a `Windows` object.
-"""
-platform_name(p::Linux) = "Linux"
+""" """ platform_name(p::Linux) = "Linux"
 platform_name(p::MacOS) = "MacOS"
 platform_name(p::Windows) = "Windows"
 platform_name(p::FreeBSD) = "FreeBSD"
 platform_name(p::UnknownPlatform) = "UnknownPlatform"
-"""
-    arch(p::Platform)
-Get the architecture for the given `Platform` object as a `Symbol`.
-```jldoctest
-julia> arch(Linux(:aarch64))
-:aarch64
-julia> arch(MacOS())
-:x86_64
-```
-"""
-arch(p::Platform) = p.arch
+""" """ arch(p::Platform) = p.arch
 arch(u::UnknownPlatform) = :unknown
-"""
-    libc(p::Platform)
-Get the libc for the given `Platform` object as a `Symbol`.
-```jldoctest
-julia> libc(Linux(:aarch64))
-:glibc
-julia> libc(FreeBSD(:x86_64))
-:default_libc
-```
-"""
-libc(p::Platform) = p.libc
+""" """ libc(p::Platform) = p.libc
 libc(u::UnknownPlatform) = :unknown
-"""
-   call_abi(p::Platform)
-Get the calling ABI for the given `Platform` object as a `Symbol`.
-```jldoctest
-julia> call_abi(Linux(:x86_64))
-:blank_abi
-julia> call_abi(FreeBSD(:armv7l))
-:eabihf
-```
-"""
-call_abi(p::Platform) = p.call_abi
+""" """ call_abi(p::Platform) = p.call_abi
 call_abi(u::UnknownPlatform) = :unknown
-"""
-    compiler_abi(p::Platform)
-Get the compiler ABI object for the given `Platform`
-```jldoctest
-julia> compiler_abi(Linux(:x86_64))
-CompilerABI(:gcc_any, :cxx_any)
-julia> compiler_abi(Linux(:x86_64; compiler_abi=CompilerABI(:gcc7)))
-CompilerABI(:gcc7, :cxx_any)
-```
-"""
-compiler_abi(p::Platform) = p.compiler_abi
+""" """ compiler_abi(p::Platform) = p.compiler_abi
 compiler_abi(p::UnknownPlatform) = CompilerABI()
-"""
-    wordsize(platform)
-Get the word size for the given `Platform` object.
-```jldoctest
-julia> wordsize(Linux(:arm7vl))
-32
-julia> wordsize(MacOS())
-64
-```
-"""
-wordsize(p::Platform) = (arch(p) === :i686 || arch(p) === :armv7l) ? 32 : 64
+""" """ wordsize(p::Platform) = (arch(p) === :i686 || arch(p) === :armv7l) ? 32 : 64
 wordsize(u::UnknownPlatform) = 0
-"""
-    triplet(platform)
-Get the target triplet for the given `Platform` object as a `String`.
-```jldoctest
-julia> triplet(MacOS())
-"x86_64-apple-darwin14"
-julia> triplet(Windows(:i686))
-"i686-w64-mingw32"
-julia> triplet(Linux(:armv7l, :default_libc, :default_abi, CompilerABI(:gcc4))
-"arm-linux-gnueabihf-gcc4"
-```
-"""
-triplet(p::Platform) = string(
+""" """ triplet(p::Platform) = string(
     arch_str(p),
     vendor_str(p),
     libc_str(p),
@@ -264,12 +197,7 @@ Sys.isapple(p::Platform) = p isa MacOS
 Sys.islinux(p::Platform) = p isa Linux
 Sys.iswindows(p::Platform) = p isa Windows
 Sys.isbsd(p::Platform) = (p isa FreeBSD) || (p isa MacOS)
-"""
-    platform_key_abi(machine::AbstractString)
-Returns the platform key for the current platform, or any other though the
-the use of the `machine` parameter.
-"""
-function platform_key_abi(machine::AbstractString)
+""" """ function platform_key_abi(machine::AbstractString)
     arch_mapping = Dict(
         :x86_64 => "(x86_|amd)64",
         :i686 => "i\\d86",
@@ -356,28 +284,13 @@ function show(io::IO, p::Platform)
     end
     write(io, ")")
 end
-"""
-    platform_dlext(platform::Platform = platform_key_abi())
-Return the dynamic library extension for the given platform, defaulting to the
-currently running platform.  E.g. returns "so" for a Linux-based platform,
-"dll" for a Windows-based platform, etc...
-"""
-platform_dlext(::Linux) = "so"
+""" """ platform_dlext(::Linux) = "so"
 platform_dlext(::FreeBSD) = "so"
 platform_dlext(::MacOS) = "dylib"
 platform_dlext(::Windows) = "dll"
 platform_dlext(::UnknownPlatform) = "unknown"
 platform_dlext() = platform_dlext(platform_key_abi())
-"""
-    parse_dl_name_version(path::AbstractString, platform::Platform)
-Given a path to a dynamic library, parse out what information we can
-from the filename.  E.g. given something like "lib/libfoo.so.3.2",
-this function returns `"libfoo", v"3.2"`.  If the path name is not a
-valid dynamic library, this method throws an error.  If no soversion
-can be extracted from the filename, as in "libbar.so" this method
-returns `"libbar", nothing`.
-"""
-function parse_dl_name_version(path::AbstractString, platform::Platform)
+""" """ function parse_dl_name_version(path::AbstractString, platform::Platform)
     dlext_regexes = Dict(
         "so" => r"^(.*?).so((?:\.[\d]+)*)$",
         "dylib" => r"^(.*?)((?:\.[\d]+)*).dylib$",
@@ -397,13 +310,7 @@ function parse_dl_name_version(path::AbstractString, platform::Platform)
     end
     return name, version
 end
-"""
-    valid_dl_path(path::AbstractString, platform::Platform)
-Return `true` if the given `path` ends in a valid dynamic library filename.
-E.g. returns `true` for a path like `"usr/lib/libfoo.so.3.5"`, but returns
-`false` for a path like `"libbar.so.f.a"`.
-"""
-function valid_dl_path(path::AbstractString, platform::Platform)
+""" """ function valid_dl_path(path::AbstractString, platform::Platform)
     try
         parse_dl_name_version(path, platform)
         return true
@@ -411,12 +318,7 @@ function valid_dl_path(path::AbstractString, platform::Platform)
         return false
     end
 end
-"""
-    detect_libgfortran_abi(libgfortran_name::AbstractString)
-Examines the given libgfortran SONAME to see what version of GCC corresponds
-to the given libgfortran version.
-"""
-function detect_libgfortran_abi(libgfortran_name::AbstractString, platform::Platform = platform_key_abi(Sys.MACHINE))
+""" """ function detect_libgfortran_abi(libgfortran_name::AbstractString, platform::Platform = platform_key_abi(Sys.MACHINE))
     name, version = parse_dl_name_version(libgfortran_name, platform)
     if version === nothing
         @warn("Unable to determine libgfortran version from '$(libgfortran_name)'; returning :gcc_any")
@@ -433,26 +335,14 @@ function detect_libgfortran_abi(libgfortran_name::AbstractString, platform::Plat
     end
     return libgfortran_to_gcc[version.major]
 end
-"""
-    detect_libgfortran_abi()
-If no parameter is given, introspects the current Julia process to determine
-the version of GCC this Julia was built with.
-"""
-function detect_libgfortran_abi()
+""" """ function detect_libgfortran_abi()
     libgfortran_paths = filter(x -> occursin("libgfortran", x), dllist())
     if isempty(libgfortran_paths)
         return :gcc_any
     end
     return detect_libgfortran_abi(first(libgfortran_paths))
 end
-"""
-    detect_libstdcxx_abi()
-Introspects the currently running Julia process to find out what version of libstdc++
-it is linked to (if any), as a proxy for GCC version compatibility.  E.g. if we are
-linked against libstdc++.so.19, binary dependencies built by GCC 8.1.0 will have linker
-errors.  This method returns the maximum GCC abi that we can support.
-"""
-function detect_libstdcxx_abi()
+""" """ function detect_libstdcxx_abi()
     libstdcxx_paths = filter(x -> occursin("libstdc++", x), dllist())
     if isempty(libstdcxx_paths)
         return :gcc_any
@@ -476,14 +366,7 @@ function detect_libstdcxx_abi()
         return :gcc8
     end
 end
-"""
-    detect_cxx11_string_abi()
-Introspects the currently running Julia process to see what version of the C++11 string
-ABI it was compiled with.  (In reality, it checks for symbols within LLVM, but that is
-close enough for our purposes, as you can't mix linkages between Julia and LLVM if they
-are not compiled in the same way).
-"""
-function detect_cxx11_string_abi()
+""" """ function detect_cxx11_string_abi()
     function open_libllvm()
         for lib_name in ("libLLVM", "LLVM", "libLLVMSupport")
             hdl = dlopen_e(lib_name)
@@ -544,16 +427,7 @@ function platforms_match(a::Platform, b::Platform)
     end
     return rigid_constraints(a, b) && flexible_constraints(a, b)
 end
-"""
-    choose_download(download_info::Dict, platform::Platform = platform_key_abi())
-Given a `download_info` dictionary mapping platforms to some value, choose
-the value whose key best matches `platform`, returning `nothing` if no matches
-can be found.
-Platform attributes such as architecture, libc, calling ABI, etc... must all
-match exactly, however attributes such as compiler ABI can have wildcards
-within them such as `:gcc_any` which matches any version of GCC.
-"""
-function choose_download(download_info::Dict, platform::Platform = platform_key_abi())
+""" """ function choose_download(download_info::Dict, platform::Platform = platform_key_abi())
     ps = collect(filter(p -> platforms_match(p, platform), keys(download_info)))
     if isempty(ps)
         return nothing

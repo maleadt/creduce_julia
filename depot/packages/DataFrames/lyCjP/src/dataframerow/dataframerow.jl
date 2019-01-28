@@ -1,29 +1,4 @@
-"""
-    DataFrameRow{<:AbstractDataFrame,<:AbstractIndex}
-A view of one row of an `AbstractDataFrame`.
-A `DataFrameRow` is constructed with `view` or `getindex` when one row and a
-selection of columns are requested, or when iterating the result
-of the call to the [`eachrow`](@ref) function.
-A `DataFrameRow` supports the iteration interface and can therefore be passed to
-functions that expect a collection as an argument.
-Indexing is one-dimensional like specifying a column of a `DataFrame`.
-You can also access the data in a `DataFrameRow` using the `getproperty` and
-`setproperty!` functions and convert it to a `NamedTuple` using the `copy` function.
-It is possible to create a `DataFrameRow` with duplicate columns.
-All such columns will have a reference to the same entry in the parent `DataFrame`.
-If the selection of columns in a parent data frame is passed as `:` (a colon)
-then `DataFrameRow` will always have all columns from the parent,
-even if they are added or removed after its creation.
-```julia
-df = DataFrame(a = repeat([1, 2, 3, 4], outer=[2]),
-               b = repeat([2, 1], outer=[4]),
-               c = randn(8))
-sdf1 = view(df, 2, :)
-sdf2 = @view df[end, [:a]]
-sdf3 = eachrow(df)[1]
-```
-"""
-struct DataFrameRow{D<:AbstractDataFrame,S<:AbstractIndex}
+""" """ struct DataFrameRow{D<:AbstractDataFrame,S<:AbstractIndex}
     df::D
     colindex::S
     row::Int
@@ -108,11 +83,7 @@ Base.Vector(dfr::DataFrameRow) = convert(Vector, dfr)
 Base.Vector{T}(dfr::DataFrameRow) where T = convert(Vector{T}, dfr)
 Base.keys(r::DataFrameRow) = names(r)
 Base.values(r::DataFrameRow) = ntuple(col -> parent(r)[row(r), parentcols(index(r), col)], length(r))
-"""
-    copy(dfr::DataFrameRow)
-Convert a `DataFrameRow` to a `NamedTuple`.
-"""
-Base.copy(r::DataFrameRow) = NamedTuple{Tuple(keys(r))}(values(r))
+""" """ Base.copy(r::DataFrameRow) = NamedTuple{Tuple(keys(r))}(values(r))
 Base.@propagate_inbounds hash_colel(v::AbstractArray, i, h::UInt = zero(UInt)) = hash(v[i], h)
 Base.@propagate_inbounds function hash_colel(v::AbstractCategoricalArray, i, h::UInt = zero(UInt))
     ref = v.refs[i]

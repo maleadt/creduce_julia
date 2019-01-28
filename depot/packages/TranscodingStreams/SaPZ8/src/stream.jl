@@ -29,51 +29,7 @@ function checksharedbuf(sharedbuf::Bool, stream::IO)
         throw(ArgumentError("invalid stream type for sharedbuf=true"))
     end
 end
-"""
-    TranscodingStream(codec::Codec, stream::IO;
-                      bufsize::Integer=$(DEFAULT_BUFFER_SIZE),
-                      stop_on_end::Bool=false,
-                      sharedbuf::Bool=(stream isa TranscodingStream))
-Create a transcoding stream with `codec` and `stream`.
-A `TranscodingStream` object wraps an input/output stream object `stream`, and
-transcodes the byte stream using `codec`. It is a subtype of `IO` and supports
-most of the I/O functions in the standard library.
-See the docs (<https://bicycle1885.github.io/TranscodingStreams.jl/stable/>) for
-available codecs, examples, and more details of the type.
-Arguments
----------
-- `codec`:
-    The data transcoder. The transcoding stream does the initialization and
-    finalization of `codec`. Therefore, a codec object is not reusable once it
-    is passed to a transcoding stream.
-- `stream`:
-    The wrapped stream. It must be opened before passed to the constructor.
-- `bufsize`:
-    The initial buffer size (the default size is 16KiB). The buffer may be
-    extended whenever `codec` requests so.
-- `stop_on_end`:
-    The flag to stop transcoding on `:end` return code from `codec`.  The
-    transcoded data are readable even after stopping transcoding process.  With
-    this flag on, `stream` is not closed when the wrapper stream is closed with
-    `close`.  Note that some extra data may be read from `stream` into an
-    internal buffer, and thus `stream` must be a `TranscodingStream` object and
-    `sharedbuf` must be `true` to reuse `stream`.
-- `sharedbuf`:
-    The flag to share buffers between adjacent transcoding streams.  The value
-    must be `false` if `stream` is not a `TranscodingStream` object.
-Examples
---------
-```julia
-julia> using TranscodingStreams
-julia> using CodecZlib
-julia> file = open(Pkg.dir("TranscodingStreams", "test", "abra.gzip"));
-julia> stream = TranscodingStream(GzipDecompressor(), file)
-TranscodingStreams.TranscodingStream{CodecZlib.GzipDecompressor,IOStream}(<mode=idle>)
-julia> readstring(stream)
-"abracadabra"
-```
-"""
-function TranscodingStream(codec::Codec, stream::IO;
+""" """ function TranscodingStream(codec::Codec, stream::IO;
                            bufsize::Integer=DEFAULT_BUFFER_SIZE,
                            stop_on_end::Bool=false,
                            sharedbuf::Bool=(stream isa TranscodingStream))
@@ -287,22 +243,10 @@ function Base.readavailable(stream::TranscodingStream)
     unsafe_read(stream, pointer(data), n)
     return data
 end
-"""
-    unread(stream::TranscodingStream, data::Vector{UInt8})
-Insert `data` to the current reading position of `stream`.
-The next `read(stream, sizeof(data))` call will read data that are just
-inserted.
-"""
-function unread(stream::TranscodingStream, data::ByteData)
+""" """ function unread(stream::TranscodingStream, data::ByteData)
     unsafe_unread(stream, pointer(data), sizeof(data))
 end
-"""
-    unsafe_unread(stream::TranscodingStream, data::Ptr, nbytes::Integer)
-Insert `nbytes` pointed by `data` to the current reading position of `stream`.
-The data are copied into the internal buffer and hence `data` can be safely used
-after the operation without interfering the stream.
-"""
-function unsafe_unread(stream::TranscodingStream, data::Ptr, nbytes::Integer)
+""" """ function unsafe_unread(stream::TranscodingStream, data::Ptr, nbytes::Integer)
     if nbytes < 0
         throw(ArgumentError("negative nbytes"))
     end
@@ -342,15 +286,7 @@ function Base.unsafe_write(stream::TranscodingStream, input::Ptr{UInt8}, nbytes:
     return Int(p - input)
 end
 struct EndToken end
-"""
-A special token indicating the end of data.
-`TOKEN_END` may be written to a transcoding stream like `write(stream,
-TOKEN_END)`, which will terminate the current transcoding block.
-!!! note
-    Call `flush(stream)` after `write(stream, TOKEN_END)` to make sure that all
-    data are written to the underlying stream.
-"""
-const TOKEN_END = EndToken()
+""" """ const TOKEN_END = EndToken()
 function Base.write(stream::TranscodingStream, ::EndToken)
     changemode!(stream, :write)
     flushbufferall(stream)
@@ -365,18 +301,7 @@ function Base.flush(stream::TranscodingStream)
     end
     flush(stream.stream)
 end
-"""
-I/O statistics.
-Its object has four fields:
-- `in`: the number of bytes supplied into the stream
-- `out`: the number of bytes consumed out of the stream
-- `transcoded_in`: the number of bytes transcoded from the input buffer
-- `transcoded_out`: the number of bytes transcoded to the output buffer
-Note that, since the transcoding stream does buffering, `in` is `transcoded_in +
-{size of buffered data}` and `out` is `transcoded_out - {size of buffered
-data}`.
-"""
-struct Stats
+""" """ struct Stats
     in::Int64
     out::Int64
     transcoded_in::Int64
@@ -389,11 +314,7 @@ function Base.show(io::IO, stats::Stats)
     println(io, "  transcoded_in: ", stats.transcoded_in)
       print(io, "  transcoded_out: ", stats.transcoded_out)
 end
-"""
-    stats(stream::TranscodingStream)
-Create an I/O statistics object of `stream`.
-"""
-function stats(stream::TranscodingStream)
+""" """ function stats(stream::TranscodingStream)
     state = stream.state
     mode = state.mode
     @checkmode (:idle, :read, :write)

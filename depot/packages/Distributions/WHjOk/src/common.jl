@@ -7,58 +7,24 @@ struct Discrete   <: ValueSupport end
 struct Continuous <: ValueSupport end
 Base.eltype(::Type{Discrete}) = Int
 Base.eltype(::Type{Continuous}) = Float64
-"""
-    Sampleable{F<:VariateForm,S<:ValueSupport}
-`Sampleable` is any type able to produce random values.
-Parametrized by a `VariateForm` defining the dimension of samples
-and a `ValueSupport` defining the domain of possibly sampled values.
-Any `Sampleable` implements the `Base.rand` method.
-"""
-abstract type Sampleable{F<:VariateForm,S<:ValueSupport} end
-"""
-    length(s::Sampleable)
-The length of each sample. Always returns `1` when `s` is univariate.
-"""
-Base.length(s::Sampleable) = prod(size(s))
+""" """ abstract type Sampleable{F<:VariateForm,S<:ValueSupport} end
+""" """ Base.length(s::Sampleable) = prod(size(s))
 Base.length(::Sampleable{Univariate}) = 1
 Base.length(s::Sampleable{Multivariate}) = throw(MethodError(length, (s,)))
-"""
-    size(s::Sampleable)
-The size (i.e. shape) of each sample. Always returns `()` when `s` is univariate, and
-`(length(s),)` when `s` is multivariate.
-"""
-Base.size(s::Sampleable)
+""" """ Base.size(s::Sampleable)
 Base.size(s::Sampleable{Univariate}) = ()
 Base.size(s::Sampleable{Multivariate}) = (length(s),)
-"""
-    eltype(s::Sampleable)
-The default element type of a sample. This is the type of elements of the samples generated
-by the `rand` method. However, one can provide an array of different element types to
-store the samples using `rand!`.
-"""
-Base.eltype(s::Sampleable{F,S}) where {F,S} = eltype(S)
+""" """ Base.eltype(s::Sampleable{F,S}) where {F,S} = eltype(S)
 Base.eltype(s::Sampleable{F,Discrete}) where {F} = Int
 Base.eltype(s::Sampleable{F,Continuous}) where {F} = Float64
-"""
-    nsamples(s::Sampleable)
-The number of values contained in one sample of `s`. Multiple samples are often organized
-into an array, depending on the variate form.
-"""
-nsamples(t::Type{Sampleable}, x::Any)
+""" """ nsamples(t::Type{Sampleable}, x::Any)
 nsamples(::Type{D}, x::Number) where {D<:Sampleable{Univariate}} = 1
 nsamples(::Type{D}, x::AbstractArray) where {D<:Sampleable{Univariate}} = length(x)
 nsamples(::Type{D}, x::AbstractVector) where {D<:Sampleable{Multivariate}} = 1
 nsamples(::Type{D}, x::AbstractMatrix) where {D<:Sampleable{Multivariate}} = size(x, 2)
 nsamples(::Type{D}, x::Number) where {D<:Sampleable{Matrixvariate}} = 1
 nsamples(::Type{D}, x::Array{Matrix{T}}) where {D<:Sampleable{Matrixvariate},T<:Number} = length(x)
-"""
-    Distribution{F<:VariateForm,S<:ValueSupport} <: Sampleable{F,S}
-`Distribution` is a `Sampleable` generating random values from a probability
-distribution. Distributions define a Probability Distribution Function (PDF)
-to implement with `pdf` and a Cumulated Distribution Function (CDF) to implement
-with `cdf`.
-"""
-abstract type Distribution{F<:VariateForm,S<:ValueSupport} <: Sampleable{F,S} end
+""" """ abstract type Distribution{F<:VariateForm,S<:ValueSupport} <: Sampleable{F,S} end
 const UnivariateDistribution{S<:ValueSupport}   = Distribution{Univariate,S}
 const MultivariateDistribution{S<:ValueSupport} = Distribution{Multivariate,S}
 const MatrixDistribution{S<:ValueSupport}       = Distribution{Matrixvariate,S}
@@ -80,13 +46,5 @@ abstract type SufficientStats end
 abstract type IncompleteDistribution end
 const DistributionType{D<:Distribution} = Type{D}
 const IncompleteFormulation = Union{DistributionType,IncompleteDistribution}
-"""
-    succprob(d::DiscreteUnivariateDistribution)
-Get the probability of success.
-"""
-succprob(d::DiscreteUnivariateDistribution)
-"""
-    failprob(d::DiscreteUnivariateDistribution)
-Get the probability of failure.
-"""
-failprob(d::DiscreteUnivariateDistribution)
+""" """ succprob(d::DiscreteUnivariateDistribution)
+""" """ failprob(d::DiscreteUnivariateDistribution)

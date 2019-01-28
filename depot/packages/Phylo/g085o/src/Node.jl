@@ -1,9 +1,5 @@
 using Compat
-"""
-    BinaryNode{T}(AbstractVector{T}, AbstractVector{T}) <: AbstractNode
-A node of strict binary phylogenetic tree
-"""
-mutable struct BinaryNode{T} <: AbstractNode
+""" """ mutable struct BinaryNode{T} <: AbstractNode
     inbound::Union{T, Nothing}
     outbounds::Tuple{Union{T, Nothing}, Union{T, Nothing}}
     function BinaryNode{T}(inbound::AbstractVector{T} = T[],
@@ -75,11 +71,7 @@ function _deleteoutbound!(node::BinaryNode{T}, outbound::T) where T
          node.outbounds = (node.outbounds[1], nothing) :
          error("BinaryNode does not have outbound connection to branch $outbound"))
 end
-"""
-    Node{T}(AbstractVector{T}, AbstractVector{T}) <: AbstractNode
-A node of potentially polytomous phylogenetic tree
-"""
-mutable struct Node{T} <: AbstractNode
+""" """ mutable struct Node{T} <: AbstractNode
     inbound::Union{T, Nothing}
     outbounds::Vector{T}
     function Node{T}(inbound::AbstractVector{T} = T[],

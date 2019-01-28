@@ -1,24 +1,5 @@
 include("queryutils.jl")
-"""
-Represents a column used in a Data.Query for querying a Data.Source
-Passed as the `actions` argument as an array of NamedTuples to `Data.query(source, actions, sink)`
-Options include:
-  * `col::Integer`: reference to a source column index
-  * `name`: the name the column should have in the resulting query, if none is provided, it will be inferred from the `header` and `col` arguments or auto-generated
-  * `T`: the type of the column, if not provided, it will be inferred from the `types` and `col` arguments
-  * `hide::Bool`: whether the column should be shown in the query resultset; `hide=false` is useful for columns used only for filtering and not needed in the final resultset
-  * `filter::Function`: a function to apply to this column to filter out rows where the result is `false`
-  * `having::Function`: a function to apply to an aggregated column to filter out rows after applying an aggregation function
-  * `compute::Function`: a function to generate a new column, requires a tuple of column indexes `computeargs` that correspond to the function inputs
-  * `computeaggregate::Function`: a function to generate a new aggregated column, requires a tuple of column indexes `computeargs` that correspond to the function inputs
-  * `computeargs::NTuple{N, Int}`: tuple of column indexes to indicate which columns should be used as inputs to a `compute` or `computeaggregate` function
-  * `sort::Bool`: whether this column should be sorted; default `false`
-  * `sortindex::Intger`: by default, a resultset will be sorted by sorted columns in the order they appear in the resultset; `sortindex` allows overriding to indicate a custom sorting order
-  * `sortasc::Bool`: if a column is `sort=true`, whether it should be sorted in ascending order; default `true`
-  * `group::Bool`: whether this column should be grouped, causing other columns to be aggregated
-  * `aggregate::Function`: a function to reduce a columns values based on grouping keys, should be of the form `f(A::AbstractArray) => scalar`
-"""
-struct QueryColumn{code, T, sourceindex, sinkindex, name, sort, args}
+""" """ struct QueryColumn{code, T, sourceindex, sinkindex, name, sort, args}
     filter::(Function|Nothing)
     having::(Function|Nothing)
     compute::(Function|Nothing)
@@ -148,28 +129,7 @@ function Query(types::Vector{Any}, header::Vector{String}, actions::Vector{Any},
     columns = Tuple(columns)
     return Query{querycode, typeof(columns), Tuple(aggcompute_extras), limit, offset}(columns)
 end
-"""
-    Data.query(source, actions, sink=Data.Table, args...; append::Bool=false, limit=nothing, offset=nothing)
-Query a valid DataStreams `Data.Source` according to query `actions` and stream the result into `sink`.
-`limit` restricts the total number of rows streamed out, while `offset` will skip initial N rows.
-`append=true` will cause the `sink` to _accumulate_ the additional query resultset rows instead of replacing any existing rows in the sink.
-`actions` is an array of NamedTuples, w/ each NamedTuple including one or more of the following query arguments:
-  * `col::Integer`: reference to a source column index
-  * `name`: the name the column should have in the resulting query, if none is provided, it will be inferred from the `header` and `col` arguments or auto-generated
-  * `T`: the type of the column, if not provided, it will be inferred from the `types` and `col` arguments
-  * `hide::Bool`: whether the column should be shown in the query resultset; `hide=false` is useful for columns used only for filtering and not needed in the final resultset
-  * `filter::Function`: a function to apply to this column to filter out rows where the result is `false`
-  * `having::Function`: a function to apply to an aggregated column to filter out rows after applying an aggregation function
-  * `compute::Function`: a function to generate a new column, requires a tuple of column indexes `computeargs` that correspond to the function inputs
-  * `computeaggregate::Function`: a function to generate a new aggregated column, requires a tuple of column indexes `computeargs` that correspond to the function inputs
-  * `computeargs::NTuple{N, Int}`: tuple of column indexes to indicate which columns should be used as inputs to a `compute` or `computeaggregate` function
-  * `sort::Bool`: whether this column should be sorted; default `false`
-  * `sortindex::Intger`: by default, a resultset will be sorted by sorted columns in the order they appear in the resultset; `sortindex` allows overriding to indicate a custom sorting order
-  * `sortasc::Bool`: if a column is `sort=true`, whether it should be sorted in ascending order; default `true`
-  * `group::Bool`: whether this column should be grouped, causing other columns to be aggregated
-  * `aggregate::Function`: a function to reduce a columns values based on grouping keys, should be of the form `f(A::AbstractArray) => scalar`
-"""
-function query end
+""" """ function query end
 function query(source, actions=[], sink::Type{Si}=Table, args...; append::Bool=false, limit::(Integer|Nothing)=nothing, offset::(Integer|Nothing)=nothing, kwargs...) where {Si}
     sch = Data.schema(source)
     types = Data.anytypes(sch, weakrefstrings(Si))

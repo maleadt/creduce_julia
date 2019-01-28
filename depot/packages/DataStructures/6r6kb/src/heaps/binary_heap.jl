@@ -98,9 +98,5 @@ function push!(h::BinaryHeap, v)
     _heap_bubble_up!(h.comparer, valtree, length(valtree))
     h
 end
-"""
-    top(h::BinaryHeap)
-Returns the element at the top of the heap `h`.
-"""
-@inline top(h::BinaryHeap) = h.valtree[1]
+""" """ @inline top(h::BinaryHeap) = h.valtree[1]
 pop!(h::BinaryHeap{T}) where {T} = _binary_heap_pop!(h.comparer, h.valtree)

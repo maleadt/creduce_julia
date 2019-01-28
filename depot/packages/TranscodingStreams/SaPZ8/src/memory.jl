@@ -1,8 +1,4 @@
-"""
-A contiguous memory.
-This type works like a `Vector` method.
-"""
-struct Memory
+""" """ struct Memory
     ptr::Ptr{UInt8}
     size::UInt
 end

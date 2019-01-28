@@ -11,11 +11,7 @@ import Phylo.API: _addnode!, _deletenode!, _addbranch!, _deletebranch!, _validat
 import Phylo.API: _hasrootheight, _getrootheight, _setrootheight!, _clearrootheight!
 import Phylo.API: _getnode, _getbranch, _setnode!, _setbranch!, _nleaves
 _branchtype(::AbstractBranchTree{NL, BL}) where {NL, BL} = Branch{NL}
-"""
-    BinaryTree
-Binary phylogenetic tree object with known leaves and per node data
-"""
-mutable struct BinaryTree{LI, ND} <: AbstractBranchTree{String, Int}
+""" """ mutable struct BinaryTree{LI, ND} <: AbstractBranchTree{String, Int}
     nodes::OrderedDict{String, BinaryNode{Int}}
     branches::Dict{Int, Branch{String}}
     leafinfos::LI
@@ -153,16 +149,8 @@ end
 function _clearrootheight!(tree::BinaryTree)
     tree.rootheight = NaN
 end
-"""
-    NamedBinaryTree
-Binary phylogenetic tree object with known leaves
-"""
-const NamedTree = NamedBinaryTree = BinaryTree{DataFrame, Dict{String, Any}}
-"""
-    PolytomousTree
-Phylogenetic tree object with polytomous branching, and known leaves and per node data
-"""
-mutable struct PolytomousTree{LI, ND} <: AbstractBranchTree{String, Int}
+""" """ const NamedTree = NamedBinaryTree = BinaryTree{DataFrame, Dict{String, Any}}
+""" """ mutable struct PolytomousTree{LI, ND} <: AbstractBranchTree{String, Int}
     nodes::OrderedDict{String, Node{Int}}
     branches::Dict{Int, Branch{String}}
     leafinfos::LI
@@ -296,11 +284,7 @@ end
 function _clearrootheight!(tree::PolytomousTree)
     tree.rootheight = NaN
 end
-"""
-    NamedPolytomousTree
-Polytomous phylogenetic tree object with known leaves
-"""
-const NamedPolytomousTree = PolytomousTree{DataFrame, Dict{String, Any}}
+""" """ const NamedPolytomousTree = PolytomousTree{DataFrame, Dict{String, Any}}
 _getnodenames(tree::AbstractTree) = collect(keys(_getnodes(tree)))
 _getbranchnames(tree::AbstractTree) = collect(keys(_getbranches(tree)))
 _hasnode(tree::AbstractTree, label) = haskey(_getnodes(tree), label)
@@ -318,11 +302,7 @@ function _deletebranch!(tree::AbstractBranchTree, label)
     delete!(_getbranches(tree), label)
     return label
 end
-"""
-    clearrootheight(::AbstractTree)
-Clears the tree's root height record.
-"""
-function clearrootheight!(tree::AbstractTree)
+""" """ function clearrootheight!(tree::AbstractTree)
     _clearrootheight!(tree)
 end
 function _getnode(tree::AbstractTree, label)

@@ -1,10 +1,6 @@
 using Base.MPFR: ROUNDING_MODE, big_ln2
 const ComplexOrReal{T} = Union{T,Complex{T}}
-"""
-    digamma(x)
-Compute the digamma function of `x` (the logarithmic derivative of `gamma(x)`).
-"""
-function digamma(z::ComplexOrReal{Float64})
+""" """ function digamma(z::ComplexOrReal{Float64})
     x = real(z)
     if x <= 0 # reflection formula
         ψ = -π * cot(π*z)
@@ -31,11 +27,7 @@ function digamma(x::BigFloat)
     ccall((:mpfr_digamma, :libmpfr), Int32, (Ref{BigFloat}, Ref{BigFloat}, Int32), z, x, ROUNDING_MODE[])
     return z
 end
-"""
-    trigamma(x)
-Compute the trigamma function of `x` (the logarithmic second derivative of `gamma(x)`).
-"""
-function trigamma(z::ComplexOrReal{Float64})
+""" """ function trigamma(z::ComplexOrReal{Float64})
     x = real(z)
     if x <= 0 # reflection formula
         return (π * csc(π*z))^2 - trigamma(1 - z)
@@ -134,16 +126,7 @@ function pow_oftype(x::Complex, y::Real, p::Real)
         return oftype(x, Complex(yp, -zero(yp))) # get correct sign of zero!
     end
 end
-"""
-    zeta(s, z)
-Generalized zeta function ``\\zeta(s, z)``, defined
-by the sum ``\\sum_{k=0}^\\infty ((k+z)^2)^{-s/2}``, where
-any term with ``k+z=0`` is excluded.  For ``\\Re z > 0``,
-this definition is equivalent to the Hurwitz zeta function
-``\\sum_{k=0}^\\infty (k+z)^{-s}``.   For ``z=1``, it yields
-the Riemann zeta function ``\\zeta(s)``.
-"""
-function zeta(s::ComplexOrReal{Float64}, z::ComplexOrReal{Float64})
+""" """ function zeta(s::ComplexOrReal{Float64}, z::ComplexOrReal{Float64})
     ζ = zero(promote_type(typeof(s), typeof(z)))
     (z == 1 || z == 0) && return oftype(ζ, zeta(s))
     s == 2 && return oftype(ζ, trigamma(z))
@@ -217,12 +200,7 @@ function zeta(s::ComplexOrReal{Float64}, z::ComplexOrReal{Float64})
     ζ += w*t * @pg_horner(t,m,0.08333333333333333,-0.008333333333333333,0.003968253968253968,-0.004166666666666667,0.007575757575757576,-0.021092796092796094,0.08333333333333333,-0.4432598039215686,3.0539543302701198)
     return ζ
 end
-"""
-    polygamma(m, x)
-Compute the polygamma function of order `m` of argument `x` (the `(m+1)`th derivative of the
-logarithm of `gamma(x)`)
-"""
-function polygamma(m::Integer, z::ComplexOrReal{Float64})
+""" """ function polygamma(m::Integer, z::ComplexOrReal{Float64})
     m == 0 && return digamma(z)
     m == 1 && return trigamma(z)
     real(m) < 0 && throw(DomainError(m, "`real(m)` must be nonnegative, since the definition in this case is ambiguous."))
@@ -233,11 +211,7 @@ function polygamma(m::Integer, z::ComplexOrReal{Float64})
         signflip(m, zeta(s,z) * (-gamma(s)))
     end
 end
-"""
-    invdigamma(x)
-Compute the inverse [`digamma`](@ref) function of `x`.
-"""
-function invdigamma(y::Float64)
+""" """ function invdigamma(y::Float64)
     if y >= -2.22
         x_old = exp(y) + 0.5
         x_new = x_old
@@ -255,11 +229,7 @@ function invdigamma(y::Float64)
     end
     return x_new
 end
-"""
-    zeta(s)
-Riemann zeta function ``\\zeta(s)``.
-"""
-function zeta(s::ComplexOrReal{Float64})
+""" """ function zeta(s::ComplexOrReal{Float64})
     s == 1 && return NaN + zero(s) * imag(s)
     if !isfinite(s) # annoying NaN and Inf cases
         isnan(s) && return imag(s) == 0 ? s : s*s
@@ -308,11 +278,7 @@ function zeta(x::BigFloat)
     ccall((:mpfr_zeta, :libmpfr), Int32, (Ref{BigFloat}, Ref{BigFloat}, Int32), z, x, ROUNDING_MODE[])
     return z
 end
-"""
-    eta(x)
-Dirichlet eta function ``\\eta(s) = \\sum^\\infty_{n=1}(-1)^{n-1}/n^{s}``.
-"""
-function eta(z::ComplexOrReal{Float64})
+""" """ function eta(z::ComplexOrReal{Float64})
     δz = 1 - z
     if abs(real(δz)) + abs(imag(δz)) < 7e-3 # Taylor expand around z==1
         return 0.6931471805599453094172321214581765 *
@@ -372,11 +338,7 @@ end
 export gamma, lgamma, beta, lbeta, lfactorial
 gamma(x::Float64) = nan_dom_err(ccall((:tgamma,libm),  Float64, (Float64,), x), x)
 gamma(x::Float32) = nan_dom_err(ccall((:tgammaf,libm),  Float32, (Float32,), x), x)
-"""
-    gamma(x)
-Compute the gamma function of `x`.
-"""
-gamma(x::Real) = gamma(float(x))
+""" """ gamma(x::Real) = gamma(float(x))
 function lgamma_r(x::Float64)
     signp = Ref{Int32}()
     y = ccall((:lgamma_r,libm),  Float64, (Float64, Ptr{Int32}), x, signp)
@@ -389,27 +351,10 @@ function lgamma_r(x::Float32)
 end
 lgamma_r(x::Real) = lgamma_r(float(x))
 lgamma_r(x::Number) = lgamma(x), 1 # lgamma does not take abs for non-real x
-"""
-    lgamma_r(x)
-Return L,s such that `gamma(x) = s * exp(L)`
-"""
-lgamma_r
-"""
-    lfactorial(x)
-Compute the logarithmic factorial of a nonnegative integer `x`.
-Equivalent to [`lgamma`](@ref) of `x + 1`, but `lgamma` extends this function
-to non-integer `x`.
-"""
-lfactorial(x::Integer) = x < 0 ? throw(DomainError(x, "`x` must be non-negative.")) : lgamma(x + oneunit(x))
+""" """ lgamma_r
+""" """ lfactorial(x::Integer) = x < 0 ? throw(DomainError(x, "`x` must be non-negative.")) : lgamma(x + oneunit(x))
 Base.@deprecate lfact lfactorial
-"""
-    lgamma(x)
-Compute the logarithm of the absolute value of [`gamma`](@ref) for
-[`Real`](@ref) `x`, while for [`Complex`](@ref) `x` compute the
-principal branch cut of the logarithm of `gamma(x)` (defined for negative `real(x)`
-by analytic continuation from positive `real(x)`).
-"""
-function lgamma end
+""" """ function lgamma end
 @inline function lgamma_asymptotic(z::Complex{Float64})
     zinv = inv(z)
     t = zinv*zinv
@@ -482,22 +427,13 @@ end
 lgamma(z::Complex{T}) where {T<:Union{Integer,Rational}} = lgamma(float(z))
 lgamma(z::Complex{T}) where {T<:Union{Float32,Float16}} = Complex{T}(lgamma(Complex{Float64}(z)))
 gamma(z::Complex) = exp(lgamma(z))
-"""
-    beta(x, y)
-Euler integral of the first kind ``\\operatorname{B}(x,y) = \\Gamma(x)\\Gamma(y)/\\Gamma(x+y)``.
-"""
-function beta(x::Number, w::Number)
+""" """ function beta(x::Number, w::Number)
     yx, sx = lgamma_r(x)
     yw, sw = lgamma_r(w)
     yxw, sxw = lgamma_r(x+w)
     return exp(yx + yw - yxw) * (sx*sw*sxw)
 end
-"""
-    lbeta(x, y)
-Natural logarithm of the absolute value of the [`beta`](@ref)
-function ``\\log(|\\operatorname{B}(x,y)|)``.
-"""
-lbeta(x::Number, w::Number) = lgamma(x)+lgamma(w)-lgamma(x+w)
+""" """ lbeta(x::Number, w::Number) = lgamma(x)+lgamma(w)-lgamma(x+w)
 function gamma(x::BigFloat)
     isnan(x) && return x
     z = BigFloat()
@@ -534,12 +470,7 @@ end
 end
 factorial(x) = Base.factorial(x) # to make SpecialFunctions.factorial work unconditionally
 factorial(x::Number) = gamma(x + 1) # fallback for x not Integer
-"""
-    lbinomial(n, k) = log(abs(binomial(n, k)))
-Accurate natural logarithm of the absolute value of the [`binomial`](@ref)
-coefficient `binomial(n, k)` for large `n` and `k` near `n/2`.
-"""
-function lbinomial(n::T, k::T) where {T<:Integer}
+""" """ function lbinomial(n::T, k::T) where {T<:Integer}
     S = float(T)
     (k < 0) && return typemin(S)
     if n < 0

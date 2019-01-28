@@ -55,11 +55,7 @@ function rows(x::T) where {T}
     end
 end
 haslength(L) = L isa Union{Base.HasShape, Base.HasLength}
-"""
-    Tables.allocatecolumn(::Type{T}, len) => returns a column type (usually AbstractVector) w/ size to hold `len` elements
-    Custom column types can override with an appropriate "scalar" element type that should dispatch to their column allocator.
-"""
-allocatecolumn(T, len) = Vector{T}(undef, len)
+""" """ allocatecolumn(T, len) = Vector{T}(undef, len)
 @inline function allocatecolumns(::Schema{names, types}, len) where {names, types}
     if @generated
         vals = Tuple(:(allocatecolumn($(fieldtype(types, i)), len)) for i = 1:fieldcount(types))

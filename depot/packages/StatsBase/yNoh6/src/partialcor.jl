@@ -1,9 +1,4 @@
-"""
-    partialcor(x, y, Z)
-Compute the partial correlation of the vectors `x` and `y` given `Z`, which can be
-a vector or matrix.
-"""
-function partialcor(x::AbstractVector, y::AbstractVector, Z::AbstractVecOrMat)
+""" """ function partialcor(x::AbstractVector, y::AbstractVector, Z::AbstractVecOrMat)
     length(x) == length(y) == size(Z, 1) ||
         throw(DimensionMismatch("Inputs must have the same number of observations"))
     length(x) > 0 || throw(ArgumentError("Inputs must be non-empty"))

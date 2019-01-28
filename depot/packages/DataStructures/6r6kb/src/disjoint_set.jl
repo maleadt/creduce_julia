@@ -21,11 +21,7 @@ function _find_root_impl!(parents::Array{Int}, x::Integer)
     p
 end
 find_root(s::IntDisjointSets, x::Integer) = find_root_impl!(s.parents, x)
-"""
-    in_same_set(s::IntDisjointSets, x::Integer, y::Integer)
-Returns `true` if `x` and `y` belong to the same subset in `s` and `false` otherwise.
-"""
-in_same_set(s::IntDisjointSets, x::Integer, y::Integer) = find_root(s, x) == find_root(s, y)
+""" """ in_same_set(s::IntDisjointSets, x::Integer, y::Integer) = find_root(s, x) == find_root(s, y)
 function union!(s::IntDisjointSets, x::Integer, y::Integer)
     parents = s.parents
     xroot = find_root_impl!(parents, x)
@@ -73,11 +69,7 @@ mutable struct DisjointSets{T}
 end
 length(s::DisjointSets) = length(s.internal)
 num_groups(s::DisjointSets) = num_groups(s.internal)
-"""
-    find_root{T}(s::DisjointSets{T}, x::T)
-Finds the root element of the subset in `s` which has the element `x` as a member.
-"""
-find_root(s::DisjointSets{T}, x::T) where {T} = s.revmap[find_root(s.internal, s.intmap[x])]
+""" """ find_root(s::DisjointSets{T}, x::T) where {T} = s.revmap[find_root(s.internal, s.intmap[x])]
 in_same_set(s::DisjointSets{T}, x::T, y::T) where {T} = in_same_set(s.internal, s.intmap[x], s.intmap[y])
 union!(s::DisjointSets{T}, x::T, y::T) where {T} = s.revmap[union!(s.internal, s.intmap[x], s.intmap[y])]
 root_union!(s::DisjointSets{T}, x::T, y::T) where {T} = s.revmap[root_union!(s.internal, s.intmap[x], s.intmap[y])]

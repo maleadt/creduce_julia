@@ -1,24 +1,7 @@
-"""
-    trim(x; prop=0.0, count=0)
-Return a copy of `x` with either `count` or proportion `prop` of the highest
-and lowest elements removed.  To compute the trimmed mean of `x` use
-`mean(trim(x))`; to compute the variance use `trimvar(x)` (see [`trimvar`](@ref)).
-```julia
-julia> trim([1,2,3,4,5], prop=0.2)
-3-element Array{Int64,1}:
- 2
- 3
- 4
-```
-"""
-function trim(x::AbstractVector; prop::Real=0.0, count::Integer=0)
+""" """ function trim(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     trim!(copy(x); prop=prop, count=count)
 end
-"""
-    trim!(x; prop=0.0, count=0)
-A variant of [`trim`](@ref) that modifies `x` in place.
-"""
-function trim!(x::AbstractVector; prop::Real=0.0, count::Integer=0)
+""" """ function trim!(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     n = length(x)
     n > 0 || throw(ArgumentError("x can not be empty."))
     if count == 0
@@ -34,30 +17,10 @@ function trim!(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     deleteat!(x, 1:count)
     return x
 end
-"""
-    winsor(x; prop=0.0, count=0)
-Return a copy of `x` with either `count` or proportion `prop` of the lowest
-elements of `x` replaced with the next-lowest, and an equal number of the
-highest elements replaced with the previous-highest.  To compute the Winsorized
-mean of `x` use `mean(winsor(x))`.
-```julia
-julia> winsor([1,2,3,4,5], prop=0.2)
-5-element Array{Int64,1}:
- 2
- 2
- 3
- 4
- 4
-```
-"""
-function winsor(x::AbstractVector; prop::Real=0.0, count::Integer=0)
+""" """ function winsor(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     winsor!(copy(x); prop=prop, count=count)
 end
-"""
-    winsor!(x; prop=0.0, count=0)
-A variant of [`winsor`](@ref) that modifies vector `x` in place.
-"""
-function winsor!(x::AbstractVector; prop::Real=0.0, count::Integer=0)
+""" """ function winsor!(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     n = length(x)
     n > 0 || throw(ArgumentError("x can not be empty."))
     if count == 0
@@ -73,12 +36,7 @@ function winsor!(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     x[n-count+1:end] .= x[n-count]
     return x
 end
-"""
-    trimvar(x; prop=0.0, count=0)
-Compute the variance of the trimmed mean of `x`. This function uses
-the Winsorized variance, as described in Wilcox (2010).
-"""
-function trimvar(x::AbstractVector; prop::Real=0.0, count::Integer=0)
+""" """ function trimvar(x::AbstractVector; prop::Real=0.0, count::Integer=0)
     n = length(x)
     n > 0 || throw(ArgumentError("x can not be empty."))
     if count == 0

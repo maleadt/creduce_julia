@@ -1,7 +1,4 @@
-"""
-    Biweight(μ, σ)
-"""
-struct Biweight{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct Biweight{T<:Real} <: ContinuousUnivariateDistribution
     μ::T
     σ::T
     Biweight{T}(μ::T, σ::T) where {T} = (@check_args(Biweight, σ > zero(σ)); new{T}(μ, σ))

@@ -58,12 +58,7 @@ end
     end
 end
 Base.get(x::DataValue) = isna(x) ? throw(DataValueException()) : x.value
-"""
-    getindex(x::DataValue)
-Attempt to access the value of `x`. Throw a `DataValueException` if the
-value is not present. Usually, this is written as `x[]`.
-"""
-Base.getindex(x::DataValue) = isna(x) ? throw(DataValueException()) : x.value
+""" """ Base.getindex(x::DataValue) = isna(x) ? throw(DataValueException()) : x.value
 Base.get(x::DataValue{Union{}}) = throw(DataValueException())
 Base.get(x::DataValue{Union{}}, y) = y
 unsafe_get(x::DataValue) = x.value

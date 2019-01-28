@@ -1,83 +1,7 @@
-"""
-    AbstractDataFrame
-An abstract type for which all concrete types expose an interface
-for working with tabular data.
-**Common methods**
-An AbstractDataFrame is a two-dimensional table with Symbols for
-column names. An AbstractDataFrame is also similar to an Associative
-type in that it allows indexing by a key (the columns).
-The following are normally implemented for AbstractDataFrames:
-* [`describe`](@ref) : summarize columns
-* [`dump`](@ref) : show structure
-* `hcat` : horizontal concatenation
-* `vcat` : vertical concatenation
-* [`repeat`](@ref) : repeat rows
-* `names` : columns names
-* [`names!`](@ref) : set columns names
-* [`rename!`](@ref) : rename columns names based on keyword arguments
-* [`eltypes`](@ref) : `eltype` of each column
-* `length` : number of columns
-* `size` : (nrows, ncols)
-* [`first`](@ref) : first `n` rows
-* [`last`](@ref) : last `n` rows
-* `convert` : convert to an array
-* [`completecases`](@ref) : boolean vector of complete cases (rows with no missings)
-* [`dropmissing`](@ref) : remove rows with missing values
-* [`dropmissing!`](@ref) : remove rows with missing values in-place
-* [`nonunique`](@ref) : indexes of duplicate rows
-* [`unique!`](@ref) : remove duplicate rows
-* `similar` : a DataFrame with similar columns as `d`
-* `filter` : remove rows
-* `filter!` : remove rows in-place
-**Indexing**
-Table columns are accessed (`getindex`) by a single index that can be
-a symbol identifier, an integer, or a vector of each. If a single
-column is selected, just the column object is returned. If multiple
-columns are selected, some AbstractDataFrame is returned.
-```julia
-d[:colA]
-d[3]
-d[[:colA, :colB]]
-d[[1:3; 5]]
-```
-Rows and columns can be indexed like a `Matrix` with the added feature
-of indexing columns by name.
-```julia
-d[1:3, :colA]
-d[3,3]
-d[3,:]
-d[3,[:colA, :colB]]
-d[:, [:colA, :colB]]
-d[[1:3; 5], :]
-```
-`setindex` works similarly.
-"""
-abstract type AbstractDataFrame end
+""" """ abstract type AbstractDataFrame end
 Base.names(df::AbstractDataFrame) = names(index(df))
 _names(df::AbstractDataFrame) = _names(index(df))
-"""
-Set column names
-```julia
-names!(df::AbstractDataFrame, vals)
-```
-**Arguments**
-* `df` : the AbstractDataFrame
-* `vals` : column names, normally a Vector{Symbol} the same length as
-  the number of columns in `df`
-* `makeunique` : if `false` (the default), an error will be raised
-  if duplicate names are found; if `true`, duplicate names will be suffixed
-  with `_i` (`i` starting at 1 for the first duplicate).
-**Result**
-* `::AbstractDataFrame` : the updated result
-**Examples**
-```julia
-df = DataFrame(i = 1:10, x = rand(10), y = rand(["a", "b", "c"], 10))
-names!(df, [:a, :b, :c])
-names!(df, [:a, :b, :a])  # throws ArgumentError
-names!(df, [:a, :b, :a], makeunique=true)  # renames second :a to :a_1
-```
-"""
-function names!(df::AbstractDataFrame, vals; makeunique::Bool=false)
+""" """ function names!(df::AbstractDataFrame, vals; makeunique::Bool=false)
     names!(index(df), vals, makeunique=makeunique)
     return df
 end
@@ -91,58 +15,7 @@ function rename!(f::Function, df::AbstractDataFrame)
 end
 rename(df::AbstractDataFrame, args...) = rename!(copy(df), args...)
 rename(f::Function, df::AbstractDataFrame) = rename!(f, copy(df))
-"""
-Rename columns
-```julia
-rename!(df::AbstractDataFrame, (from => to)::Pair{Symbol, Symbol}...)
-rename!(df::AbstractDataFrame, d::AbstractDict{Symbol,Symbol})
-rename!(df::AbstractDataFrame, d::AbstractArray{Pair{Symbol,Symbol}})
-rename!(f::Function, df::AbstractDataFrame)
-rename(df::AbstractDataFrame, (from => to)::Pair{Symbol, Symbol}...)
-rename(df::AbstractDataFrame, d::AbstractDict{Symbol,Symbol})
-rename(df::AbstractDataFrame, d::AbstractArray{Pair{Symbol,Symbol}})
-rename(f::Function, df::AbstractDataFrame)
-```
-**Arguments**
-* `df` : the AbstractDataFrame
-* `d` : an Associative type or an AbstractArray of pairs that maps
-  the original names to new names
-* `f` : a function which for each column takes the old name (a Symbol)
-  and returns the new name (a Symbol)
-**Result**
-* `::AbstractDataFrame` : the updated result
-New names are processed sequentially. A new name must not already exist in the `DataFrame`
-at the moment an attempt to rename a column is performed.
-**Examples**
-```julia
-df = DataFrame(i = 1:10, x = rand(10), y = rand(["a", "b", "c"], 10))
-rename(df, :i => :A, :x => :X)
-rename(df, [:i => :A, :x => :X])
-rename(df, Dict(:i => :A, :x => :X))
-rename(x -> Symbol(uppercase(string(x))), df)
-rename(df) do x
-    Symbol(uppercase(string(x)))
-end
-rename!(df, Dict(:i =>: A, :x => :X))
-```
-"""
-(rename!, rename)
-"""
-Return element types of columns
-```julia
-eltypes(df::AbstractDataFrame)
-```
-**Arguments**
-* `df` : the AbstractDataFrame
-**Result**
-* `::Vector{Type}` : the element type of each column
-**Examples**
-```julia
-df = DataFrame(i = 1:10, x = rand(10), y = rand(["a", "b", "c"], 10))
-eltypes(df)
-```
-"""
-eltypes(df::AbstractDataFrame) = eltype.(columns(df))
+""" """ eltypes(df::AbstractDataFrame) = eltype.(columns(df))
 Base.size(df::AbstractDataFrame) = (nrow(df), ncol(df))
 function Base.size(df::AbstractDataFrame, i::Integer)
     if i == 1
@@ -161,13 +34,7 @@ Base.ndims(::Type{<:AbstractDataFrame}) = 2
 Base.getproperty(df::AbstractDataFrame, col_ind::Symbol) = getindex(df, col_ind)
 Base.setproperty!(df::AbstractDataFrame, col_ind::Symbol, x) = setindex!(df, x, col_ind)
 Base.propertynames(df::AbstractDataFrame, private::Bool=false) = names(df)
-"""
-    similar(df::DataFrame[, rows::Integer])
-Create a new `DataFrame` with the same column names and column element types
-as `df`. An optional second argument can be provided to request a number of rows
-that is different than the number of rows present in `df`.
-"""
-function Base.similar(df::AbstractDataFrame, rows::Integer = size(df, 1))
+""" """ function Base.similar(df::AbstractDataFrame, rows::Integer = size(df, 1))
     rows < 0 && throw(ArgumentError("the number of rows must be positive"))
     DataFrame(AbstractVector[similar(x, rows) for x in columns(df)], copy(index(df)))
 end
@@ -193,26 +60,10 @@ end
 Base.haskey(df::AbstractDataFrame, key::Any) = haskey(index(df), key)
 Base.get(df::AbstractDataFrame, key::Any, default::Any) = haskey(df, key) ? df[key] : default
 Base.isempty(df::AbstractDataFrame) = size(df, 1) == 0 || size(df, 2) == 0
-"""
-    first(df::AbstractDataFrame)
-Get the first row of `df` as a `DataFrameRow`.
-"""
-Base.first(df::AbstractDataFrame) = df[1, :]
-"""
-    first(df::AbstractDataFrame, n::Integer)
-Get a data frame with the `n` first rows of `df`.
-"""
-Base.first(df::AbstractDataFrame, n::Integer) = df[1:min(n,nrow(df)), :]
-"""
-    last(df::AbstractDataFrame)
-Get the last row of `df` as a `DataFrameRow`.
-"""
-Base.last(df::AbstractDataFrame) = df[nrow(df), :]
-"""
-    last(df::AbstractDataFrame, n::Integer)
-Get a data frame with the `n` last rows of `df`.
-"""
-Base.last(df::AbstractDataFrame, n::Integer) = df[max(1,nrow(df)-n+1):nrow(df), :]
+""" """ Base.first(df::AbstractDataFrame) = df[1, :]
+""" """ Base.first(df::AbstractDataFrame, n::Integer) = df[1:min(n,nrow(df)), :]
+""" """ Base.last(df::AbstractDataFrame) = df[nrow(df), :]
+""" """ Base.last(df::AbstractDataFrame, n::Integer) = df[max(1,nrow(df)-n+1):nrow(df), :]
 function Base.dump(io::IOContext, df::AbstractDataFrame, n::Int, indent)
     println(io, typeof(df), "  $(nrow(df)) observations of $(ncol(df)) variables")
     if n > 0
@@ -221,40 +72,7 @@ function Base.dump(io::IOContext, df::AbstractDataFrame, n::Int, indent)
         end
     end
 end
-"""
-Report descriptive statistics for a data frame
-```julia
-describe(df::AbstractDataFrame; stats = [:mean, :min, :median, :max, :nmissing, :nunique, :eltype])
-```
-**Arguments**
-* `df` : the AbstractDataFrame
-* `stats::Union{Symbol,AbstractVector{Symbol}}` : the summary statistics to report. If
-  a vector, allowed fields are `:mean`, `:std`, `:min`, `:q25`, `:median`,
-  `:q75`, `:max`, `:eltype`, `:nunique`, `:first`, `:last`, and `:nmissing`. If set to
-  `:all`, all summary statistics are reported.
-**Result**
-* A `DataFrame` where each row represents a variable and each column a summary statistic.
-**Details**
-For `Real` columns, compute the mean, standard deviation, minimum, first quantile, median,
-third quantile, and maximum. If a column does not derive from `Real`, `describe` will
-attempt to calculate all statistics, using `nothing` as a fall-back in the case of an error.
-When `stats` contains `:nunique`, `describe` will report the
-number of unique values in a column. If a column's base type derives from `Real`,
-`:nunique` will return `nothing`s.
-Missing values are filtered in the calculation of all statistics, however the column
-`:nmissing` will report the number of missing values of that variable.
-If the column does not allow missing values, `nothing` is returned.
-Consequently, `nmissing = 0` indicates that the column allows
-missing values, but does not currently contain any.
-**Examples**
-```julia
-df = DataFrame(i = 1:10, x = rand(10), y = rand(["a", "b", "c"], 10))
-describe(df)
-describe(df, stats = :all)
-describe(df, stats = [:min, :max])
-```
-"""
-function StatsBase.describe(df::AbstractDataFrame; stats::Union{Symbol,AbstractVector{Symbol}} =
+""" """ function StatsBase.describe(df::AbstractDataFrame; stats::Union{Symbol,AbstractVector{Symbol}} =
                             [:mean, :min, :median, :max, :nunique, :nmissing, :eltype])
     allowed_fields = [:mean, :std, :min, :q25, :median, :q75,
                       :max, :nunique, :nmissing, :first, :last, :eltype]
@@ -343,52 +161,7 @@ function _nonmissing!(res, col::CategoricalArray{>: Missing})
     end
     return nothing
 end
-"""
-    completecases(df::AbstractDataFrame)
-    completecases(df::AbstractDataFrame, cols::AbstractVector)
-    completecases(df::AbstractDataFrame, cols::Union{Integer, Symbol})
-Return a Boolean vector with `true` entries indicating rows without missing values
-(complete cases) in data frame `df`. If `cols` is provided, only missing values in
-the corresponding columns are considered.
-See also: [`dropmissing`](@ref) and [`dropmissing!`](@ref).
-Use `findall(completecases(df))` to get the indices of the rows.
-```julia
-julia> df = DataFrame(i = 1:5,
-                      x = [missing, 4, missing, 2, 1],
-                      y = [missing, missing, "c", "d", "e"])
-5×3 DataFrame
-│ Row │ i     │ x       │ y       │
-│     │ Int64 │ Int64⍰  │ String⍰ │
-├─────┼───────┼─────────┼─────────┤
-│ 1   │ 1     │ missing │ missing │
-│ 2   │ 2     │ 4       │ missing │
-│ 3   │ 3     │ missing │ c       │
-│ 4   │ 4     │ 2       │ d       │
-│ 5   │ 5     │ 1       │ e       │
-julia> completecases(df)
-5-element BitArray{1}:
- false
- false
- false
-  true
-  true
-julia> completecases(df, :x)
-5-element BitArray{1}:
- false
-  true
- false
-  true
-  true
-julia> completecases(df, [:x, :y])
-5-element BitArray{1}:
- false
- false
- false
-  true
-  true
-```
-"""
-function completecases(df::AbstractDataFrame)
+""" """ function completecases(df::AbstractDataFrame)
     res = trues(size(df, 1))
     for i in 1:size(df, 2)
         _nonmissing!(res, df[i])
@@ -402,59 +175,7 @@ function completecases(df::AbstractDataFrame, col::Union{Integer, Symbol})
 end
 completecases(df::AbstractDataFrame, cols::AbstractVector) =
     completecases(df[cols])
-"""
-    dropmissing(df::AbstractDataFrame; disallowmissing::Bool=false)
-    dropmissing(df::AbstractDataFrame, cols::AbstractVector; disallowmissing::Bool=false)
-    dropmissing(df::AbstractDataFrame, cols::Union{Integer, Symbol}; disallowmissing::Bool=false)
-Return a copy of data frame `df` excluding rows with missing values.
-If `cols` is provided, only missing values in the corresponding columns are considered.
-In the future `disallowmissing` will be `true` by default.
-See also: [`completecases`](@ref) and [`dropmissing!`](@ref).
-```julia
-julia> df = DataFrame(i = 1:5,
-                      x = [missing, 4, missing, 2, 1],
-                      y = [missing, missing, "c", "d", "e"])
-5×3 DataFrame
-│ Row │ i     │ x       │ y       │
-│     │ Int64 │ Int64⍰  │ String⍰ │
-├─────┼───────┼─────────┼─────────┤
-│ 1   │ 1     │ missing │ missing │
-│ 2   │ 2     │ 4       │ missing │
-│ 3   │ 3     │ missing │ c       │
-│ 4   │ 4     │ 2       │ d       │
-│ 5   │ 5     │ 1       │ e       │
-julia> dropmissing(df)
-2×3 DataFrame
-│ Row │ i     │ x      │ y       │
-│     │ Int64 │ Int64⍰ │ String⍰ │
-├─────┼───────┼────────┼─────────┤
-│ 1   │ 4     │ 2      │ d       │
-│ 2   │ 5     │ 1      │ e       │
-julia> dropmissing(df, disallowmissing=true)
-2×3 DataFrame
-│ Row │ i     │ x     │ y      │
-│     │ Int64 │ Int64 │ String │
-├─────┼───────┼───────┼────────┤
-│ 1   │ 4     │ 2     │ d      │
-│ 2   │ 5     │ 1     │ e      │
-julia> dropmissing(df, :x)
-3×3 DataFrame
-│ Row │ i     │ x      │ y       │
-│     │ Int64 │ Int64⍰ │ String⍰ │
-├─────┼───────┼────────┼─────────┤
-│ 1   │ 2     │ 4      │ missing │
-│ 2   │ 4     │ 2      │ d       │
-│ 3   │ 5     │ 1      │ e       │
-julia> dropmissing(df, [:x, :y])
-2×3 DataFrame
-│ Row │ i     │ x      │ y       │
-│     │ Int64 │ Int64⍰ │ String⍰ │
-├─────┼───────┼────────┼─────────┤
-│ 1   │ 4     │ 2      │ d       │
-│ 2   │ 5     │ 1      │ e       │
-```
-"""
-function dropmissing(df::AbstractDataFrame,
+""" """ function dropmissing(df::AbstractDataFrame,
                      cols::Union{Integer, Symbol, AbstractVector}=1:size(df, 2);
                      disallowmissing::Bool=false)
     newdf = df[completecases(df, cols), :]
@@ -466,66 +187,7 @@ function dropmissing(df::AbstractDataFrame,
     end
     newdf
 end
-"""
-    dropmissing!(df::AbstractDataFrame; disallowmissing::Bool=false)
-    dropmissing!(df::AbstractDataFrame, cols::AbstractVector; disallowmissing::Bool=false)
-    dropmissing!(df::AbstractDataFrame, cols::Union{Integer, Symbol}; disallowmissing::Bool=false)
-Remove rows with missing values from data frame `df` and return it.
-If `cols` is provided, only missing values in the corresponding columns are considered.
-In the future `disallowmissing` will be `true` by default.
-See also: [`dropmissing`](@ref) and [`completecases`](@ref).
-```jldoctest
-julia> df = DataFrame(i = 1:5,
-                      x = [missing, 4, missing, 2, 1],
-                      y = [missing, missing, "c", "d", "e"])
-5×3 DataFrame
-│ Row │ i     │ x       │ y       │
-│     │ Int64 │ Int64⍰  │ String⍰ │
-├─────┼───────┼─────────┼─────────┤
-│ 1   │ 1     │ missing │ missing │
-│ 2   │ 2     │ 4       │ missing │
-│ 3   │ 3     │ missing │ c       │
-│ 4   │ 4     │ 2       │ d       │
-│ 5   │ 5     │ 1       │ e       │
-julia> df1 = copy(df);
-julia> dropmissing!(df1);
-julia> df1
-2×3 DataFrame
-│ Row │ i     │ x      │ y       │
-│     │ Int64 │ Int64⍰ │ String⍰ │
-├─────┼───────┼────────┼─────────┤
-│ 1   │ 4     │ 2      │ d       │
-│ 2   │ 5     │ 1      │ e       │
-julia> dropmissing!(df1, disallowmissing=true);
- julia> df1
-2×3 DataFrame
-│ Row │ i     │ x     │ y      │
-│     │ Int64 │ Int64 │ String │
-├─────┼───────┼───────┼────────┤
-│ 1   │ 4     │ 2     │ d      │
-│ 2   │ 5     │ 1     │ e      │
-julia> df2 = copy(df);
-julia> dropmissing!(df2, :x);
-julia> df2
-3×3 DataFrame
-│ Row │ i     │ x      │ y       │
-│     │ Int64 │ Int64⍰ │ String⍰ │
-├─────┼───────┼────────┼─────────┤
-│ 1   │ 2     │ 4      │ missing │
-│ 2   │ 4     │ 2      │ d       │
-│ 3   │ 5     │ 1      │ e       │
-julia> df3 = copy(df);
-julia> dropmissing!(df3, [:x, :y]);
-julia> df3
-2×3 DataFrame
-│ Row │ i     │ x      │ y       │
-│     │ Int64 │ Int64⍰ │ String⍰ │
-├─────┼───────┼────────┼─────────┤
-│ 1   │ 4     │ 2      │ d       │
-│ 2   │ 5     │ 1      │ e       │
-```
-"""
-function dropmissing!(df::AbstractDataFrame,
+""" """ function dropmissing!(df::AbstractDataFrame,
                       cols::Union{Integer, Symbol, AbstractVector}=1:size(df, 2);
                       disallowmissing::Bool=false)
     deleterows!(df, (!).(completecases(df, cols)))
@@ -537,55 +199,8 @@ function dropmissing!(df::AbstractDataFrame,
     end
     df
 end
-"""
-    filter(function, df::AbstractDataFrame)
-Return a copy of data frame `df` containing only rows for which `function`
-returns `true`. The function is passed a `DataFrameRow` as its only argument.
-```
-julia> df = DataFrame(x = [3, 1, 2, 1], y = ["b", "c", "a", "b"])
-4×2 DataFrame
-│ Row │ x     │ y      │
-│     │ Int64 │ String │
-├─────┼───────┼────────┤
-│ 1   │ 3     │ b      │
-│ 2   │ 1     │ c      │
-│ 3   │ 2     │ a      │
-│ 4   │ 1     │ b      │
-julia> filter(row -> row[:x] > 1, df)
-2×2 DataFrame
-│ Row │ x     │ y      │
-│     │ Int64 │ String │
-├─────┼───────┼────────┤
-│ 1   │ 3     │ b      │
-│ 2   │ 2     │ a      │
-```
-"""
-Base.filter(f, df::AbstractDataFrame) = df[collect(f(r)::Bool for r in eachrow(df)), :]
-"""
-    filter!(function, df::AbstractDataFrame)
-Remove rows from data frame `df` for which `function` returns `false`.
-The function is passed a `DataFrameRow` as its only argument.
-```
-julia> df = DataFrame(x = [3, 1, 2, 1], y = ["b", "c", "a", "b"])
-4×2 DataFrame
-│ Row │ x     │ y      │
-│     │ Int64 │ String │
-├─────┼───────┼────────┤
-│ 1   │ 3     │ b      │
-│ 2   │ 1     │ c      │
-│ 3   │ 2     │ a      │
-│ 4   │ 1     │ b      │
-julia> filter!(row -> row[:x] > 1, df);
-julia> df
-2×2 DataFrame
-│ Row │ x     │ y      │
-│     │ Int64 │ String │
-├─────┼───────┼────────┤
-│ 1   │ 3     │ b      │
-│ 2   │ 2     │ a      │
-```
-"""
-Base.filter!(f, df::AbstractDataFrame) =
+""" """ Base.filter(f, df::AbstractDataFrame) = df[collect(f(r)::Bool for r in eachrow(df)), :]
+""" """ Base.filter!(f, df::AbstractDataFrame) =
     deleterows!(df, findall(collect(!f(r)::Bool for r in eachrow(df))))
 function Base.convert(::Type{Matrix}, df::AbstractDataFrame)
     T = reduce(promote_type, eltypes(df))
@@ -612,28 +227,7 @@ function Base.convert(::Type{Matrix{T}}, df::AbstractDataFrame) where T
 end
 Base.Matrix(df::AbstractDataFrame) = Base.convert(Matrix, df)
 Base.Matrix{T}(df::AbstractDataFrame) where {T} = Base.convert(Matrix{T}, df)
-"""
-Indexes of duplicate rows (a row that is a duplicate of a prior row)
-```julia
-nonunique(df::AbstractDataFrame)
-nonunique(df::AbstractDataFrame, cols)
-```
-**Arguments**
-* `df` : the AbstractDataFrame
-* `cols` : a column indicator (Symbol, Int, Vector{Symbol}, etc.) specifying the column(s) to compare
-**Result**
-* `::Vector{Bool}` : indicates whether the row is a duplicate of some
-  prior row
-See also [`unique`](@ref) and [`unique!`](@ref).
-**Examples**
-```julia
-df = DataFrame(i = 1:10, x = rand(10), y = rand(["a", "b", "c"], 10))
-df = vcat(df, df)
-nonunique(df)
-nonunique(df, 1)
-```
-"""
-function nonunique(df::AbstractDataFrame)
+""" """ function nonunique(df::AbstractDataFrame)
     gslots = row_group_slots(ntuple(i -> df[i], ncol(df)), Val(true))[3]
     res = fill(true, nrow(df))
     @inbounds for g_row in gslots
@@ -653,33 +247,6 @@ Base.unique(df::AbstractDataFrame, cols::AbstractVector) =
     df[(!).(nonunique(df, cols)), :]
 Base.unique(df::AbstractDataFrame, cols::Union{Integer, Symbol, Colon}) =
     df[(!).(nonunique(df, cols)), :]
-"""
-Delete duplicate rows
-```julia
-unique(df::AbstractDataFrame)
-unique(df::AbstractDataFrame, cols)
-unique!(df::AbstractDataFrame)
-unique!(df::AbstractDataFrame, cols)
-```
-**Arguments**
-* `df` : the AbstractDataFrame
-* `cols` :  column indicator (Symbol, Int, Vector{Symbol}, etc.)
-specifying the column(s) to compare.
-**Result**
-* `::AbstractDataFrame` : the updated version of `df` with unique rows.
-When `cols` is specified, the return DataFrame contains complete rows,
-retaining in each case the first instance for which `df[cols]` is unique.
-See also [`nonunique`](@ref).
-**Examples**
-```julia
-df = DataFrame(i = 1:10, x = rand(10), y = rand(["a", "b", "c"], 10))
-df = vcat(df, df)
-unique(df)   # doesn't modify df
-unique(df, 1)
-unique!(df)  # modifies df
-```
-"""
-(unique, unique!)
 function without(df::AbstractDataFrame, icols::Vector{<:Integer})
     newcols = setdiff(1:ncol(df), icols)
     df[newcols]
@@ -697,29 +264,7 @@ Base.hcat(df::AbstractDataFrame, x, y...; makeunique::Bool=false) =
 Base.hcat(df1::AbstractDataFrame, df2::AbstractDataFrame, dfn::AbstractDataFrame...;
           makeunique::Bool=false) =
     hcat!(hcat(df1, df2, makeunique=makeunique), dfn..., makeunique=makeunique)
-"""
-    vcat(dfs::AbstractDataFrame...)
-Vertically concatenate `AbstractDataFrames`.
-Column names in all passed data frames must be the same, but they can have
-different order. In such cases the order of names in the first passed
-`DataFrame` is used.
-```jldoctest
-julia> df1 = DataFrame(A=1:3, B=1:3);
-julia> df2 = DataFrame(A=4:6, B=4:6);
-julia> vcat(df1, df2)
-6×2 DataFrame
-│ Row │ A     │ B     │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 1     │ 1     │
-│ 2   │ 2     │ 2     │
-│ 3   │ 3     │ 3     │
-│ 4   │ 4     │ 4     │
-│ 5   │ 5     │ 5     │
-│ 6   │ 6     │ 6     │
-```
-"""
-Base.vcat(df::AbstractDataFrame) = df
+""" """ Base.vcat(df::AbstractDataFrame) = df
 Base.vcat(dfs::AbstractDataFrame...) = _vcat(collect(dfs))
 function _vcat(dfs::AbstractVector{<:AbstractDataFrame})
     isempty(dfs) && return DataFrame()
@@ -756,64 +301,9 @@ function _vcat(dfs::AbstractVector{<:AbstractDataFrame})
     end
     return DataFrame(cols, header)
 end
-"""
-    repeat(df::AbstractDataFrame; inner::Integer = 1, outer::Integer = 1)
-Construct a data frame by repeating rows in `df`. `inner` specifies how many
-times each row is repeated, and `outer` specifies how many times the full set
-of rows is repeated.
-```jldoctest
-julia> df = DataFrame(a = 1:2, b = 3:4)
-2×2 DataFrame
-│ Row │ a     │ b     │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 1     │ 3     │
-│ 2   │ 2     │ 4     │
-julia> repeat(df, inner = 2, outer = 3)
-12×2 DataFrame
-│ Row │ a     │ b     │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 1     │ 3     │
-│ 2   │ 1     │ 3     │
-│ 3   │ 2     │ 4     │
-│ 4   │ 2     │ 4     │
-│ 5   │ 1     │ 3     │
-│ 6   │ 1     │ 3     │
-│ 7   │ 2     │ 4     │
-│ 8   │ 2     │ 4     │
-│ 9   │ 1     │ 3     │
-│ 10  │ 1     │ 3     │
-│ 11  │ 2     │ 4     │
-│ 12  │ 2     │ 4     │
-```
-"""
-Base.repeat(df::AbstractDataFrame; inner::Integer = 1, outer::Integer = 1) =
+""" """ Base.repeat(df::AbstractDataFrame; inner::Integer = 1, outer::Integer = 1) =
     mapcols(x -> repeat(x, inner = inner, outer = outer), df)
-"""
-    repeat(df::AbstractDataFrame, count::Integer)
-Construct a data frame by repeating each row in `df` the number of times
-specified by `count`.
-```jldoctest
-julia> df = DataFrame(a = 1:2, b = 3:4)
-2×2 DataFrame
-│ Row │ a     │ b     │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 1     │ 3     │
-│ 2   │ 2     │ 4     │
-julia> repeat(df, 2)
-4×2 DataFrame
-│ Row │ a     │ b     │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 1     │ 3     │
-│ 2   │ 2     │ 4     │
-│ 3   │ 1     │ 3     │
-│ 4   │ 2     │ 4     │
-```
-"""
-Base.repeat(df::AbstractDataFrame, count::Integer) =
+""" """ Base.repeat(df::AbstractDataFrame, count::Integer) =
     mapcols(x -> repeat(x, count), df)
 const hashdf_seed = UInt == UInt32 ? 0xfd8bb02e : 0x6215bada8c8c46de
 function Base.hash(df::AbstractDataFrame, h::UInt)
@@ -826,23 +316,4 @@ function Base.hash(df::AbstractDataFrame, h::UInt)
 end
 Base.parent(adf::AbstractDataFrame) = adf
 Base.parentindices(adf::AbstractDataFrame) = axes(adf)
-"""
-Number of rows or columns in an AbstractDataFrame
-```julia
-nrow(df::AbstractDataFrame)
-ncol(df::AbstractDataFrame)
-```
-**Arguments**
-* `df` : the AbstractDataFrame
-**Result**
-* `::AbstractDataFrame` : the updated version
-See also [`size`](@ref).
-NOTE: these functions may be depreciated for `size`.
-**Examples**
-```julia
-df = DataFrame(i = 1:10, x = rand(10), y = rand(["a", "b", "c"], 10))
-size(df)
-nrow(df)
-ncol(df)
-```
-"""
+""" """ 

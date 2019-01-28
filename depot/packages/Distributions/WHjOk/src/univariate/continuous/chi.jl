@@ -1,19 +1,4 @@
-"""
-    Chi(ν)
-The *Chi distribution* `ν` degrees of freedom has probability density function
-```math
-f(x; k) = \\frac{1}{\\Gamma(k/2)} 2^{1 - k/2} x^{k-1} e^{-x^2/2}, \\quad x > 0
-```
-It is the distribution of the square-root of a [`Chisq`](@ref) variate.
-```julia
-Chi(k)       # Chi distribution with k degrees of freedom
-params(d)    # Get the parameters, i.e. (k,)
-dof(d)       # Get the degrees of freedom, i.e. k
-```
-External links
-* [Chi distribution on Wikipedia](http://en.wikipedia.org/wiki/Chi_distribution)
-"""
-struct Chi{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct Chi{T<:Real} <: ContinuousUnivariateDistribution
     ν::T
     Chi{T}(ν::T) where {T} = (@check_args(Chi, ν > zero(ν)); new{T}(ν))
 end

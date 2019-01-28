@@ -14,16 +14,7 @@ function ordinalrank!(rks::AbstractArray, x::AbstractArray, p::IntegerArray)
     end
     return rks
 end
-"""
-    ordinalrank(x; lt = isless, rev::Bool = false)
-Return the [ordinal ranking](https://en.wikipedia.org/wiki/Ranking#Ordinal_ranking_.28.221234.22_ranking.29)
-("1234" ranking) of an array. The `lt` keyword allows providing a custom "less
-than" function; use `rev=true` to reverse the sorting order.
-All items in `x` are given distinct, successive ranks based on their
-position in `sort(x; lt = lt, rev = rev)`.
-Missing values are assigned rank `missing`.
-"""
-ordinalrank(x::AbstractArray; lt = isless, rev::Bool = false) =
+""" """ ordinalrank(x::AbstractArray; lt = isless, rev::Bool = false) =
     ordinalrank!(Array{Int}(undef, size(x)), x, sortperm(x; lt = lt, rev = rev))
 function competerank!(rks::AbstractArray, x::AbstractArray, p::IntegerArray)
     n = _check_randparams(rks, x, p)
@@ -46,16 +37,7 @@ function competerank!(rks::AbstractArray, x::AbstractArray, p::IntegerArray)
     end
     return rks
 end
-"""
-    competerank(x; lt = isless, rev::Bool = false)
-Return the [standard competition ranking](http://en.wikipedia.org/wiki/Ranking#Standard_competition_ranking_.28.221224.22_ranking.29)
-("1224" ranking) of an array. The `lt` keyword allows providing a custom "less
-than" function; use `rev=true` to reverse the sorting order.
-Items that compare equal are given the same rank, then a gap is left
-in the rankings the size of the number of tied items - 1.
-Missing values are assigned rank `missing`.
-"""
-competerank(x::AbstractArray; lt = isless, rev::Bool = false) =
+""" """ competerank(x::AbstractArray; lt = isless, rev::Bool = false) =
     competerank!(Array{Int}(undef, size(x)), x, sortperm(x; lt = lt, rev = rev))
 function denserank!(rks::AbstractArray, x::AbstractArray, p::IntegerArray)
     n = _check_randparams(rks, x, p)
@@ -78,16 +60,7 @@ function denserank!(rks::AbstractArray, x::AbstractArray, p::IntegerArray)
     end
     return rks
 end
-"""
-    denserank(x)
-Return the [dense ranking](http://en.wikipedia.org/wiki/Ranking#Dense_ranking_.28.221223.22_ranking.29)
-("1223" ranking) of an array. The `lt` keyword allows providing a custom "less
-than" function; use `rev=true` to reverse the sorting order. Items that
-compare equal receive the same ranking, and the next subsequent rank is
-assigned with no gap.
-Missing values are assigned rank `missing`.
-"""
-denserank(x::AbstractArray; lt = isless, rev::Bool = false) =
+""" """ denserank(x::AbstractArray; lt = isless, rev::Bool = false) =
     denserank!(Array{Int}(undef, size(x)), x, sortperm(x; lt = lt, rev = rev))
 function tiedrank!(rks::AbstractArray, x::AbstractArray, p::IntegerArray)
     n = _check_randparams(rks, x, p)
@@ -114,17 +87,7 @@ function tiedrank!(rks::AbstractArray, x::AbstractArray, p::IntegerArray)
     end
     return rks
 end
-"""
-    tiedrank(x)
-Return the [tied ranking](http://en.wikipedia.org/wiki/Ranking#Fractional_ranking_.28.221_2.5_2.5_4.22_ranking.29),
-also called fractional or "1 2.5 2.5 4" ranking,
-of an array. The `lt` keyword allows providing a custom "less
-than" function; use `rev=true` to reverse the sorting order.
-Items that compare equal receive the mean of the
-rankings they would have been assigned under ordinal ranking.
-Missing values are assigned rank `missing`.
-"""
-tiedrank(x::AbstractArray; lt = isless, rev::Bool = false) =
+""" """ tiedrank(x::AbstractArray; lt = isless, rev::Bool = false) =
     tiedrank!(Array{Float64}(undef, size(x)), x, sortperm(x; lt = lt, rev = rev))
 for (f, f!, S) in zip([:ordinalrank, :competerank, :denserank, :tiedrank],
                       [:ordinalrank!, :competerank!, :denserank!, :tiedrank!],

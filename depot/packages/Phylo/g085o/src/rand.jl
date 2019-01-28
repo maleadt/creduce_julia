@@ -7,18 +7,7 @@ using Missings
 using IterableTables: getiterator
 mutable struct Phylogenetics{T <: AbstractTree} <: ValueSupport end
 Base.eltype(::Type{Phylogenetics{T}}) where T <: AbstractTree = T
-"""
-    Nonultrametric{T <: AbstractTree,
-                   RNG <: Sampleable}(n::Int,
-                                      rng::RNG = Exponential())
-    Nonultrametric{T <: AbstractTree,
-                   RNG <: Sampleable}(tiplabels::Vector{String},
-                                      rng::RNG = Exponential())
-The sampler for non-ultrametric phylogenetic trees of size `n` or with
-tip labels `tiplabels`. Generate random trees by calling rand().
-Currently only works for `NamedTree`s.
-"""
-struct Nonultrametric{T <: AbstractTree,
+""" """ struct Nonultrametric{T <: AbstractTree,
                       RNG <: Sampleable{Univariate, Continuous}} <:
     Sampleable{Univariate, Phylogenetics{T}}
     n::Int
@@ -67,18 +56,7 @@ function rand(t::Nonultrametric{T, RNG}) where {T, RNG}
     end
     return tree
 end
-"""
-    Ultrametric{T <: AbstractTree,
-                RNG <: Sampleable}(n::Int,
-                                   rng::RNG = Exponential())
-    Ultrametric{T <: AbstractTree,
-                RNG <: Sampleable}(tiplabels::Vector{String},
-                                   rng::RNG = Exponential())
-The sampler for ultrametric phylogenetic trees of size `n` or with
-tip labels `tiplabels`. Generate random trees by calling rand().
-Currently only works for `NamedTree`s.
-"""
-struct Ultrametric{T <: AbstractTree,
+""" """ struct Ultrametric{T <: AbstractTree,
                  RNG <: Sampleable{Univariate, Continuous}} <:
     Sampleable{Univariate, Phylogenetics{T}}
     n::Int

@@ -1,21 +1,4 @@
-"""
-    Cauchy(μ, σ)
-The *Cauchy distribution* with location `μ` and scale `σ` has probability density function
-```math
-f(x; \\mu, \\sigma) = \\frac{1}{\\pi \\sigma \\left(1 + \\left(\\frac{x - \\mu}{\\sigma} \\right)^2 \\right)}
-```
-```julia
-Cauchy()         # Standard Cauchy distribution, i.e. Cauchy(0, 1)
-Cauchy(u)        # Cauchy distribution with location u and unit scale, i.e. Cauchy(u, 1)
-Cauchy(u, b)     # Cauchy distribution with location u and scale b
-params(d)        # Get the parameters, i.e. (u, b)
-location(d)      # Get the location parameter, i.e. u
-scale(d)         # Get the scale parameter, i.e. b
-```
-External links
-* [Cauchy distribution on Wikipedia](http://en.wikipedia.org/wiki/Cauchy_distribution)
-"""
-struct Cauchy{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct Cauchy{T<:Real} <: ContinuousUnivariateDistribution
     μ::T
     σ::T
     function Cauchy{T}(μ::T, σ::T) where T

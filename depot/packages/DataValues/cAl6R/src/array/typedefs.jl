@@ -1,7 +1,4 @@
-"""
-`DataValueArray{T, N}` is an efficient alternative to `Array{DataValue{T}, N}`.
-"""
-struct DataValueArray{T,N} <: AbstractArray{DataValue{T},N}
+""" """ struct DataValueArray{T,N} <: AbstractArray{DataValue{T},N}
     values::Array{T,N}
     isna::Array{Bool,N}
     function DataValueArray{T,N}(d::AbstractArray{T, N}, m::AbstractArray{Bool, N}) where {T,N}

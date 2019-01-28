@@ -1,21 +1,6 @@
-"""
-    Noop()
-Create a noop codec.
-Noop (no operation) is a codec that does nothing. The data read from or written
-to the stream are kept as-is without any modification. This is often useful as a
-buffered stream or an identity element of a composition of streams.
-The implementations are specialized for this codec. For example, a `Noop` stream
-uses only one buffer rather than a pair of buffers, which avoids copying data
-between two buffers and the throughput will be larger than a naive
-implementation.
-"""
-struct Noop <: Codec end
+""" """ struct Noop <: Codec end
 const NoopStream{S} = TranscodingStream{Noop,S} where S<:IO
-"""
-    NoopStream(stream::IO)
-Create a noop stream.
-"""
-function NoopStream(stream::IO; kwargs...)
+""" """ function NoopStream(stream::IO; kwargs...)
     return TranscodingStream(Noop(), stream; kwargs...)
 end
 function TranscodingStream(codec::Noop, stream::IO;
@@ -30,14 +15,7 @@ function TranscodingStream(codec::Noop, stream::IO;
     end
     return TranscodingStream(codec, stream, State(buffer, buffer))
 end
-"""
-    position(stream::NoopStream)
-Get the current poition of `stream`.
-Note that this method may return a wrong position when
-- some data have been inserted by `TranscodingStreams.unread`, or
-- the position of the wrapped stream has been changed outside of this package.
-"""
-function Base.position(stream::NoopStream)
+""" """ function Base.position(stream::NoopStream)
     return position(stream.stream) - buffersize(stream.state.buffer1)
 end
 function Base.seek(stream::NoopStream, pos::Integer)

@@ -1,10 +1,4 @@
-"""
-    corspearman(x, y=x)
-Compute Spearman's rank correlation coefficient. If `x` and `y` are vectors, the
-output is a float, otherwise it's a matrix corresponding to the pairwise correlations
-of the columns of `x` and `y`.
-"""
-corspearman(x::RealVector, y::RealVector) = cor(tiedrank(x), tiedrank(y))
+""" """ corspearman(x::RealVector, y::RealVector) = cor(tiedrank(x), tiedrank(y))
 corspearman(X::RealMatrix, Y::RealMatrix) =
     cor(mapslices(tiedrank, X, dims=1), mapslices(tiedrank, Y, dims=1))
 corspearman(X::RealMatrix, y::RealVector) = cor(mapslices(tiedrank, X, dims=1), tiedrank(y))
@@ -58,12 +52,7 @@ function corkendall!(x::RealVector, y::RealVector)
     nD = div(n*(n - 1),2)
     return (nD - nT - nU + nV - 2swaps!(y)) / (sqrt(nD - nT) * sqrt(nD - nU))
 end
-"""
-    corkendall(x, y=x)
-Compute Kendall's rank correlation coefficient, τ. `x` and `y` must both be either
-matrices or vectors.
-"""
-corkendall(x::RealVector, y::RealVector) = corkendall!(float(copy(x)), float(copy(y)))
+""" """ corkendall(x::RealVector, y::RealVector) = corkendall!(float(copy(x)), float(copy(y)))
 corkendall(X::RealMatrix, y::RealVector) = Float64[corkendall!(float(X[:,i]), float(copy(y))) for i in 1:size(X, 2)]
 corkendall(x::RealVector, Y::RealMatrix) = (n = size(Y,2); reshape(Float64[corkendall!(float(copy(x)), float(Y[:,i])) for i in 1:n], 1, n))
 corkendall(X::RealMatrix, Y::RealMatrix) = Float64[corkendall!(float(X[:,i]), float(Y[:,j])) for i in 1:size(X, 2), j in 1:size(Y, 2)]

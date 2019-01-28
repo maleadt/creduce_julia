@@ -209,43 +209,13 @@ fit(::Type{Histogram{T}}, vs::NTuple{N,AbstractVector}, wv::AbstractWeights{W}, 
     append!(Histogram(edges, T, closed, false), vs, wv)
 fit(::Type{Histogram{T}}, vs::NTuple{N,AbstractVector}, wv::AbstractWeights; closed::Symbol=:left, nbins=sturges(length(vs[1]))) where {T,N} =
     fit(Histogram{T}, vs, wv, histrange(vs,_nbins_tuple(vs, nbins),closed); closed=closed)
-"""
-    fit(Histogram, data[, weight][, edges]; closed=:left, nbins)
-Fit a histogram to `data`.
-* `data`: either a vector (for a 1-dimensional histogram), or a tuple of
-  vectors of equal length (for an *n*-dimensional histogram).
-* `weight`: an optional `AbstractWeights` (of the same length as the
-  data vectors), denoting the weight each observation contributes to the
-  bin. If no weight vector is supplied, each observation has weight 1.
-* `edges`: a vector (typically an `AbstractRange` object), or tuple of vectors, that gives
-  the edges of the bins along each dimension. If no edges are provided, these
-  are determined from the data.
-* `closed`: if `:left` (the default), the bin intervals are left-closed [a,b);
-  if `:right`, intervals are right-closed (a,b].
-* `nbins`: if no `edges` argument is supplied, the approximate number of bins to use
-  along each dimension (can be either a single integer, or a tuple of integers).
-```julia
-h = fit(Histogram, rand(100))
-h = fit(Histogram, rand(100), 0:0.1:1.0)
-h = fit(Histogram, rand(100), nbins=10)
-h = fit(Histogram, rand(100), weights(rand(100)), 0:0.1:1.0)
-h = fit(Histogram, [20], 0:20:100)
-h = fit(Histogram, [20], 0:20:100, closed=:right)
-h = fit(Histogram, (rand(100),rand(100)))
-h = fit(Histogram, (rand(100),rand(100)),nbins=10)
-```
-"""
-fit(::Type{Histogram}, args...; kwargs...) = fit(Histogram{Int}, args...; kwargs...)
+""" """ fit(::Type{Histogram}, args...; kwargs...) = fit(Histogram{Int}, args...; kwargs...)
 fit(::Type{Histogram}, vs::NTuple{N,AbstractVector}, wv::AbstractWeights{W}, args...; kwargs...) where {N,W} = fit(Histogram{W}, vs, wv, args...; kwargs...)
 norm_type(h::Histogram{T,N}) where {T,N} =
     promote_type(T, _promote_edge_types(h.edges))
 norm_type(::Type{T}) where {T<:Integer} = promote_type(T, Int64)
 norm_type(::Type{T}) where {T<:AbstractFloat} = promote_type(T, Float64)
-"""
-    norm(h::Histogram)
-Calculate the norm of histogram `h` as the absolute value of its integral.
-"""
-@generated function norm(h::Histogram{T,N}) where {T,N}
+""" """ @generated function norm(h::Histogram{T,N}) where {T,N}
     quote
         edges = h.edges
         weights = h.weights
@@ -270,12 +240,7 @@ Calculate the norm of histogram `h` as the absolute value of its integral.
 end
 float(h::Histogram{T,N}) where {T<:AbstractFloat,N} = h
 float(h::Histogram{T,N}) where {T,N} = Histogram(h.edges, float(h.weights), h.closed, h.isdensity)
-"""
-    normalize!(h::Histogram{T,N}, aux_weights::Array{T,N}...; mode::Symbol=:pdf) where {T<:AbstractFloat,N}
-Normalize the histogram `h` and optionally scale one or more auxiliary weight
-arrays appropriately. See description of `normalize` for details. Returns `h`.
-"""
-@generated function normalize!(h::Histogram{T,N}, aux_weights::Array{T,N}...; mode::Symbol=:pdf) where {T<:AbstractFloat,N}
+""" """ @generated function normalize!(h::Histogram{T,N}, aux_weights::Array{T,N}...; mode::Symbol=:pdf) where {T<:AbstractFloat,N}
     quote
         edges = h.edges
         weights = h.weights
@@ -318,53 +283,17 @@ arrays appropriately. See description of `normalize` for details. Returns `h`.
         h
     end
 end
-"""
-    normalize(h::Histogram{T,N}; mode::Symbol=:pdf) where {T,N}
-Normalize the histogram `h`.
-Valid values for `mode` are:
-*  `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
-   has norm 1 and represents a PDF.
-* `:density`: Normalize by bin sizes only. Resulting histogram represents
-   count density of input and does not have norm 1. Will not modify the
-   histogram if it already represents a density (`h.isdensity == 1`).
-* `:probability`: Normalize by sum of weights only. Resulting histogram
-   represents the fraction of probability mass for each bin and does not have
-   norm 1.
-*  `:none`: Leaves histogram unchanged. Useful to simplify code that has to
-   conditionally apply different modes of normalization.
-Successive application of both `:probability` and `:density` normalization (in
-any order) is equivalent to `:pdf` normalization.
-"""
-normalize(h::Histogram{T,N}; mode::Symbol=:pdf) where {T,N} =
+""" """ normalize(h::Histogram{T,N}; mode::Symbol=:pdf) where {T,N} =
     normalize!(deepcopy(float(h)), mode = mode)
-"""
-    normalize(h::Histogram{T,N}, aux_weights::Array{T,N}...; mode::Symbol=:pdf) where {T,N}
-Normalize the histogram `h` and rescales one or more auxiliary weight arrays
-at the same time (`aux_weights` may, e.g., contain estimated statistical
-uncertainties). The values of the auxiliary arrays are scaled by the same
-factor as the corresponding histogram weight values. Returns a tuple of the
-normalized histogram and scaled auxiliary weights.
-"""
-function normalize(h::Histogram{T,N}, aux_weights::Array{T,N}...; mode::Symbol=:pdf) where {T,N}
+""" """ function normalize(h::Histogram{T,N}, aux_weights::Array{T,N}...; mode::Symbol=:pdf) where {T,N}
     h_fltcp = deepcopy(float(h))
     aux_weights_fltcp = map(x -> deepcopy(float(x)), aux_weights)
     normalize!(h_fltcp, aux_weights_fltcp..., mode = mode)
     (h_fltcp, aux_weights_fltcp...)
 end
-"""
-    zero(h::Histogram)
-Create a new histogram with the same binning, type and shape of weights
-and the same properties (`closed` and `isdensity`) as `h`, with all weights
-set to zero.
-"""
-Base.zero(h::Histogram{T,N,E}) where {T,N,E} =
+""" """ Base.zero(h::Histogram{T,N,E}) where {T,N,E} =
     Histogram{T,N,E}(deepcopy(h.edges), zero(h.weights), h.closed, h.isdensity)
-"""
-    merge!(target::Histogram, others::Histogram...)
-Update histogram `target` by merging it with the histograms `others`. See
-`merge(histogram::Histogram, others::Histogram...)` for details.
-"""
-function Base.merge!(target::Histogram, others::Histogram...)
+""" """ function Base.merge!(target::Histogram, others::Histogram...)
     for h in others
         target.edges != h.edges && throw(ArgumentError("can't merge histograms with different binning"))
         size(target.weights) != size(h.weights) && throw(ArgumentError("can't merge histograms with different dimensions"))
@@ -376,17 +305,6 @@ function Base.merge!(target::Histogram, others::Histogram...)
     end
     target
 end
-"""
-    merge(h::Histogram, others::Histogram...)
-Construct a new histogram by merging `h` with `others`. All histograms must
-have the same binning, shape of weights and properties (`closed` and
-`isdensity`). The weights of all histograms are summed up for each bin, the
-weights of the resulting histogram will have the same type as those of `h`.
-"""
-Base.merge(h::Histogram, others::Histogram...) = merge!(zero(h), h, others...)
-"""
-    StatsBase.midpoints(v)
-Calculate the midpoints (pairwise mean of consecutive elements).
-"""
-midpoints(v::AbstractVector) = [middle(v[i - 1], v[i]) for i in 2:length(v)]
+""" """ Base.merge(h::Histogram, others::Histogram...) = merge!(zero(h), h, others...)
+""" """ midpoints(v::AbstractVector) = [middle(v[i - 1], v[i]) for i in 2:length(v)]
 midpoints(r::AbstractRange) = r[1:(end - 1)] .+ (step(r) / 2)

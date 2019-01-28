@@ -121,36 +121,7 @@ function process_recipe_body!(expr::Expr)
         end
     end
 end
-"""
-This handy macro will process a function definition, replace `-->` commands, and
-then add a new version of `RecipesBase.apply_recipe` for dispatching on the arguments.
-This functionality is primarily geared to turning user types and settings into the
-data and attributes that describe a Plots.jl visualization.
-Set attributes using the `-->` command, and return a comma separated list of arguments that
-should replace the current arguments.
-An example:
-```
-using RecipesBase
-type T end
-@recipe function plot{N<:Integer}(t::T, n::N = 1; customcolor = :green)
-    markershape --> :auto, :require
-    markercolor --> customcolor, :force
-    xrotation --> 5
-    zrotation --> 6, :quiet
-    rand(10,n)
-end
-using Plots; gr()
-plot(T(), 5; customcolor = :black, shape=:c)
-```
-In this example, we see lots of the machinery in action.  We create a new type `T` which
-we will use for dispatch, and an optional argument `n`, which will be used to determine the
-number of series to display.  User-defined keyword arguments are passed through, and the
-`-->` command can be trailed by flags:
-- quiet:   Suppress unsupported keyword warnings
-- require: Error if keyword is unsupported
-- force:   Don't allow user override for this keyword
-"""
-macro recipe(funcexpr::Expr)
+""" """ macro recipe(funcexpr::Expr)
     func_signature, func_body = funcexpr.args
     if !(funcexpr.head in (:(=), :function))
         error("Must wrap a valid function call!")
@@ -179,20 +150,7 @@ macro recipe(funcexpr::Expr)
     end))
     funcdef
 end
-"""
-Meant to be used inside a recipe to add additional RecipeData objects to the list:
-```
-@recipe function f(::T)
-    linecolor --> :red
-    @series begin
-        fillcolor := :green
-        rand(10)
-    end
-    rand(100)
-end
-```
-"""
-macro series(expr::Expr)
+""" """ macro series(expr::Expr)
     esc(quote
         let plotattributes = copy(plotattributes)
             args = $expr
@@ -201,16 +159,7 @@ macro series(expr::Expr)
         end
     end)
 end
-"""
-You can easily define your own plotting recipes with convenience methods:
-```
-@userplot GroupHist
-@recipe function f(gh::GroupHist)
-end
-grouphist(rand(1000,4))
-```
-"""
-macro userplot(expr)
+""" """ macro userplot(expr)
     _userplot(expr)
 end
 function _userplot(expr::Expr)
@@ -240,20 +189,7 @@ macro shorthands(funcname::Symbol)
         Core.@__doc__ $funcname2(args...; kw...) = RecipesBase.plot!(args...; kw..., seriestype = $(Meta.quot(funcname)))
     end)
 end
-"""
-`recipetype(s, args...)`
-Use this function to refer to type recipes by their symbol, without taking a dependency.
-```julia
-import RecipesBase: recipetype
-recipetype(:groupedbar, 1:10, rand(10, 2))
-```
-instead of
-```julia
-import StatPlots: GroupedBar
-GroupedBar((1:10, rand(10, 2)))
-```
-"""
-recipetype(s, args...) = recipetype(Val(s), args...)
+""" """ recipetype(s, args...) = recipetype(Val(s), args...)
 function recipetype(s::Val{T}, args...) where T
     error("No type recipe defined for type $T. You may need to load StatPlots")
 end

@@ -16,26 +16,6 @@ import Base: keys, values, insert!
 @deprecate sub(df::AbstractDataFrame, rows) view(df, rows, :)
 using CodecZlib, TranscodingStreams
 export writetable
-"""
-Write data to a tabular-file format (CSV, TSV, ...)
-```julia
-writetable(filename, df, [keyword options])
-```
-* `filename::AbstractString` : the filename to be created
-* `df::AbstractDataFrame` : the AbstractDataFrame to be written
-* `separator::Char` -- The separator character that you would like to use. Defaults to the output of `getseparator(filename)`, which uses commas for files that end in `.csv`, tabs for files that end in `.tsv` and a single space for files that end in `.wsv`.
-* `quotemark::Char` -- The character used to delimit string fields. Defaults to `'"'`.
-* `header::Bool` -- Should the file contain a header that specifies the column names from `df`. Defaults to `true`.
-* `nastring::AbstractString` -- What to write in place of missing data. Defaults to `"NA"`.
-* `::DataFrame`
-```julia
-df = DataFrame(A = 1:10)
-writetable("output.csv", df)
-writetable("output.dat", df, separator = ',', header = false)
-writetable("output.dat", df, quotemark = '\'', separator = ',')
-writetable("output.dat", df, header = false)
-```
-"""
 function writetable(filename::AbstractString,
                     df::AbstractDataFrame;
                     header::Bool = true,
@@ -824,40 +804,6 @@ function readtable(io::IO,
     return df
 end
 export readtable
-"""
-Read data from a tabular-file format (CSV, TSV, ...)
-```julia
-readtable(filename, [keyword options])
-```
-* `filename::AbstractString` : the filename to be read
-*   `header::Bool` -- Use the information from the file's header line to determine column names. Defaults to `true`.
-*   `separator::Char` -- Assume that fields are split by the `separator` character. If not specified, it will be guessed from the filename: `.csv` defaults to `','`, `.tsv` defaults to `'\t'`, `.wsv` defaults to `' '`.
-*   `quotemark::Vector{Char}` -- Assume that fields contained inside of two `quotemark` characters are quoted, which disables processing of separators and linebreaks. Set to `Char[]` to disable this feature and slightly improve performance. Defaults to `['"']`.
-*   `decimal::Char` -- Assume that the decimal place in numbers is written using the `decimal` character. Defaults to `'.'`.
-*   `nastrings::Vector{String}` -- Translate any of the strings into this vector into a `missing`. Defaults to `["", "NA"]`.
-*   `truestrings::Vector{String}` -- Translate any of the strings into this vector into a Boolean `true`. Defaults to `["T", "t", "TRUE", "true"]`.
-*   `falsestrings::Vector{String}` -- Translate any of the strings into this vector into a Boolean `false`. Defaults to `["F", "f", "FALSE", "false"]`.
-*   `makefactors::Bool` -- Convert string columns into `PooledDataVector`'s for use as factors. Defaults to `false`.
-*   `nrows::Int` -- Read only `nrows` from the file. Defaults to `-1`, which indicates that the entire file should be read.
-*   `names::Vector{Symbol}` -- Use the values in this array as the names for all columns instead of or in lieu of the names in the file's header. Defaults to `[]`, which indicates that the header should be used if present or that numeric names should be invented if there is no header.
-*   `eltypes::Vector` -- Specify the types of all columns. Defaults to `[]`.
-*   `allowcomments::Bool` -- Ignore all text inside comments. Defaults to `false`.
-*   `commentmark::Char` -- Specify the character that starts comments. Defaults to `'#'`.
-*   `ignorepadding::Bool` -- Ignore all whitespace on left and right sides of a field. Defaults to `true`.
-*   `skipstart::Int` -- Specify the number of initial rows to skip. Defaults to `0`.
-*   `skiprows::Vector{Int}` -- Specify the indices of lines in the input to ignore. Defaults to `[]`.
-*   `skipblanks::Bool` -- Skip any blank lines in input. Defaults to `true`.
-*   `encoding::Symbol` -- Specify the file's encoding as either `:utf8` or `:latin1`. Defaults to `:utf8`.
-*   `normalizenames::Bool` -- Ensure that column names are valid Julia identifiers. For instance this renames a column named `"a b"` to `"a_b"` which can then be accessed with `:a_b` instead of `Symbol("a b")`. Defaults to `true`.
-* `::DataFrame`
-```julia
-df = readtable("data.csv")
-df = readtable("data.tsv")
-df = readtable("data.wsv")
-df = readtable("data.txt", separator = '\t')
-df = readtable("data.txt", header = false)
-```
-"""
 function readtable(pathname::AbstractString;
                    header::Bool = true,
                    separator::Char = getseparator(pathname),
@@ -915,17 +861,6 @@ function readtable(pathname::AbstractString;
         io = open(_r, pathname, "r")
     end
 end
-"""
-    inlinetable(s[, flags]; args...)
-A helper function to process strings as tabular data for non-standard string
-literals. Parses the string `s` containing delimiter-separated tabular data
-(by default, comma-separated values) using `readtable`. The optional `flags`
-argument contains a list of flag characters, which, if present, are equivalent
-to supplying named arguments to `readtable` as follows:
-- `f`: `makefactors=true`, convert string columns to `PooledData` columns
-- `c`: `allowcomments=true`, ignore lines beginning with `#`
-- `H`: `header=false`, do not interpret the first line as column names
-"""
 inlinetable(s::AbstractString; args...) = readtable(IOBuffer(s); args...)
 function inlinetable(s::AbstractString, flags::AbstractString; args...)
     flagbindings = Dict(
@@ -942,134 +877,24 @@ function inlinetable(s::AbstractString, flags::AbstractString; args...)
     readtable(IOBuffer(s); args...)
 end
 export @csv_str, @csv2_str, @tsv_str, @wsv_str
-"""
-    @csv_str(s[, flags])
-    csv"[data]"fcH
-Construct a `DataFrame` from a non-standard string literal containing comma-
-separated values (CSV) using `readtable`, just as if it were being loaded from
-an external file. The suffix flags `f`, `c`, and `H` are optional. If present,
-they are equivalent to supplying named arguments to `readtable` as follows:
-* `f`: `makefactors=true`, convert string columns to `CategoricalArray` columns
-* `c`: `allowcomments=true`, ignore lines beginning with `#`
-* `H`: `header=false`, do not interpret the first line as column names
-```jldoctest
-julia> df = csv\"""
-           name,  age, squidPerWeek
-           Alice,  36,         3.14
-           Bob,    24,         0
-           Carol,  58,         2.71
-           Eve,    49,         7.77
-           \"""
-4×3 DataFrame
-│ Row │ name    │ age │ squidPerWeek │
-├─────┼─────────┼─────┼──────────────┤
-│ 1   │ "Alice" │ 36  │ 3.14         │
-│ 2   │ "Bob"   │ 24  │ 0.0          │
-│ 3   │ "Carol" │ 58  │ 2.71         │
-│ 4   │ "Eve"   │ 49  │ 7.77         │
-```
-"""
 macro csv_str(s, flags...)
     Base.depwarn("@csv_str and the csv\"\"\" syntax are deprecated. " *
                  "Use CSV.read(IOBuffer(...)) from the CSV package instead.",
                  :csv_str)
     inlinetable(s, flags...; separator=',')
 end
-"""
-    @csv2_str(s[, flags])
-    csv2"[data]"fcH
-Construct a `DataFrame` from a non-standard string literal containing
-semicolon-separated values using `readtable`, with comma acting as the decimal
-character, just as if it were being loaded from an external file. The suffix
-flags `f`, `c`, and `H` are optional. If present, they are equivalent to
-supplying named arguments to `readtable` as follows:
-* `f`: `makefactors=true`, convert string columns to `CategoricalArray` columns
-* `c`: `allowcomments=true`, ignore lines beginning with `#`
-* `H`: `header=false`, do not interpret the first line as column names
-```jldoctest
-julia> df = csv2\"""
-           name;  age; squidPerWeek
-           Alice;  36;         3,14
-           Bob;    24;         0
-           Carol;  58;         2,71
-           Eve;    49;         7,77
-           \"""
-4×3 DataFrame
-│ Row │ name    │ age │ squidPerWeek │
-├─────┼─────────┼─────┼──────────────┤
-│ 1   │ "Alice" │ 36  │ 3.14         │
-│ 2   │ "Bob"   │ 24  │ 0.0          │
-│ 3   │ "Carol" │ 58  │ 2.71         │
-│ 4   │ "Eve"   │ 49  │ 7.77         │
-```
-"""
 macro csv2_str(s, flags...)
     Base.depwarn("@csv2_str and the csv2\"\"\" syntax are deprecated. " *
                  "Use CSV.read(IOBuffer(...)) from the CSV package instead.",
                  :csv2_str)
     inlinetable(s, flags...; separator=';', decimal=',')
 end
-"""
-    @wsv_str(s[, flags])
-    wsv"[data]"fcH
-Construct a `DataFrame` from a non-standard string literal containing
-whitespace-separated values (WSV) using `readtable`, just as if it were being
-loaded from an external file. The suffix flags `f`, `c`, and `H` are optional.
-If present, they are equivalent to supplying named arguments to `readtable` as
-follows:
-* `f`: `makefactors=true`, convert string columns to `CategoricalArray` columns
-* `c`: `allowcomments=true`, ignore lines beginning with `#`
-* `H`: `header=false`, do not interpret the first line as column names
-```jldoctest
-julia> df = wsv\"""
-           name  age squidPerWeek
-           Alice  36         3.14
-           Bob    24         0
-           Carol  58         2.71
-           Eve    49         7.77
-           \"""
-4×3 DataFrame
-│ Row │ name    │ age │ squidPerWeek │
-├─────┼─────────┼─────┼──────────────┤
-│ 1   │ "Alice" │ 36  │ 3.14         │
-│ 2   │ "Bob"   │ 24  │ 0.0          │
-│ 3   │ "Carol" │ 58  │ 2.71         │
-│ 4   │ "Eve"   │ 49  │ 7.77         │
-```
-"""
 macro wsv_str(s, flags...)
     Base.depwarn("@wsv_str and the wsv\"\"\" syntax are deprecated. " *
                  "Use CSV.read(IOBuffer(...)) from the CSV package instead.",
                  :wsv_str)
     inlinetable(s, flags...; separator=' ')
 end
-"""
-    @tsv_str(s[, flags])
-    tsv"[data]"fcH
-Construct a `DataFrame` from a non-standard string literal containing tab-
-separated values (TSV) using `readtable`, just as if it were being loaded from
-an external file. The suffix flags `f`, `c`, and `H` are optional. If present,
-they are equivalent to supplying named arguments to `readtable` as follows:
-* `f`: `makefactors=true`, convert string columns to `CategoricalArray` columns
-* `c`: `allowcomments=true`, ignore lines beginning with `#`
-* `H`: `header=false`, do not interpret the first line as column names
-```jldoctest
-julia> df = tsv\"""
-           name\tage\tsquidPerWeek
-           Alice\t36\t3.14
-           Bob\t24\t0
-           Carol\t58\t2.71
-           Eve\t49\t7.77
-           \"""
-4×3 DataFrame
-│ Row │ name    │ age │ squidPerWeek │
-├─────┼─────────┼─────┼──────────────┤
-│ 1   │ "Alice" │ 36  │ 3.14         │
-│ 2   │ "Bob"   │ 24  │ 0.0          │
-│ 3   │ "Carol" │ 58  │ 2.71         │
-│ 4   │ "Eve"   │ 49  │ 7.77         │
-```
-"""
 macro tsv_str(s, flags...)
     Base.depwarn("@tsv_str and the tsv\"\"\" syntax are deprecated." *
                  "Use CSV.read(IOBuffer(...)) from the CSV package instead.",

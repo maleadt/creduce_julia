@@ -1,11 +1,4 @@
-"""
-Container of transcoding error.
-An object of this type is used to notify the caller of an exception that
-happened inside a transcoding method.  The `error` field is undefined at first
-but will be filled when data processing failed. The error should be set by
-calling the `setindex!` method (e.g. `error[] = ErrorException("error!")`).
-"""
-mutable struct Error
+""" """ mutable struct Error
     error::Exception
     function Error()
         return new()

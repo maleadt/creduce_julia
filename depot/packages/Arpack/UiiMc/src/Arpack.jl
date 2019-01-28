@@ -1,8 +1,5 @@
 __precompile__(true)
-"""
-Arnoldi and Lanczos iteration for computing eigenvalues
-"""
-module Arpack
+""" """ module Arpack
 using Libdl
 const depsfile = joinpath(@__DIR__, "..", "deps", "deps.jl")
 if isfile(depsfile)
@@ -21,25 +18,7 @@ using LinearAlgebra: BlasFloat, BlasInt, Diagonal, I, SVD, UniformScaling,
 import LinearAlgebra
 export eigs, svds
 include("libarpack.jl")
-"""
-    eigs(A; nev=6, ncv=max(20,2*nev+1), which=:LM, tol=0.0, maxiter=300, sigma=nothing, ritzvec=true, v0=zeros((0,))) -> (d,[v,],nconv,niter,nmult,resid)
-Computes eigenvalues `d` of `A` using implicitly restarted Lanczos or Arnoldi iterations for real symmetric or
-general nonsymmetric matrices respectively. See [the manual](@ref lib-itereigen) for more information.
-`eigs` returns the `nev` requested eigenvalues in `d`, the corresponding Ritz vectors `v`
-(only if `ritzvec=true`), the number of converged eigenvalues `nconv`, the number of
-iterations `niter` and the number of matrix vector multiplications `nmult`, as well as the
-final residual vector `resid`.
-```jldoctest
-julia> using Arpack
-julia> A = Diagonal(1:4);
-julia> λ, ϕ = eigs(A, nev = 2);
-julia> λ
-2-element Array{Float64,1}:
- 4.0
- 3.0
-```
-"""
-eigs(A; kwargs...) = eigs(A, I; kwargs...)
+""" """ eigs(A; kwargs...) = eigs(A, I; kwargs...)
 eigs(A::AbstractMatrix{<:BlasFloat}, ::UniformScaling; kwargs...) = _eigs(A, I; kwargs...)
 eigs(A::AbstractMatrix{T}, B::AbstractMatrix{T}; kwargs...) where {T<:BlasFloat} = _eigs(A, B; kwargs...)
 eigs(A::AbstractMatrix{BigFloat}, B::AbstractMatrix...; kwargs...) = throw(MethodError(eigs, Any[A,B,kwargs...]))
@@ -53,12 +32,7 @@ function eigs(A::AbstractMatrix, B::AbstractMatrix; kwargs...)
     Tnew = typeof(zero(T)/sqrt(one(T)))
     eigs(convert(AbstractMatrix{Tnew}, A), convert(AbstractMatrix{Tnew}, B); kwargs...)
 end
-"""
-    eigs(A, B; nev=6, ncv=max(20,2*nev+1), which=:LM, tol=0.0, maxiter=300, sigma=nothing, ritzvec=true, v0=zeros((0,))) -> (d,[v,],nconv,niter,nmult,resid)
-Computes generalized eigenvalues `d` of `A` and `B` using implicitly restarted Lanczos or Arnoldi iterations for
-real symmetric or general nonsymmetric matrices respectively. See [the manual](@ref lib-itereigen) for more information.
-"""
-eigs(A, B; kwargs...) = _eigs(A, B; kwargs...)
+""" """ eigs(A, B; kwargs...) = _eigs(A, B; kwargs...)
 function _eigs(A, B;
                nev::Integer=6, ncv::Integer=max(20,2*nev+1), which=:LM,
                tol=0.0, maxiter::Integer=300, sigma=nothing, v0::Vector=zeros(eltype(A),(0,)),
@@ -215,43 +189,7 @@ function svds(A::AbstractMatrix{T}; kwargs...) where T
     Tnew = typeof(zero(T)/sqrt(one(T)))
     svds(convert(AbstractMatrix{Tnew}, A); kwargs...)
 end
-"""
-    svds(A; nsv=6, ritzvec=true, tol=0.0, maxiter=1000, ncv=2*nsv, v0=zeros((0,))) -> (SVD([left_sv,] s, [right_sv,]), nconv, niter, nmult, resid)
-Computes the largest singular values `s` of `A` using implicitly restarted Lanczos
-iterations derived from [`eigs`](@ref).
-**Inputs**
-* `A`: Linear operator whose singular values are desired. `A` may be represented as a
-  subtype of `AbstractArray`, e.g., a sparse matrix, or any other type supporting the four
-  methods `size(A)`, `eltype(A)`, `A * vector`, and `A' * vector`.
-* `nsv`: Number of singular values. Default: 6.
-* `ritzvec`: If `true`, return the left and right singular vectors `left_sv` and `right_sv`.
-   If `false`, omit the singular vectors. Default: `true`.
-* `tol`: tolerance, see [`eigs`](@ref).
-* `maxiter`: Maximum number of iterations, see [`eigs`](@ref). Default: 1000.
-* `ncv`: Maximum size of the Krylov subspace, see [`eigs`](@ref) (there called `nev`). Default: `2*nsv`.
-* `v0`: Initial guess for the first Krylov vector. It may have length `min(size(A)...)`, or 0.
-**Outputs**
-* `svd`: An `SVD` object containing the left singular vectors, the requested values, and the
-  right singular vectors. If `ritzvec = false`, the left and right singular vectors will be
-  empty.
-* `nconv`: Number of converged singular values.
-* `niter`: Number of iterations.
-* `nmult`: Number of matrix--vector products used.
-* `resid`: Final residual vector.
-```jldoctest; filter = r"2-element Array{Float64,1}:\\n.*\\n.*"
-julia> A = Diagonal(1:4);
-julia> s = svds(A, nsv = 2)[1];
-julia> s.S
-2-element Array{Float64,1}:
- 4.0
- 2.9999999999999996
-```
-!!! note "Implementation"
-    `svds(A)` is formally equivalent to calling [`eigs`](@ref) to perform implicitly restarted
-    Lanczos tridiagonalization on the Hermitian matrix ``A^\\prime A`` or ``AA^\\prime`` such
-    that the size is smallest.
-"""
-svds(A; kwargs...) = _svds(A; kwargs...)
+""" """ svds(A; kwargs...) = _svds(A; kwargs...)
 function _svds(X; nsv::Int = 6, ritzvec::Bool = true, tol::Float64 = 0.0, maxiter::Int = 1000, ncv::Int = 2*nsv, v0::Vector=zeros(eltype(X),(0,)))
     if nsv < 1
         throw(ArgumentError("number of singular values (nsv) must be ≥ 1, got $nsv"))

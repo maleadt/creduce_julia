@@ -1,22 +1,4 @@
-"""
-    Normal(μ,σ)
-The *Normal distribution* with mean `μ` and standard deviation `σ` has probability density function
-```math
-f(x; \\mu, \\sigma) = \\frac{1}{\\sqrt{2 \\pi \\sigma^2}}
-\\exp \\left( - \\frac{(x - \\mu)^2}{2 \\sigma^2} \\right)
-```
-```julia
-Normal()          # standard Normal distribution with zero mean and unit variance
-Normal(mu)        # Normal distribution with mean mu and unit variance
-Normal(mu, sig)   # Normal distribution with mean mu and variance sig^2
-params(d)         # Get the parameters, i.e. (mu, sig)
-mean(d)           # Get the mean, i.e. mu
-std(d)            # Get the standard deviation, i.e. sig
-```
-External links
-* [Normal distribution on Wikipedia](http://en.wikipedia.org/wiki/Normal_distribution)
-"""
-struct Normal{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct Normal{T<:Real} <: ContinuousUnivariateDistribution
     μ::T
     σ::T
     Normal{T}(μ, σ) where {T} = (@check_args(Normal, σ > zero(σ)); new{T}(μ, σ))

@@ -47,19 +47,9 @@ function nextreme(comp::Comp, n::Int, arr::AbstractVector{T}) where {T, Comp}
     end
     return extract_all_rev!(buffer)
 end
-"""
-    nlargest(n, arr)
-Return the `n` largest elements of the array `arr`.
-Equivalent to `sort(arr, lt = >)[1:min(n, end)]`
-"""
-function nlargest(n::Int, arr::AbstractVector{T}) where T
+""" """ function nlargest(n::Int, arr::AbstractVector{T}) where T
     return nextreme(LessThan(), n, arr)
 end
-"""
-    nsmallest(n, arr)
-Return the `n` smallest elements of the array `arr`.
-Equivalent to `sort(arr, lt = <)[1:min(n, end)]`
-"""
-function nsmallest(n::Int, arr::AbstractVector{T}) where T
+""" """ function nsmallest(n::Int, arr::AbstractVector{T}) where T
     return nextreme(GreaterThan(), n, arr)
 end

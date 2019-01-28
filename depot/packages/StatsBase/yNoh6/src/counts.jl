@@ -4,13 +4,7 @@ if isdefined(Base, :ht_keyindex2)
 else
     using Base: ht_keyindex2!
 end
-"""
-    addcounts!(r, x, levels::UnitRange{<:Int}, [wv::AbstractWeights])
-Add the number of occurrences in `x` of each value in `levels` to an existing
-array `r`. If a weighting vector `wv` is specified, the sum of weights is used
-rather than the raw counts.
-"""
-function addcounts!(r::AbstractArray, x::IntegerArray, levels::IntUnitRange)
+""" """ function addcounts!(r::AbstractArray, x::IntegerArray, levels::IntUnitRange)
     k = length(levels)
     length(r) == k || throw(DimensionMismatch())
     m0 = levels[1]
@@ -39,19 +33,7 @@ function addcounts!(r::AbstractArray, x::IntegerArray, levels::IntUnitRange, wv:
     end
     return r
 end
-"""
-    counts(x, [wv::AbstractWeights])
-    counts(x, levels::UnitRange{<:Integer}, [wv::AbstractWeights])
-    counts(x, k::Integer, [wv::AbstractWeights])
-Count the number of times each value in `x` occurs. If `levels` is provided, only values
-falling in that range will be considered (the others will be ignored without
-raising an error or a warning). If an integer `k` is provided, only values in the
-range `1:k` will be considered.
-If a weighting vector `wv` is specified, the sum of the weights is used rather than the
-raw counts.
-The output is a vector of length `length(levels)`.
-"""
-function counts end
+""" """ function counts end
 counts(x::IntegerArray, levels::IntUnitRange) =
     addcounts!(zeros(Int, length(levels)), x, levels)
 counts(x::IntegerArray, levels::IntUnitRange, wv::AbstractWeights) =
@@ -60,20 +42,10 @@ counts(x::IntegerArray, k::Integer) = counts(x, 1:k)
 counts(x::IntegerArray, k::Integer, wv::AbstractWeights) = counts(x, 1:k, wv)
 counts(x::IntegerArray) = counts(x, span(x))
 counts(x::IntegerArray, wv::AbstractWeights) = counts(x, span(x), wv)
-"""
-    proportions(x, levels=span(x), [wv::AbstractWeights])
-Return the proportion of values in the range `levels` that occur in `x`.
-Equivalent to `counts(x, levels) / length(x)`. If a weighting vector `wv`
-is specified, the sum of the weights is used rather than the raw counts.
-"""
-proportions(x::IntegerArray, levels::IntUnitRange) = counts(x, levels) .* inv(length(x))
+""" """ proportions(x::IntegerArray, levels::IntUnitRange) = counts(x, levels) .* inv(length(x))
 proportions(x::IntegerArray, levels::IntUnitRange, wv::AbstractWeights) =
     counts(x, levels, wv) .* inv(sum(wv))
-"""
-    proportions(x, k::Integer, [wv::AbstractWeights])
-Return the proportion of integers in 1 to `k` that occur in `x`.
-"""
-proportions(x::IntegerArray, k::Integer) = proportions(x, 1:k)
+""" """ proportions(x::IntegerArray, k::Integer) = proportions(x, 1:k)
 proportions(x::IntegerArray, k::Integer, wv::AbstractWeights) = proportions(x, 1:k, wv)
 proportions(x::IntegerArray) = proportions(x, span(x))
 proportions(x::IntegerArray, wv::AbstractWeights) = proportions(x, span(x), wv)
@@ -163,24 +135,7 @@ function _normalize_countmap(cm::Dict{T}, s::Real) where T
     end
     return r
 end
-"""
-    addcounts!(dict, x[, wv]; alg = :auto)
-Add counts based on `x` to a count map. New entries will be added if new values come up.
-If a weighting vector `wv` is specified, the sum of the weights is used rather than the
-raw counts.
-`alg` can be one of:
-- `:auto` (default): if `StatsBase.radixsort_safe(eltype(x)) == true` then use
-                     `:radixsort`, otherwise use `:dict`.
-- `:radixsort`:      if `radixsort_safe(eltype(x)) == true` then use the
-                     [radix sort](https://en.wikipedia.org/wiki/Radix_sort)
-                     algorithm to sort the input vector which will generally lead to
-                     shorter running time. However the radix sort algorithm creates a
-                     copy of the input vector and hence uses more RAM. Choose `:dict`
-                     if the amount of available RAM is a limitation.
-- `:dict`:           use `Dict`-based method which is generally slower but uses less
-                     RAM and is safe for any data type.
-"""
-function addcounts!(cm::Dict{T}, x::AbstractArray{T}; alg = :auto) where T
+""" """ function addcounts!(cm::Dict{T}, x::AbstractArray{T}; alg = :auto) where T
     if radixsort_safe(T) && (alg == :auto || alg == :radixsort)
         addcounts_radixsort!(cm, x)
     elseif alg == :radixsort
@@ -263,27 +218,7 @@ function addcounts!(cm::Dict{T}, x::AbstractArray{T}, wv::AbstractVector{W}) whe
     end
     return cm
 end
-"""
-    countmap(x; alg = :auto)
-Return a dictionary mapping each unique value in `x` to its number
-of occurrences.
-- `:auto` (default): if `StatsBase.radixsort_safe(eltype(x)) == true` then use
-                     `:radixsort`, otherwise use `:dict`.
-- `:radixsort`:      if `radixsort_safe(eltype(x)) == true` then use the
-                     [radix sort](https://en.wikipedia.org/wiki/Radix_sort)
-                     algorithm to sort the input vector which will generally lead to
-                     shorter running time. However the radix sort algorithm creates a
-                     copy of the input vector and hence uses more RAM. Choose `:dict`
-                     if the amount of available RAM is a limitation.
-- `:dict`:           use `Dict`-based method which is generally slower but uses less
-                     RAM and is safe for any data type.
-"""
-countmap(x::AbstractArray{T}; alg = :auto) where {T} = addcounts!(Dict{T,Int}(), x; alg = alg)
+""" """ countmap(x::AbstractArray{T}; alg = :auto) where {T} = addcounts!(Dict{T,Int}(), x; alg = alg)
 countmap(x::AbstractArray{T}, wv::AbstractVector{W}) where {T,W<:Real} = addcounts!(Dict{T,W}(), x, wv)
-"""
-    proportionmap(x)
-Return a dictionary mapping each unique value in `x` to its
-proportion in `x`.
-"""
-proportionmap(x::AbstractArray) = _normalize_countmap(countmap(x), length(x))
+""" """ proportionmap(x::AbstractArray) = _normalize_countmap(countmap(x), length(x))
 proportionmap(x::AbstractArray, wv::AbstractWeights) = _normalize_countmap(countmap(x, wv), sum(wv))

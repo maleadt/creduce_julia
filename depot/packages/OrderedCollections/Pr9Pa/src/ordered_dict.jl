@@ -1,9 +1,4 @@
-"""
-    OrderedDict
-`OrderedDict`s are  simply dictionaries  whose entries  have a  particular order.  The order
-refers to insertion order, which allows deterministic iteration over the dictionary or set.
-"""
-mutable struct OrderedDict{K,V} <: AbstractDict{K,V}
+""" """ mutable struct OrderedDict{K,V} <: AbstractDict{K,V}
     slots::Array{Int32,1}
     keys::Array{K,1}
     vals::Array{V,1}
@@ -68,12 +63,7 @@ dict_with_eltype(kv, t) = OrderedDict{Any,Any}(kv)
 empty(d::OrderedDict{K,V}) where {K,V} = OrderedDict{K,V}()
 length(d::OrderedDict) = length(d.keys) - d.ndel
 isempty(d::OrderedDict) = (length(d)==0)
-"""
-    isordered(::Type)
-Property of associative containers, that is `true` if the container type has a
-defined order (such as `OrderedDict` and `SortedDict`), and `false` otherwise.
-"""
-isordered(::Type{T}) where {T<:AbstractDict} = false
+""" """ isordered(::Type{T}) where {T<:AbstractDict} = false
 isordered(::Type{T}) where {T<:OrderedDict} = true
 function convert(::Type{OrderedDict{K,V}}, d::AbstractDict) where {K,V}
     if !isordered(typeof(d))

@@ -1,29 +1,11 @@
-"""
-    mapreduce(f, op::Function, X::DataValueArray; [skipna::Bool=false])
-Map a function `f` over the elements of `X` and reduce the result under the
-operation `op`. One can set the behavior of this method to skip the null entries
-of `X` by setting the keyword argument `skipna` equal to true. If `skipna`
-behavior is enabled, `f` will be automatically lifted over the elements of `X`.
-Note that, in general, mapreducing over a `DataValueArray` will return a
-`DataValue` object regardless of whether `skipna` is set to `true` or `false`.
-"""
-function Base.mapreduce(f, op::Function, X::T; skipna::Bool = false) where {N,S<:DataValue,T<:AbstractArray{S,N}}
+""" """ function Base.mapreduce(f, op::Function, X::T; skipna::Bool = false) where {N,S<:DataValue,T<:AbstractArray{S,N}}
     if skipna
         return DataValue(mapreduce(f, op, dropna(X)))
     else
         return Base._mapreduce(f, op, IndexStyle(X), X)
     end
 end
-"""
-    reduce(f, op::Function, X::DataValueArray; [skipna::Bool=false])
-Reduce `X`under the operation `op`. One can set the behavior of this method to
-skip the null entries of `X` by setting the keyword argument `skipna` equal
-to true. If `skipna` behavior is enabled, `f` will be automatically lifted
-over the elements of `X`. Note that, in general, mapreducing over a
-`DataValueArray` will return a `DataValue` object regardless of whether `skipna`
-is set to `true` or `false`.
-"""
-function Base.reduce(op, X::T; skipna::Bool = false) where {N,S<:DataValue,T<:AbstractArray{S,N}}
+""" """ function Base.reduce(op, X::T; skipna::Bool = false) where {N,S<:DataValue,T<:AbstractArray{S,N}}
     return mapreduce(identity, op, X; skipna = skipna)
 end
 for (fn, op) in ((:(Base.sum), +),

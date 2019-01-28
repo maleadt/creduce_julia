@@ -1,21 +1,4 @@
-"""
-    PriorityQueue{K, V}([ord])
-Construct a new [`PriorityQueue`](@ref), with keys of type
-`K` and values/priorites of type `V`.
-If an order is not given, the priority queue is min-ordered using
-the default comparison for `V`.
-A `PriorityQueue` acts like a `Dict`, mapping values to their
-priorities, with the addition of a `dequeue!` function to remove the
-lowest priority element.
-```jldoctest
-julia> a = PriorityQueue(["a","b","c"],[2,3,1],Base.Order.Forward)
-PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 3 entries:
-  "c" => 1
-  "b" => 3
-  "a" => 2
-```
-"""
-struct PriorityQueue{K,V,O<:Ordering} <: AbstractDict{K,V}
+""" """ struct PriorityQueue{K,V,O<:Ordering} <: AbstractDict{K,V}
     xs::Array{Pair{K,V}, 1}
     o::O
     index::Dict{K, Int}
@@ -76,12 +59,7 @@ _priority_queue_with_eltype(o::Ord, kv, ::Type            ) where {    Ord} = Pr
 length(pq::PriorityQueue) = length(pq.xs)
 isempty(pq::PriorityQueue) = isempty(pq.xs)
 haskey(pq::PriorityQueue, key) = haskey(pq.index, key)
-"""
-    peek(pq)
-Return the lowest priority key from a priority queue without removing that
-key from the queue.
-"""
-peek(pq::PriorityQueue) = pq.xs[1]
+""" """ peek(pq::PriorityQueue) = pq.xs[1]
 function percolate_down!(pq::PriorityQueue, i::Integer)
     x = pq.xs[i]
     @inbounds while (l = heapleft(i)) <= length(pq)
@@ -146,24 +124,7 @@ function setindex!(pq::PriorityQueue{K, V}, value, key) where {K,V}
     end
     value
 end
-"""
-    enqueue!(pq, k=>v)
-Insert the a key `k` into a priority queue `pq` with priority `v`.
-```jldoctest
-julia> a = PriorityQueue(PriorityQueue("a"=>1, "b"=>2, "c"=>3))
-PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 3 entries:
-  "c" => 3
-  "b" => 2
-  "a" => 1
-julia> enqueue!(a, "d"=>4)
-PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 4 entries:
-  "c" => 3
-  "b" => 2
-  "a" => 1
-  "d" => 4
-```
-"""
-function enqueue!(pq::PriorityQueue{K,V}, pair::Pair{K,V}) where {K,V}
+""" """ function enqueue!(pq::PriorityQueue{K,V}, pair::Pair{K,V}) where {K,V}
     key = pair.first
     if haskey(pq, key)
         throw(ArgumentError("PriorityQueue keys must be unique"))
@@ -173,30 +134,9 @@ function enqueue!(pq::PriorityQueue{K,V}, pair::Pair{K,V}) where {K,V}
     percolate_up!(pq, length(pq))
     return pq
 end
-"""
-enqueue!(pq, k, v)
-Insert the a key `k` into a priority queue `pq` with priority `v`.
-"""
-enqueue!(pq::PriorityQueue, key, value) = enqueue!(pq, key=>value)
+""" """ enqueue!(pq::PriorityQueue, key, value) = enqueue!(pq, key=>value)
 enqueue!(pq::PriorityQueue{K,V}, kv) where {K,V} = enqueue!(pq, Pair{K,V}(kv.first, kv.second))
-"""
-    dequeue!(pq)
-Remove and return the lowest priority key from a priority queue.
-```jldoctest
-julia> a = PriorityQueue(["a","b","c"],[2,3,1],Base.Order.Forward)
-PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 3 entries:
-  "c" => 1
-  "b" => 3
-  "a" => 2
-julia> dequeue!(a)
-"c"
-julia> a
-PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 2 entries:
-  "b" => 3
-  "a" => 2
-```
-"""
-function dequeue!(pq::PriorityQueue)
+""" """ function dequeue!(pq::PriorityQueue)
     x = pq.xs[1]
     y = pop!(pq.xs)
     if !isempty(pq)
@@ -213,24 +153,7 @@ function dequeue!(pq::PriorityQueue, key)
     dequeue!(pq)
     key
 end
-"""
-    dequeue_pair!(pq)
-Remove and return a the lowest priority key and value from a priority queue as a pair.
-```jldoctest
-julia> a = PriorityQueue(["a","b","c"],[2,3,1],Base.Order.Forward)
-PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 3 entries:
-  "c" => 1
-  "b" => 3
-  "a" => 2
-julia> dequeue_pair!(a)
-"c" => 1
-julia> a
-PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 2 entries:
-  "b" => 3
-  "a" => 2
-```
-"""
-function dequeue_pair!(pq::PriorityQueue)
+""" """ function dequeue_pair!(pq::PriorityQueue)
     x = pq.xs[1]
     y = pop!(pq.xs)
     if !isempty(pq)
@@ -246,22 +169,7 @@ function dequeue_pair!(pq::PriorityQueue, key)
     force_up!(pq, idx)
     dequeue_pair!(pq)
 end
-"""
-    delete!(pq, key)
-Delete the mapping for the given key in a priority queue, and return the priority queue.
-```jldoctest
-julia> q = PriorityQueue(Base.Order.Forward, "a"=>2, "b"=>3, "c"=>1)
-PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 3 entries:
-  "c" => 1
-  "b" => 3
-  "a" => 2
-julia> delete!(q, "b")
-DataStructures.PriorityQueue{String,Int64,Base.Order.ForwardOrdering} with 2 entries:
-  "c" => 1
-  "a" => 2
-```
-"""
-function delete!(pq::PriorityQueue, key)
+""" """ function delete!(pq::PriorityQueue, key)
     dequeue_pair!(pq, key)
     pq
 end

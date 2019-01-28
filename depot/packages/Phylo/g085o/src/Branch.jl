@@ -1,9 +1,5 @@
 import Phylo.API: _src, _dst, _setsrc!, _setdst!, _getlength
-"""
-    Branch
-    A directed branch connecting two AbstractNodes of phylogenetic tree
-"""
-mutable struct Branch{T} <: AbstractBranch
+""" """ mutable struct Branch{T} <: AbstractBranch
     source::T
     destination::T
     length::Float64

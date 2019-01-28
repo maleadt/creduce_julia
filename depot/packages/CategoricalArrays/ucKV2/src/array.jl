@@ -14,68 +14,9 @@ function reftype(sz::Int)
         return UInt64
     end
 end
-"""
-    CategoricalArray{T}(undef, dims::Dims; ordered::Bool=false)
-    CategoricalArray{T}(undef, dims::Int...; ordered::Bool=false)
-Construct an uninitialized `CategoricalArray` with levels of type `T` and dimensions `dim`.
-The `ordered` keyword argument determines whether the array values can be compared
-according to the ordering of levels or not (see [`isordered`](@ref)).
-    CategoricalArray{T, N, R}(undef, dims::Dims; ordered::Bool=false)
-    CategoricalArray{T, N, R}(undef, dims::Int...; ordered::Bool=false)
-Similar to definition above, but uses reference type `R` instead of the default type
-(`$DefaultRefType`).
-    CategoricalArray(A::AbstractArray; ordered::Bool=false)
-Construct a new `CategoricalArray` with the values from `A` and the same element type.
-If the element type supports it, levels are sorted in ascending order;
-else, they are kept in their order of appearance in `A`. The `ordered` keyword
-argument determines whether the array values can be compared according to the
-ordering of levels or not (see [`isordered`](@ref)).
-    CategoricalArray(A::CategoricalArray; ordered::Bool=false)
-If `A` is already a `CategoricalArray`, its levels are preserved;
-the same applies to the ordered property and the reference type unless
-explicitly overriden.
-"""
-function CategoricalArray end
-"""
-    CategoricalVector{T}(undef, m::Int; ordered::Bool=false)
-Construct an uninitialized `CategoricalVector` with levels of type `T` and dimensions `dim`.
-The `ordered` keyword argument determines whether the array values can be compared
-according to the ordering of levels or not (see [`isordered`](@ref)).
-    CategoricalVector{T, R}(undef, m::Int; ordered::Bool=false)
-Similar to definition above, but uses reference type `R` instead of the default type
-(`$DefaultRefType`).
-    CategoricalVector(A::AbstractVector; ordered::Bool=false)
-Construct a `CategoricalVector` with the values from `A` and the same element type.
-If the element type supports it, levels are sorted in ascending order;
-else, they are kept in their order of appearance in `A`. The `ordered` keyword
-argument determines whether the array values can be compared according to the
-ordering of levels or not (see [`isordered`](@ref)).
-    CategoricalVector(A::CategoricalVector; ordered::Bool=false)
-If `A` is already a `CategoricalVector`, its levels are preserved;
-the same applies to the ordered property and the reference type unless
-explicitly overriden.
-"""
-function CategoricalVector end
-"""
-    CategoricalMatrix{T}(undef, m::Int, n::Int; ordered::Bool=false)
-Construct an uninitialized `CategoricalMatrix` with levels of type `T` and dimensions `dim`.
-The `ordered` keyword argument determines whether the array values can be compared
-according to the ordering of levels or not (see [`isordered`](@ref)).
-    CategoricalMatrix{T, R}(undef, m::Int, n::Int; ordered::Bool=false)
-Similar to definition above, but uses reference type `R` instead of the default type
-(`$DefaultRefType`).
-    CategoricalMatrix(A::AbstractVector; ordered::Bool=false)
-Construct a `CategoricalMatrix` with the values from `A` and the same element type.
-If the element type supports it, levels are sorted in ascending order;
-else, they are kept in their order of appearance in `A`. The `ordered` keyword
-argument determines whether the array values can be compared according to the
-ordering of levels or not (see [`isordered`](@ref)).
-    CategoricalMatrix(A::CategoricalMatrix; ordered::Bool=isordered(A))
-If `A` is already a `CategoricalMatrix`, its levels are preserved;
-the same applies to the ordered property and the reference type unless
-explicitly overriden.
-"""
-function CategoricalMatrix end
+""" """ function CategoricalArray end
+""" """ function CategoricalVector end
+""" """ function CategoricalMatrix end
 CategoricalArray(::UndefInitializer, dims::Int...; ordered=false) =
     CategoricalArray{String}(undef, dims, ordered=ordered)
 function CategoricalArray{T, N, R}(::UndefInitializer, dims::NTuple{N,Int};
@@ -375,26 +316,11 @@ similar(A::CategoricalArray{S, M, Q}, ::Type{T},
 similar(A::CategoricalArray{S, M, R}, ::Type{T},
         dims::NTuple{N, Int}) where {S, T<:Union{CatValue, Missing}, M, N, R} =
     CategoricalArray{Union{T, Missing}, N, R}(undef, dims)
-"""
-    compress(A::CategoricalArray)
-Return a copy of categorical array `A` using the smallest reference type able to hold the
-number of [`levels`](@ref) of `A`.
-While this will reduce memory use, this function is type-unstable, which can affect
-performance inside the function where the call is made. Therefore, use it with caution.
-"""
-function compress(A::CategoricalArray{T, N}) where {T, N}
+""" """ function compress(A::CategoricalArray{T, N}) where {T, N}
     R = reftype(length(index(A.pool)))
     convert(CategoricalArray{T, N, R}, A)
 end
-"""
-    decompress(A::CategoricalArray)
-Return a copy of categorical array `A` using the default reference type ($DefaultRefType).
-If `A` is using a small reference type (such as `UInt8` or `UInt16`) the decompressed array
-will have room for more levels.
-To avoid the need to call decompress, ensure [`compress`](@ref) is not called when creating
-the categorical array.
-"""
-decompress(A::CategoricalArray{T, N}) where {T, N} =
+""" """ decompress(A::CategoricalArray{T, N}) where {T, N} =
     convert(CategoricalArray{T, N, DefaultRefType}, A)
 function vcat(A::CategoricalArray...)
     ordered = any(isordered, A) && all(a->isordered(a) || isempty(levels(a)), A)
@@ -424,24 +350,8 @@ end
 catvaluetype(::Type{T}) where {T <: CategoricalArray} = Missings.T(eltype(T))
 catvaluetype(A::CategoricalArray) = catvaluetype(typeof(A))
 leveltype(::Type{T}) where {T <: CategoricalArray} = leveltype(catvaluetype(T))
-"""
-    levels(A::CategoricalArray)
-Return the levels of categorical array `A`. This may include levels which do not actually appear
-in the data (see [`droplevels!`](@ref)).
-"""
-Missings.levels(A::CategoricalArray) = levels(A.pool)
-"""
-    levels!(A::CategoricalArray, newlevels::Vector; allow_missing::Bool=false)
-Set the levels categorical array `A`. The order of appearance of levels will be respected
-by [`levels`](@ref), which may affect display of results in some operations; if `A` is
-ordered (see [`isordered`](@ref)), it will also be used for order comparisons
-using `<`, `>` and similar operators. Reordering levels will never affect the values
-of entries in the array.
-If `A` accepts missing values (i.e. `eltype(A) >: Missing`) and `allow_missing=true`,
-entries corresponding to omitted levels will be set to `missing`.
-Else, `newlevels` must include all levels which appear in the data.
-"""
-function levels!(A::CategoricalArray{T}, newlevels::Vector; allow_missing=false) where {T}
+""" """ Missings.levels(A::CategoricalArray) = levels(A.pool)
+""" """ function levels!(A::CategoricalArray{T}, newlevels::Vector; allow_missing=false) where {T}
     if !allunique(newlevels)
         throw(ArgumentError(string("duplicated levels found: ",
                                    join(unique(filter(x->sum(newlevels.==x)>1, newlevels)), ", "))))
@@ -486,13 +396,7 @@ function _unique(::Type{S},
     end
     S[i == 1 ? missing : index(pool)[i - 1] for i in sortperm(order) if order[i] != 0]
 end
-"""
-    unique(A::CategoricalArray)
-Return levels which appear in `A` in their order of appearance.
-This function is significantly slower than [`levels`](@ref)
-since it needs to check whether levels are used or not.
-"""
-unique(A::CategoricalArray{T}) where {T} = _unique(T, A.refs, A.pool)
+""" """ unique(A::CategoricalArray{T}) where {T} = _unique(T, A.refs, A.pool)
 if VERSION >= v"0.7.0-DEV.4882"
     """
         droplevels!(A::CategoricalArray)
@@ -508,18 +412,8 @@ else # intersect! method missing on Julia 0.6
     """
     droplevels!(A::CategoricalArray) = levels!(A, intersect(levels(A), filter!(!ismissing, unique(A))))
 end
-"""
-    isordered(A::CategoricalArray)
-Test whether entries in `A` can be compared using `<`, `>` and similar operators,
-using the ordering of levels.
-"""
-isordered(A::CategoricalArray) = isordered(A.pool)
-"""
-    ordered!(A::CategoricalArray, ordered::Bool)
-Set whether entries in `A` can be compared using `<`, `>` and similar operators,
-using the ordering of levels. Return the modified `A`.
-"""
-ordered!(A::CategoricalArray, ordered) = (ordered!(A.pool, ordered); return A)
+""" """ isordered(A::CategoricalArray) = isordered(A.pool)
+""" """ ordered!(A::CategoricalArray, ordered) = (ordered!(A.pool, ordered); return A)
 function Base.resize!(A::CategoricalVector, n::Integer)
     n_orig = length(A)
     resize!(A.refs, n)
@@ -549,24 +443,7 @@ function Base.reshape(A::CategoricalArray{T, N}, dims::Dims) where {T, N}
     res = CategoricalArray{T, ndims(x)}(x, A.pool)
     ordered!(res, isordered(res))
 end
-"""
-    categorical{T}(A::AbstractArray{T}[, compress::Bool]; ordered::Bool=false)
-Construct a categorical array with the values from `A`.
-If the element type supports it, levels are sorted in ascending order;
-else, they are kept in their order of appearance in `A`. The `ordered` keyword
-argument determines whether the array values can be compared according to the
-ordering of levels or not (see [`isordered`](@ref)).
-If `compress` is provided and set to `true`, the smallest reference type able to hold the
-number of unique values in `A` will be used. While this will reduce memory use, passing
-this parameter will also introduce a type instability which can affect performance inside
-the function where the call is made. Therefore, use this option with caution (the
-one-argument version does not suffer from this problem).
-    categorical{T}(A::CategoricalArray{T}[, compress::Bool]; ordered::Bool=isordered(A))
-If `A` is already a `CategoricalArray`, its levels are preserved;
-the same applies to the ordered property, and to the reference type
-unless `compress` is passed.
-"""
-function categorical end
+""" """ function categorical end
 categorical(A::AbstractArray; ordered=_isordered(A)) = CategoricalArray(A, ordered=ordered)
 function categorical(A::AbstractArray{T, N}, compress; ordered=_isordered(A)) where {T, N}
     RefType = compress ? reftype(length(unique(A))) : DefaultRefType

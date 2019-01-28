@@ -1,8 +1,4 @@
-"""
-    geomean(a)
-Return the geometric mean of a real-valued array.
-"""
-function geomean(a::RealArray)
+""" """ function geomean(a::RealArray)
     s = 0.0
     n = length(a)
     for i = 1 : n
@@ -10,11 +6,7 @@ function geomean(a::RealArray)
     end
     return exp(s / n)
 end
-"""
-    harmmean(a)
-Return the harmonic mean of a real-valued array.
-"""
-function harmmean(a::RealArray)
+""" """ function harmmean(a::RealArray)
     s = 0.0
     n = length(a)
     for i in 1 : n
@@ -22,13 +14,7 @@ function harmmean(a::RealArray)
     end
     return n / s
 end
-"""
-    genmean(a, p)
-Return the generalized/power mean with exponent `p` of a real-valued array,
-i.e. ``\\left( \\frac{1}{n} \\sum_{i=1}^n a_i^p \\right)^{\\frac{1}{p}}``, where `n = length(a)`.
-It is taken to be the geometric mean when `p == 0`.
-"""
-function genmean(a::RealArray, p::Real)
+""" """ function genmean(a::RealArray, p::Real)
     if p == 0
         return geomean(a)
     end
@@ -39,13 +25,7 @@ function genmean(a::RealArray, p::Real)
     end
     return (s/n)^(1/p)
 end
-"""
-    mode(a, [r])
-Return the mode (most common number) of an array, optionally
-over a specified range `r`. If several modes exist, the first
-one (in order of appearance) is returned.
-"""
-function mode(a::AbstractArray{T}, r::UnitRange{T}) where T<:Integer
+""" """ function mode(a::AbstractArray{T}, r::UnitRange{T}) where T<:Integer
     isempty(a) && error("mode: input array cannot be empty.")
     len = length(a)
     r0 = r[1]
@@ -65,12 +45,7 @@ function mode(a::AbstractArray{T}, r::UnitRange{T}) where T<:Integer
     end
     return mv
 end
-"""
-    modes(a, [r])::Vector
-Return all modes (most common numbers) of an array, optionally over a
-specified range `r`.
-"""
-function modes(a::AbstractArray{T}, r::UnitRange{T}) where T<:Integer
+""" """ function modes(a::AbstractArray{T}, r::UnitRange{T}) where T<:Integer
     r0 = r[1]
     r1 = r[end]
     n = length(r)
@@ -137,48 +112,14 @@ function modes(a::AbstractArray{T}) where T
     end
     return ms
 end
-"""
-    percentile(v, p)
-Return the `p`th percentile of a real-valued array `v`, i.e. `quantile(x, p / 100)`.
-"""
-percentile(v::AbstractArray{<:Real}, p) = quantile(v, p * 0.01)
+""" """ percentile(v::AbstractArray{<:Real}, p) = quantile(v, p * 0.01)
 quantile(v::AbstractArray{<:Real}) = quantile(v, [.0, .25, .5, .75, 1.0])
-"""
-    nquantile(v, n)
-Return the n-quantiles of a real-valued array, i.e. the values which
-partition `v` into `n` subsets of nearly equal size.
-Equivalent to `quantile(v, [0:n]/n)`. For example, `nquantiles(x, 5)`
-returns a vector of quantiles, respectively at `[0.0, 0.2, 0.4, 0.6, 0.8, 1.0]`.
-"""
-nquantile(v::AbstractArray{<:Real}, n::Integer) = quantile(v, (0:n)/n)
-"""
-    span(x)
-Return the span of an integer array, i.e. the range `minimum(x):maximum(x)`.
-The minimum and maximum of `x` are computed in one-pass using `extrema`.
-"""
-span(x::AbstractArray{<:Integer}) = ((a, b) = extrema(x); a:b)
-"""
-    variation(x, m=mean(x))
-Return the coefficient of variation of an array `x`, optionally specifying
-a precomputed mean `m`. The coefficient of variation is the ratio of the
-standard deviation to the mean.
-"""
-variation(x::AbstractArray{<:Real}, m::Real) = stdm(x, m) / m
+""" """ nquantile(v::AbstractArray{<:Real}, n::Integer) = quantile(v, (0:n)/n)
+""" """ span(x::AbstractArray{<:Integer}) = ((a, b) = extrema(x); a:b)
+""" """ variation(x::AbstractArray{<:Real}, m::Real) = stdm(x, m) / m
 variation(x::AbstractArray{<:Real}) = variation(x, mean(x))
-"""
-    sem(a)
-Return the standard error of the mean of `a`, i.e. `sqrt(var(a) / length(a))`.
-"""
-sem(a::AbstractArray{<:Real}) = sqrt(var(a) / length(a))
-"""
-    mad(v; center=median(v), normalize=true)
-Compute the median absolute deviation (MAD) of `v` around `center`
-(by default, around the median).
-If `normalize` is set to `true`, the MAD is multiplied by
-`1 / quantile(Normal(), 3/4) ≈ 1.4826`, in order to obtain a consistent estimator
-of the standard deviation under the assumption that the data is normally distributed.
-"""
-function mad(v::AbstractArray{T};
+""" """ sem(a::AbstractArray{<:Real}) = sqrt(var(a) / length(a))
+""" """ function mad(v::AbstractArray{T};
              center::Union{Real,Nothing}=nothing,
              normalize::Union{Bool, Nothing}=nothing) where T<:Real
     isempty(v) && throw(ArgumentError("mad is not defined for empty arrays"))
@@ -191,15 +132,7 @@ function mad(v::AbstractArray{T};
     mad!(v2, center=center === nothing ? median!(v2) : center, normalize=normalize)
 end
 @irrational mad_constant 1.4826022185056018 BigFloat("1.482602218505601860547076529360423431326703202590312896536266275245674447622701")
-"""
-    StatsBase.mad!(v; center=median!(v), normalize=true)
-Compute the median absolute deviation (MAD) of `v` around `center`
-(by default, around the median), overwriting `v` in the process.
-If `normalize` is set to `true`, the MAD is multiplied by
-`1 / quantile(Normal(), 3/4) ≈ 1.4826`, in order to obtain a consistent estimator
-of the standard deviation under the assumption that the data is normally distributed.
-"""
-function mad!(v::AbstractArray{<:Real};
+""" """ function mad!(v::AbstractArray{<:Real};
               center::Real=median!(v),
               normalize::Union{Bool,Nothing}=true,
               constant=nothing)
@@ -219,32 +152,10 @@ function mad!(v::AbstractArray{<:Real};
         m
     end
 end
-"""
-    iqr(v)
-Compute the interquartile range (IQR) of an array, i.e. the 75th percentile
-minus the 25th percentile.
-"""
-iqr(v::AbstractArray{<:Real}) = (q = quantile(v, [.25, .75]); q[2] - q[1])
-"""
-    genvar(X)
-Compute the generalized sample variance of `X`. If `X` is a vector, one-column matrix,
-or other one-dimensional iterable, this is equivalent to the sample variance.
-Otherwise if `X` is a matrix, this is equivalent to the determinant of the covariance
-matrix of `X`.
-!!! note
-    The generalized sample variance will be 0 if the columns of the matrix of deviations
-    are linearly dependent.
-"""
-genvar(X::AbstractMatrix) = size(X, 2) == 1 ? var(vec(X)) : det(cov(X))
+""" """ iqr(v::AbstractArray{<:Real}) = (q = quantile(v, [.25, .75]); q[2] - q[1])
+""" """ genvar(X::AbstractMatrix) = size(X, 2) == 1 ? var(vec(X)) : det(cov(X))
 genvar(itr) = var(itr)
-"""
-    totalvar(X)
-Compute the total sample variance of `X`. If `X` is a vector, one-column matrix,
-or other one-dimensional iterable, this is equivalent to the sample variance.
-Otherwise if `X` is a matrix, this is equivalent to the sum of the diagonal elements
-of the covariance matrix of `X`.
-"""
-totalvar(X::AbstractMatrix) = sum(var(X, dims=1))
+""" """ totalvar(X::AbstractMatrix) = sum(var(X, dims=1))
 totalvar(itr) = var(itr)
 function _zscore!(Z::AbstractArray, X::AbstractArray, μ::Real, σ::Real)
     iσ = inv(σ)
@@ -287,15 +198,7 @@ function _zscore_chksize(X::AbstractArray, μ::AbstractArray, σ::AbstractArray)
         (dμ_i == 1 || dμ_i == size(X,i)) || throw(DimensionMismatch("X and μ have incompatible sizes."))
     end
 end
-"""
-    zscore!([Z], X, μ, σ)
-Compute the z-scores of an array `X` with mean `μ` and standard deviation `σ`.
-z-scores are the signed number of standard deviations above the mean that an
-observation lies, i.e. ``(x - μ) / σ``.
-If a destination array `Z` is provided, the scores are stored
-in `Z` and it must have the same shape as `X`. Otherwise `X` is overwritten.
-"""
-function zscore!(Z::AbstractArray{ZT}, X::AbstractArray{T}, μ::Real, σ::Real) where {ZT<:AbstractFloat,T<:Real}
+""" """ function zscore!(Z::AbstractArray{ZT}, X::AbstractArray{T}, μ::Real, σ::Real) where {ZT<:AbstractFloat,T<:Real}
     size(Z) == size(X) || throw(DimensionMismatch("Z and X must have the same size."))
     _zscore!(Z, X, μ, σ)
 end
@@ -308,16 +211,7 @@ end
 zscore!(X::AbstractArray{<:AbstractFloat}, μ::Real, σ::Real) = _zscore!(X, X, μ, σ)
 zscore!(X::AbstractArray{<:AbstractFloat}, μ::AbstractArray{<:Real}, σ::AbstractArray{<:Real}) =
     (_zscore_chksize(X, μ, σ); _zscore!(X, X, μ, σ))
-"""
-    zscore(X, [μ, σ])
-Compute the z-scores of `X`, optionally specifying a precomputed mean `μ` and
-standard deviation `σ`. z-scores are the signed number of standard deviations
-above the mean that an observation lies, i.e. ``(x - μ) / σ``.
-`μ` and `σ` should be both scalars or both arrays. The computation is broadcasting.
-In particular, when `μ` and `σ` are arrays, they should have the same size, and
-`size(μ, i) == 1  || size(μ, i) == size(X, i)` for each dimension.
-"""
-function zscore(X::AbstractArray{T}, μ::Real, σ::Real) where T<:Real
+""" """ function zscore(X::AbstractArray{T}, μ::Real, σ::Real) where T<:Real
     ZT = typeof((zero(T) - zero(μ)) / one(σ))
     _zscore!(Array{ZT}(undef, size(X)), X, μ, σ)
 end
@@ -328,12 +222,7 @@ function zscore(X::AbstractArray{T}, μ::AbstractArray{U}, σ::AbstractArray{S})
 end
 zscore(X::AbstractArray{<:Real}) = ((μ, σ) = mean_and_std(X); zscore(X, μ, σ))
 zscore(X::AbstractArray{<:Real}, dim::Int) = ((μ, σ) = mean_and_std(X, dim); zscore(X, μ, σ))
-"""
-    entropy(p, [b])
-Compute the entropy of an array `p`, optionally specifying a real number
-`b` such that the entropy is scaled by `1/log(b)`.
-"""
-function entropy(p::AbstractArray{T}) where T<:Real
+""" """ function entropy(p::AbstractArray{T}) where T<:Real
     s = zero(T)
     z = zero(T)
     for i = 1:length(p)
@@ -345,11 +234,7 @@ function entropy(p::AbstractArray{T}) where T<:Real
     return -s
 end
 entropy(p::AbstractArray{<:Real}, b::Real) = entropy(p) / log(b)
-"""
-    renyientropy(p, α)
-Compute the Rényi (generalized) entropy of order `α` of an array `p`.
-"""
-function renyientropy(p::AbstractArray{T}, α::Real) where T<:Real
+""" """ function renyientropy(p::AbstractArray{T}, α::Real) where T<:Real
     α < 0 && throw(ArgumentError("Order of Rényi entropy not legal, $(α) < 0."))
     s = zero(T)
     z = zero(T)
@@ -383,12 +268,7 @@ function renyientropy(p::AbstractArray{T}, α::Real) where T<:Real
     end
     return s
 end
-"""
-    crossentropy(p, q, [b])
-Compute the cross entropy between `p` and `q`, optionally specifying a real
-number `b` such that the result is scaled by `1/log(b)`.
-"""
-function crossentropy(p::AbstractArray{T}, q::AbstractArray{T}) where T<:Real
+""" """ function crossentropy(p::AbstractArray{T}, q::AbstractArray{T}) where T<:Real
     length(p) == length(q) || throw(DimensionMismatch("Inconsistent array length."))
     s = 0.
     z = zero(T)
@@ -403,14 +283,7 @@ function crossentropy(p::AbstractArray{T}, q::AbstractArray{T}) where T<:Real
 end
 crossentropy(p::AbstractArray{T}, q::AbstractArray{T}, b::Real) where {T<:Real} =
     crossentropy(p,q) / log(b)
-"""
-    kldivergence(p, q, [b])
-Compute the Kullback-Leibler divergence from `q` to `p`,
-also called the relative entropy of `p` with respect to `q`,
-that is the sum `pᵢ * log(pᵢ / qᵢ)`. Optionally a real number `b`
-can be specified such that the divergence is scaled by `1/log(b)`.
-"""
-function kldivergence(p::AbstractArray{T}, q::AbstractArray{T}) where T<:Real
+""" """ function kldivergence(p::AbstractArray{T}, q::AbstractArray{T}) where T<:Real
     length(p) == length(q) || throw(DimensionMismatch("Inconsistent array length."))
     s = 0.
     z = zero(T)
@@ -433,13 +306,7 @@ struct SummaryStats{T<:AbstractFloat}
     q75::T
     max::T
 end
-"""
-    summarystats(a)
-Compute summary statistics for a real-valued array `a`. Returns a
-`SummaryStats` object containing the mean, minimum, 25th percentile,
-median, 75th percentile, and maxmimum.
-"""
-function summarystats(a::AbstractArray{T}) where T<:Real
+""" """ function summarystats(a::AbstractArray{T}) where T<:Real
     m = mean(a)
     qs = quantile(a, [0.00, 0.25, 0.50, 0.75, 1.00])
     R = typeof(convert(AbstractFloat, zero(T)))
@@ -460,13 +327,7 @@ function Base.show(io::IO, ss::SummaryStats)
     @printf(io, "3rd Quartile:   %.6f\n", ss.q75)
     @printf(io, "Maximum:        %.6f\n", ss.max)
 end
-"""
-    describe(a)
-Pretty-print the summary statistics provided by [`summarystats`](@ref):
-the mean, minimum, 25th percentile, median, 75th percentile, and
-maximum.
-"""
-describe(a::AbstractArray) = describe(stdout, a)
+""" """ describe(a::AbstractArray) = describe(stdout, a)
 function describe(io::IO, a::AbstractArray{T}) where T<:Real
     show(io, summarystats(a))
     println(io, "Length:         $(length(a))")

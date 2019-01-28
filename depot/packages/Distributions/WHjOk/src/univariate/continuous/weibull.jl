@@ -1,22 +1,4 @@
-"""
-    Weibull(α,θ)
-The *Weibull distribution* with shape `α` and scale `θ` has probability density function
-```math
-f(x; \\alpha, \\theta) = \\frac{\\alpha}{\\theta} \\left( \\frac{x}{\\theta} \\right)^{\\alpha-1} e^{-(x/\\theta)^\\alpha},
-    \\quad x \\ge 0
-```
-```julia
-Weibull()        # Weibull distribution with unit shape and unit scale, i.e. Weibull(1, 1)
-Weibull(a)       # Weibull distribution with shape a and unit scale, i.e. Weibull(a, 1)
-Weibull(a, b)    # Weibull distribution with shape a and scale b
-params(d)        # Get the parameters, i.e. (a, b)
-shape(d)         # Get the shape parameter, i.e. a
-scale(d)         # Get the scale parameter, i.e. b
-```
-External links
-* [Weibull distribution on Wikipedia](http://en.wikipedia.org/wiki/Weibull_distribution)
-"""
-struct Weibull{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct Weibull{T<:Real} <: ContinuousUnivariateDistribution
     α::T   # shape
     θ::T   # scale
     function Weibull{T}(α::T, θ::T) where T

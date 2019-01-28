@@ -1,13 +1,4 @@
-"""
-    Kolmogorov()
-Kolmogorov distribution defined as
-```math
-\\sup_{t \\in [0,1]} |B(t)|
-```
-where ``B(t)`` is a Brownian bridge used in the Kolmogorov--Smirnov
-test for large n.
-"""
-struct Kolmogorov <: ContinuousUnivariateDistribution
+""" """ struct Kolmogorov <: ContinuousUnivariateDistribution
 end
 @distr_support Kolmogorov 0.0 Inf
 params(d::Kolmogorov) = ()

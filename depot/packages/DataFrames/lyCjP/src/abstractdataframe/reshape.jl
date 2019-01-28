@@ -1,45 +1,4 @@
-"""
-Stacks a DataFrame; convert from a wide to long format
-```julia
-stack(df::AbstractDataFrame, [measure_vars], [id_vars];
-      variable_name::Symbol=:variable, value_name::Symbol=:value)
-melt(df::AbstractDataFrame, [id_vars], [measure_vars];
-     variable_name::Symbol=:variable, value_name::Symbol=:value)
-```
-* `df` : the AbstractDataFrame to be stacked
-* `measure_vars` : the columns to be stacked (the measurement
-  variables), a normal column indexing type, like a Symbol,
-  Vector{Symbol}, Int, etc.; for `melt`, defaults to all
-  variables that are not `id_vars`. If neither `measure_vars`
-  or `id_vars` are given, `measure_vars` defaults to all
-  floating point columns.
-* `id_vars` : the identifier columns that are repeated during
-  stacking, a normal column indexing type; for `stack` defaults to all
-  variables that are not `measure_vars`
-* `variable_name` : the name of the new stacked column that shall hold the names
-  of each of `measure_vars`
-* `value_name` : the name of the new stacked column containing the values from
-  each of `measure_vars`
-* `::DataFrame` : the long-format DataFrame with column `:value`
-  holding the values of the stacked columns (`measure_vars`), with
-  column `:variable` a Vector of Symbols with the `measure_vars` name,
-  and with columns for each of the `id_vars`.
-See also `stackdf` and `meltdf` for stacking methods that return a
-view into the original DataFrame. See `unstack` for converting from
-long to wide format.
-```julia
-d1 = DataFrame(a = repeat([1:3;], inner = [4]),
-               b = repeat([1:4;], inner = [3]),
-               c = randn(12),
-               d = randn(12),
-               e = map(string, 'a':'l'))
-d1s = stack(d1, [:c, :d])
-d1s2 = stack(d1, [:c, :d], [:a])
-d1m = melt(d1, [:a, :b, :e])
-d1s_name = melt(d1, [:a, :b, :e], variable_name=:somemeasure)
-```
-"""
-function stack(df::AbstractDataFrame, measure_vars::AbstractVector{<:Integer},
+""" """ function stack(df::AbstractDataFrame, measure_vars::AbstractVector{<:Integer},
                id_vars::AbstractVector{<:Integer}; variable_name::Symbol=:variable,
                value_name::Symbol=:value)
     N = length(measure_vars)
@@ -80,11 +39,7 @@ function stack(df::AbstractDataFrame, measure_vars = numeric_vars(df);
     stack(df, mv_inds, setdiff(1:ncol(df), mv_inds);
           variable_name=variable_name, value_name=value_name)
 end
-"""
-Stacks a DataFrame; convert from a wide to long format; see
-`stack`.
-"""
-function melt(df::AbstractDataFrame, id_vars::Union{Int,Symbol};
+""" """ function melt(df::AbstractDataFrame, id_vars::Union{Int,Symbol};
               variable_name::Symbol=:variable, value_name::Symbol=:value)
     melt(df, [id_vars]; variable_name=variable_name, value_name=value_name)
 end
@@ -101,42 +56,7 @@ function melt(df::AbstractDataFrame, id_vars, measure_vars;
 end
 melt(df::AbstractDataFrame; variable_name::Symbol=:variable, value_name::Symbol=:value) =
     stack(df; variable_name=variable_name, value_name=value_name)
-"""
-Unstacks a DataFrame; convert from a long to wide format
-```julia
-unstack(df::AbstractDataFrame, rowkeys::Union{Symbol, Integer},
-        colkey::Union{Symbol, Integer}, value::Union{Symbol, Integer})
-unstack(df::AbstractDataFrame, rowkeys::AbstractVector{<:Union{Symbol, Integer}},
-        colkey::Union{Symbol, Integer}, value::Union{Symbol, Integer})
-unstack(df::AbstractDataFrame, colkey::Union{Symbol, Integer},
-        value::Union{Symbol, Integer})
-unstack(df::AbstractDataFrame)
-```
-* `df` : the AbstractDataFrame to be unstacked
-* `rowkeys` : the column(s) with a unique key for each row, if not given,
-  find a key by grouping on anything not a `colkey` or `value`
-* `colkey` : the column holding the column names in wide format,
-  defaults to `:variable`
-* `value` : the value column, defaults to `:value`
-* `::DataFrame` : the wide-format DataFrame
-If `colkey` contains `missing` values then they will be skipped and a warning will be printed.
-If combination of `rowkeys` and `colkey` contains duplicate entries then last `value` will
-be retained and a warning will be printed.
-```julia
-wide = DataFrame(id = 1:12,
-                 a  = repeat([1:3;], inner = [4]),
-                 b  = repeat([1:4;], inner = [3]),
-                 c  = randn(12),
-                 d  = randn(12))
-long = stack(wide)
-wide0 = unstack(long)
-wide1 = unstack(long, :variable, :value)
-wide2 = unstack(long, :id, :variable, :value)
-wide3 = unstack(long, [:id, :a], :variable, :value)
-```
-Note that there are some differences between the widened results above.
-"""
-function unstack(df::AbstractDataFrame, rowkey::Int, colkey::Int, value::Int)
+""" """ function unstack(df::AbstractDataFrame, rowkey::Int, colkey::Int, value::Int)
     refkeycol = categorical(df[rowkey])
     droplevels!(refkeycol)
     keycol = categorical(df[colkey])
@@ -250,20 +170,7 @@ function _unstack(df::AbstractDataFrame, rowkeys::AbstractVector{Symbol},
     hcat(df1, df2)
 end
 unstack(df::AbstractDataFrame) = unstack(df, :variable, :value)
-"""
-    StackedVector <: AbstractVector{Any}
-An AbstractVector{Any} that is a linear, concatenated view into
-another set of AbstractVectors
-NOTE: Not exported.
-```julia
-StackedVector(d::AbstractVector...)
-```
-* `d...` : one or more AbstractVectors
-```julia
-StackedVector(Any[[1,2], [9,10], [11,12]])  # [1,2,9,10,11,12]
-```
-"""
-struct StackedVector <: AbstractVector{Any}
+""" """ struct StackedVector <: AbstractVector{Any}
     components::Vector{Any}
 end
 function Base.getindex(v::StackedVector,i::Int)
@@ -286,27 +193,7 @@ Base.eltype(v::StackedVector) = promote_type(map(eltype, v.components)...)
 Base.similar(v::StackedVector, T::Type, dims::Union{Integer, AbstractUnitRange}...) =
     similar(v.components[1], T, dims...)
 CategoricalArrays.CategoricalArray(v::StackedVector) = CategoricalArray(v[:]) # could be more efficient
-"""
-    RepeatedVector{T} <: AbstractVector{T}
-An AbstractVector that is a view into another AbstractVector with
-repeated elements
-NOTE: Not exported.
-```julia
-RepeatedVector(parent::AbstractVector, inner::Int, outer::Int)
-```
-* `parent` : the AbstractVector that's repeated
-* `inner` : the numer of times each element is repeated
-* `outer` : the numer of times the whole vector is repeated after
-  expanded by `inner`
-`inner` and `outer` have the same meaning as similarly named arguments
-to `repeat`.
-```julia
-RepeatedVector([1,2], 3, 1)   # [1,1,1,2,2,2]
-RepeatedVector([1,2], 1, 3)   # [1,2,1,2,1,2]
-RepeatedVector([1,2], 2, 2)   # [1,2,1,2,1,2,1,2]
-```
-"""
-struct RepeatedVector{T} <: AbstractVector{T}
+""" """ struct RepeatedVector{T} <: AbstractVector{T}
     parent::AbstractVector{T}
     inner::Int
     outer::Int
@@ -328,42 +215,7 @@ function CategoricalArrays.CategoricalArray(v::RepeatedVector)
     res.refs = repeat(res.refs, inner = [v.inner], outer = [v.outer])
     res
 end
-"""
-A stacked view of a DataFrame (long format)
-Like `stack` and `melt`, but a view is returned rather than data
-copies.
-```julia
-stackdf(df::AbstractDataFrame, [measure_vars], [id_vars];
-        variable_name::Symbol=:variable, value_name::Symbol=:value)
-meltdf(df::AbstractDataFrame, [id_vars], [measure_vars];
-       variable_name::Symbol=:variable, value_name::Symbol=:value)
-```
-* `df` : the wide AbstractDataFrame
-* `measure_vars` : the columns to be stacked (the measurement
-  variables), a normal column indexing type, like a Symbol,
-  Vector{Symbol}, Int, etc.; for `melt`, defaults to all
-  variables that are not `id_vars`
-* `id_vars` : the identifier columns that are repeated during
-  stacking, a normal column indexing type; for `stack` defaults to all
-  variables that are not `measure_vars`
-* `::DataFrame` : the long-format DataFrame with column `:value`
-  holding the values of the stacked columns (`measure_vars`), with
-  column `:variable` a Vector of Symbols with the `measure_vars` name,
-  and with columns for each of the `id_vars`.
-The result is a view because the columns are special AbstractVectors
-that return indexed views into the original DataFrame.
-```julia
-d1 = DataFrame(a = repeat([1:3;], inner = [4]),
-               b = repeat([1:4;], inner = [3]),
-               c = randn(12),
-               d = randn(12),
-               e = map(string, 'a':'l'))
-d1s = stackdf(d1, [:c, :d])
-d1s2 = stackdf(d1, [:c, :d], [:a])
-d1m = meltdf(d1, [:a, :b, :e])
-```
-"""
-function stackdf(df::AbstractDataFrame, measure_vars::AbstractVector{<:Integer},
+""" """ function stackdf(df::AbstractDataFrame, measure_vars::AbstractVector{<:Integer},
                  id_vars::AbstractVector{<:Integer}; variable_name::Symbol=:variable,
                  value_name::Symbol=:value)
     N = length(measure_vars)
@@ -401,10 +253,7 @@ function stackdf(df::AbstractDataFrame, measure_vars = numeric_vars(df);
     stackdf(df, m_inds, setdiff(1:ncol(df), m_inds);
             variable_name=variable_name, value_name=value_name)
 end
-"""
-A stacked view of a DataFrame (long format); see `stackdf`
-"""
-function meltdf(df::AbstractDataFrame, id_vars; variable_name::Symbol=:variable,
+""" """ function meltdf(df::AbstractDataFrame, id_vars; variable_name::Symbol=:variable,
                 value_name::Symbol=:value)
     id_inds = index(df)[id_vars]
     stackdf(df, setdiff(1:ncol(df), id_inds), id_inds;

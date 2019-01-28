@@ -1,19 +1,4 @@
-"""
-    SymTriangularDist(μ,σ)
-The *Symmetric triangular distribution* with location `μ` and scale `σ` has probability density function
-```math
-f(x; \\mu, \\sigma) = \\frac{1}{\\sigma} \\left( 1 - \\left| \\frac{x - \\mu}{\\sigma} \\right| \\right), \\quad \\mu - \\sigma \\le x \\le \\mu + \\sigma
-```
-```julia
-SymTriangularDist()         # Symmetric triangular distribution with zero location and unit scale
-SymTriangularDist(u)        # Symmetric triangular distribution with location u and unit scale
-SymTriangularDist(u, s)     # Symmetric triangular distribution with location u and scale s
-params(d)       # Get the parameters, i.e. (u, s)
-location(d)     # Get the location parameter, i.e. u
-scale(d)        # Get the scale parameter, i.e. s
-```
-"""
-struct SymTriangularDist{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct SymTriangularDist{T<:Real} <: ContinuousUnivariateDistribution
     μ::T
     σ::T
     function SymTriangularDist{T}(μ::T, σ::T) where T

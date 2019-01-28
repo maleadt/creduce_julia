@@ -1,18 +1,7 @@
 module WeakRefStrings
 export WeakRefString, WeakRefStringArray, StringArray, StringVector
 using Missings
-"""
-A custom "weakref" string type that only points to external string data.
-Allows for the creation of a "string" instance without copying data,
-which allows for more efficient string parsing/movement in certain data processing tasks.
-**Please note that no original reference is kept to the parent string/memory, so `WeakRefString` becomes unsafe
-once the parent object goes out of scope (i.e. loses a reference to it)**
-Internally, a `WeakRefString{T}` holds:
-  * `ptr::Ptr{T}`: a pointer to the string data (code unit size is parameterized on `T`)
-  * `len::Int`: the number of code units in the string data
-See also [`WeakRefStringArray`](@ref)
-"""
-struct WeakRefString{T} <: AbstractString
+""" """ struct WeakRefString{T} <: AbstractString
     ptr::Ptr{T}
     len::Int # of code units
 end
@@ -91,16 +80,7 @@ function Base.next_continued(s::WeakRefString, i::Int, u::UInt32)
 end
 init(::Type{T}, rows) where {T} = fill(zero(T), rows)
 init(::Type{Union{Missing, T}}, rows) where {T} = Vector{Union{Missing, T}}(undef, rows)
-"""
-A [`WeakRefString`](@ref) container.
-Holds the "strong" references to the data pointed by its strings, ensuring that
-the referenced memory blocks stay valid during `WeakRefStringArray` lifetime.
-Upon indexing an elemnt in a `WeakRefStringArray`, the underlying `WeakRefString` is converted to a proper
-Julia `String` type by copying the memory; this ensures safe string processing in the general case. If additional
-optimizations are desired, the direct `WeakRefString` elements can be accessed by indexing `A.elements`, where
-`A` is a `WeakRefStringArray`.
-"""
-struct WeakRefStringArray{T<:WeakRefString, N, U} <: AbstractArray{Union{String, U}, N}
+""" """ struct WeakRefStringArray{T<:WeakRefString, N, U} <: AbstractArray{Union{String, U}, N}
     data::Vector{Any}
     elements::Array{Union{T, U}, N}
     WeakRefStringArray(data::Vector{Any}, A::Array{Union{T, Missing}, N}) where {T <: WeakRefString, N} =
@@ -139,36 +119,7 @@ function Base.vcat(a::WeakRefStringArray{T, 1}, b::WeakRefStringArray{T, 1}) whe
 end
 Base.deleteat!(a::WeakRefStringArray{T, 1}, inds) where {T} = (deleteat!(a.elements, inds); return a)
 const STR = Union{Missing, <:AbstractString}
-"""
-`StringArray{T,N}`
-Efficient storage for N dimensional array of strings.
-`StringArray` stores underlying string data for all elements of the array
-in a single contiguous buffer. It maintains offset and length for each
-element.
-`T` can be `String`, `WeakRefString`, `Union{Missing, String}` or
-`Union{Missing, WeakRefString}`. `getindex` will return this type although
-all variants have the same storage format.
-You can use `convert(StringArray{U}, ::StringArray{T})` to change the
-element type (e.g. to `WeakRefString` for efficiency) without copying
-the data.
-```
-julia> sa = StringArray(["x", "y"]) # from Array{String}
-2-element WeakRefStrings.StringArray{String,1}:
- "x"
- "y"
-julia> sa = StringArray{WeakRefString}(["x", "y"])
-2-element WeakRefStrings.StringArray{WeakRefStrings.WeakRefString,1}:
- "x"
- "y"
-julia> sa = StringArray{Union{Missing, String}}(["x", "y"]) # with Missing
-2-element WeakRefStrings.StringArray{Union{Missings.Missing, String},1}:
- "x"
- "y"
-julia> sa = StringArray{Union{Missing, String}}(2,2) # undef
-2×2 WeakRefStrings.StringArray{Union{Missings.Missing, String},2}:
-```
-"""
-struct StringArray{T, N} <: AbstractArray{T, N}
+""" """ struct StringArray{T, N} <: AbstractArray{T, N}
     buffer::Vector{UInt8}
     offsets::Array{UInt64, N}
     lengths::Array{UInt32, N}
@@ -178,12 +129,7 @@ const UNDEF_OFFSET = typemax(UInt64)
 const MISSING_OFFSET = typemax(UInt64)-1
 Base.size(a::StringArray) = size(a.offsets)
 Base.IndexStyle(::Type{<:StringVector}) = IndexLinear()
-"""
-`convert(StringArray{U}, A::StringArray{T})`
-convert `A` to StringArray of another element type (`U`) without
-copying the underlying data.
-"""
-function Base.convert(::Type{<:StringArray{T}}, x::StringArray{<:STR,N}) where {T, N}
+""" """ function Base.convert(::Type{<:StringArray{T}}, x::StringArray{<:STR,N}) where {T, N}
     StringArray{T, ndims(x)}(x.buffer, x.offsets, x.lengths)
 end
 function StringArray{T, N}(::UndefInitializer, dims::Tuple{Vararg{Integer}}) where {T,N}

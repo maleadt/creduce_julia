@@ -1,7 +1,4 @@
-"""
-Scaling matrix.
-"""
-struct ScalMat{T<:Real} <: AbstractPDMat{T}
+""" """ struct ScalMat{T<:Real} <: AbstractPDMat{T}
     dim::Int
     value::T
     inv_value::T

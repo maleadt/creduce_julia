@@ -1,22 +1,4 @@
-"""
-    Frechet(α,θ)
-The *Fréchet distribution* with shape `α` and scale `θ` has probability density function
-```math
-f(x; \\alpha, \\theta) = \\frac{\\alpha}{\\theta} \\left( \\frac{x}{\\theta} \\right)^{-\\alpha-1}
-e^{-(x/\\theta)^{-\\alpha}}, \\quad x > 0
-```
-```julia
-Frechet()        # Fréchet distribution with unit shape and unit scale, i.e. Frechet(1, 1)
-Frechet(a)       # Fréchet distribution with shape a and unit scale, i.e. Frechet(a, 1)
-Frechet(a, b)    # Fréchet distribution with shape a and scale b
-params(d)        # Get the parameters, i.e. (a, b)
-shape(d)         # Get the shape parameter, i.e. a
-scale(d)         # Get the scale parameter, i.e. b
-```
-External links
-* [Fréchet_distribution on Wikipedia](http://en.wikipedia.org/wiki/Fréchet_distribution)
-"""
-struct Frechet{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct Frechet{T<:Real} <: ContinuousUnivariateDistribution
     α::T
     θ::T
     function Frechet{T}(α::T, θ::T) where T

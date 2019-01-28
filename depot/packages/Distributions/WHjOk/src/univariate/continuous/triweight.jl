@@ -1,7 +1,4 @@
-"""
-    Triweight(μ, σ)
-"""
-struct Triweight{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct Triweight{T<:Real} <: ContinuousUnivariateDistribution
     μ::T
     σ::T
     Triweight{T}(μ::T, σ::T) where {T} = (@check_args(Triweight, σ > zero(σ)); new{T}(μ, σ))

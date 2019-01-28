@@ -29,13 +29,7 @@ end
 Lexer(io::IO_t, T::Type{TT} = Token) where {IO_t,TT <: AbstractToken} = Lexer{IO_t,T}(io, position(io), 1, 1, position(io), 1, 1, position(io), Tokens.ERROR, IOBuffer(), ' ', false, false)
 Lexer(str::AbstractString, T::Type{TT} = Token) where TT <: AbstractToken = Lexer(IOBuffer(str), T)
 @inline token_type(l::Lexer{IO_t, TT}) where {IO_t, TT} = TT
-"""
-    tokenize(x, T = Token)
-Returns an `Iterable` containing the tokenized input. Can be reverted by e.g.
-`join(untokenize.(tokenize(x)))`. Setting `T` chooses the type of token
-produced by the lexer (`Token` or `RawToken`).
-"""
-tokenize(x, ::Type{Token}) = Lexer(x, Token)
+""" """ tokenize(x, ::Type{Token}) = Lexer(x, Token)
 tokenize(x, ::Type{RawToken}) = Lexer(x, RawToken)
 tokenize(x) = Lexer(x, Token)
 Base.IteratorSize(::Type{Lexer{IO_t,T}}) where {IO_t,T} = Base.SizeUnknown()
@@ -60,58 +54,21 @@ end
 function Base.show(io::IO, l::Lexer)
     print(io, typeof(l), " at position: ", position(l))
 end
-"""
-    startpos(l::Lexer)
-Return the latest `Token`'s starting position.
-"""
-startpos(l::Lexer) = l.token_startpos
-"""
-    startpos!(l::Lexer, i::Integer)
-Set a new starting position.
-"""
-startpos!(l::Lexer, i::Integer) = l.token_startpos = i
+""" """ startpos(l::Lexer) = l.token_startpos
+""" """ startpos!(l::Lexer, i::Integer) = l.token_startpos = i
 Base.seekstart(l::Lexer) = seek(l.io, l.io_startpos)
-"""
-    seek2startpos!(l::Lexer)
-Sets the lexer's current position to the beginning of the latest `Token`.
-"""
-seek2startpos!(l::Lexer) = seek(l, startpos(l))
-"""
-    peekchar(l::Lexer)
-Returns the next character without changing the lexer's state.
-"""
-peekchar(l::Lexer) = peekchar(l.io)
-"""
-dpeekchar(l::Lexer)
-Returns the next two characters without changing the lexer's state.
-"""
-dpeekchar(l::Lexer) = dpeekchar(l.io)
-"""
-    position(l::Lexer)
-Returns the current position.
-"""
-Base.position(l::Lexer) = Base.position(l.io)
-"""
-    eof(l::Lexer)
-Determine whether the end of the lexer's underlying buffer has been reached.
-"""
-eof(l::Lexer) = eof(l.io)
+""" """ seek2startpos!(l::Lexer) = seek(l, startpos(l))
+""" """ peekchar(l::Lexer) = peekchar(l.io)
+""" """ dpeekchar(l::Lexer) = dpeekchar(l.io)
+""" """ Base.position(l::Lexer) = Base.position(l.io)
+""" """ eof(l::Lexer) = eof(l.io)
 Base.seek(l::Lexer, pos) = seek(l.io, pos)
-"""
-    start_token!(l::Lexer)
-Updates the lexer's state such that the next  `Token` will start at the current
-position.
-"""
-function start_token!(l::Lexer)
+""" """ function start_token!(l::Lexer)
     l.token_startpos = position(l)
     l.token_start_row = l.current_row
     l.token_start_col = l.current_col
 end
-"""
-    readchar(l::Lexer)
-Returns the next character and increments the current position.
-"""
-function readchar end
+""" """ function readchar end
 function readchar(l::Lexer{I}) where {I <: IO}
     l.current_char = readchar(l.io)
     if l.doread
@@ -139,13 +96,7 @@ function readoff(l::Lexer{I,Token})  where {I <: IO}
     l.doread = false
     return l.current_char
 end
-"""
-    accept(l::Lexer, f::Union{Function, Char, Vector{Char}, String})
-Consumes the next character `c` if either `f::Function(c)` returns true, `c == f`
-for `c::Char` or `c in f` otherwise. Returns `true` if a character has been
-consumed and `false` otherwise.
-"""
-@inline function accept(l::Lexer, f::Union{Function, Char, Vector{Char}, String})
+""" """ @inline function accept(l::Lexer, f::Union{Function, Char, Vector{Char}, String})
     c = peekchar(l)
     if isa(f, Function)
         ok = f(c)
@@ -157,22 +108,14 @@ consumed and `false` otherwise.
     ok && readchar(l)
     return ok
 end
-"""
-    accept_batch(l::Lexer, f)
-Consumes all following characters until `accept(l, f)` is `false`.
-"""
-@inline function accept_batch(l::Lexer, f)
+""" """ @inline function accept_batch(l::Lexer, f)
     ok = false
     while accept(l, f)
         ok = true
     end
     return ok
 end
-"""
-    emit(l::Lexer, kind::Kind, err::TokenError=Tokens.NO_ERR)
-Returns a `Token` of kind `kind` with contents `str` and starts a new `Token`.
-"""
-function emit(l::Lexer{IO_t,Token}, kind::Kind, err::TokenError = Tokens.NO_ERR) where IO_t
+""" """ function emit(l::Lexer{IO_t,Token}, kind::Kind, err::TokenError = Tokens.NO_ERR) where IO_t
     if (kind == Tokens.IDENTIFIER || isliteral(kind) || kind == Tokens.COMMENT || kind == Tokens.WHITESPACE)
         str = String(take!(l.charstore))
     elseif kind == Tokens.ERROR
@@ -221,18 +164,10 @@ function emit(l::Lexer{IO_t,RawToken}, kind::Kind, err::TokenError = Tokens.NO_E
     readoff(l)
     return tok
 end
-"""
-    emit_error(l::Lexer, err::TokenError=Tokens.UNKNOWN)
-Returns an `ERROR` token with error `err` and starts a new `Token`.
-"""
-function emit_error(l::Lexer, err::TokenError = Tokens.UNKNOWN)
+""" """ function emit_error(l::Lexer, err::TokenError = Tokens.UNKNOWN)
     return emit(l, Tokens.ERROR, err)
 end
-"""
-    next_token(l::Lexer)
-Returns the next `Token`.
-"""
-function next_token(l::Lexer)
+""" """ function next_token(l::Lexer)
     start_token!(l)
     c = readchar(l)
     if eof(c);

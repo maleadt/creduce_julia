@@ -1,41 +1,4 @@
-"""
-The [Multivariate normal distribution](http://en.wikipedia.org/wiki/Multivariate_normal_distribution)
-is a multidimensional generalization of the *normal distribution*. The probability density function of
-a d-dimensional multivariate normal distribution with mean vector ``\\boldsymbol{\\mu}`` and
-covariance matrix ``\\boldsymbol{\\Sigma}`` is:
-```math
-f(\\mathbf{x}; \\boldsymbol{\\mu}, \\boldsymbol{\\Sigma}) = \\frac{1}{(2 \\pi)^{d/2} |\\boldsymbol{\\Sigma}|^{1/2}}
-\\exp \\left( - \\frac{1}{2} (\\mathbf{x} - \\boldsymbol{\\mu})^T \\Sigma^{-1} (\\mathbf{x} - \\boldsymbol{\\mu}) \\right)
-```
-We realize that the mean vector and the covariance often have special forms in practice,
-which can be exploited to simplify the computation. For example, the mean vector is sometimes
-just a zero vector, while the covariance matrix can be a diagonal matrix or even in the form
-of ``\\sigma \\mathbf{I}``. To take advantage of such special cases, we introduce a parametric
-type `MvNormal`, defined as below, which allows users to specify the special structure of
-the mean and covariance.
-```julia
-struct MvNormal{Cov<:AbstractPDMat,Mean<:Union{Vector,ZeroVector}} <: AbstractMvNormal
-    μ::Mean
-    Σ::Cov
-end
-```
-Here, the mean vector can be an instance of either `Vector` or `ZeroVector`, where the
-latter is simply an empty type indicating a vector filled with zeros. The covariance can be
-of any subtype of `AbstractPDMat`. Particularly, one can use `PDMat` for full covariance,
-`PDiagMat` for diagonal covariance, and `ScalMat` for the isotropic covariance -- those
-in the form of ``\\sigma \\mathbf{I}``. (See the Julia package
-[PDMats](https://github.com/lindahua/PDMats.jl) for details).
-We also define a set of alias for the types using different combinations of mean vectors and covariance:
-```julia
-const IsoNormal  = MvNormal{ScalMat,  Vector{Float64}}
-const DiagNormal = MvNormal{PDiagMat, Vector{Float64}}
-const FullNormal = MvNormal{PDMat,    Vector{Float64}}
-const ZeroMeanIsoNormal  = MvNormal{ScalMat,  ZeroVector{Float64}}
-const ZeroMeanDiagNormal = MvNormal{PDiagMat, ZeroVector{Float64}}
-const ZeroMeanFullNormal = MvNormal{PDMat,    ZeroVector{Float64}}
-```
-"""
-abstract type AbstractMvNormal <: ContinuousMultivariateDistribution end
+""" """ abstract type AbstractMvNormal <: ContinuousMultivariateDistribution end
 insupport(d::AbstractMvNormal, x::AbstractVector) =
     length(d) == length(x) && allfinite(x)
 mode(d::AbstractMvNormal) = mean(d)
@@ -45,23 +8,9 @@ function entropy(d::AbstractMvNormal)
     (length(d) * (typeof(ldcd)(log2π) + 1) + ldcd)/2
 end
 mvnormal_c0(g::AbstractMvNormal) = -(length(g) * Float64(log2π) + logdetcov(g))/2
-"""
-    invcov(d::AbstractMvNormal)
-Return the inversed covariance matrix of d.
-"""
-invcov(d::AbstractMvNormal)
-"""
-    logdetcov(d::AbstractMvNormal)
-Return the log-determinant value of the covariance matrix.
-"""
-logdetcov(d::AbstractMvNormal)
-"""
-    sqmahal(d, x)
-Return the squared Mahalanobis distance from x to the center of d, w.r.t. the covariance.
-When x is a vector, it returns a scalar value. When x is a matrix, it returns a vector of length size(x,2).
-`sqmahal!(r, d, x)` with write the results to a pre-allocated array `r`.
-"""
-sqmahal(d::AbstractMvNormal, x::AbstractArray)
+""" """ invcov(d::AbstractMvNormal)
+""" """ logdetcov(d::AbstractMvNormal)
+""" """ sqmahal(d::AbstractMvNormal, x::AbstractArray)
 sqmahal(d::AbstractMvNormal, x::AbstractMatrix) = sqmahal!(Vector{promote_type(partype(d), eltype(x))}(undef, size(x, 2)), d, x)
 _logpdf(d::AbstractMvNormal, x::AbstractVector) = mvnormal_c0(d) - sqmahal(d, x)/2
 function _logpdf!(r::AbstractArray, d::AbstractMvNormal, x::AbstractMatrix)
@@ -73,38 +22,10 @@ function _logpdf!(r::AbstractArray, d::AbstractMvNormal, x::AbstractMatrix)
     r
 end
 _pdf!(r::AbstractArray, d::AbstractMvNormal, x::AbstractMatrix) = exp!(_logpdf!(r, d, x))
-"""
-    rand(rng::AbstractRNG, d::AbstractMvNormal)
-    rand(rng::AbstractRNG, d::AbstractMvNormal, n::Int)
-    rand!(rng::AbstractRNG, d::AbstractMvNormal, x::AbstractArray)
-Sample from distribution `d` using the random number generator `rng`.
-"""
-rand(rng::AbstractRNG, d::AbstractMvNormal) = _rand!(rng, d, Vector{eltype(d)}(undef, length(d)))
+""" """ rand(rng::AbstractRNG, d::AbstractMvNormal) = _rand!(rng, d, Vector{eltype(d)}(undef, length(d)))
 rand!(rng::AbstractRNG, d::AbstractMvNormal, x::VecOrMat) = _rand!(rng, d, x)
 rand(rng::AbstractRNG, d::AbstractMvNormal, n::Integer) = _rand!(rng, d, Matrix{eltype(d)}(undef, length(d), n))
-"""
-    MvNormal
-Generally, users don't have to worry about these internal details.
-We provide a common constructor `MvNormal`, which will construct a distribution of
-appropriate type depending on the input arguments.
-    MvNormal(sig)
-Construct a multivariate normal distribution with zero mean and covariance represented by `sig`.
-    MvNormal(mu, sig)
-Construct a multivariate normal distribution with mean `mu` and covariance represented by `sig`.
-    MvNormal(d, sig)
-Construct a multivariate normal distribution of dimension `d`, with zero mean, and an
-isotropic covariance as `abs2(sig) * eye(d)`.
-- `mu::Vector{T<:Real}`: The mean vector.
-- `d::Real`: dimension of distribution.
-- `sig`: The covariance, which can in of either of the following forms (with `T<:Real`):
-    1. subtype of `AbstractPDMat`
-    2. symmetric matrix of type `Matrix{T}`
-    3. vector of type `Vector{T}`: indicating a diagonal covariance as `diagm(abs2(sig))`.
-    4. real-valued number: indicating an isotropic covariance as `abs2(sig) * eye(d)`.
-**Note:** The constructor will choose an appropriate covariance form internally, so that
-special structure of the covariance can be exploited.
-"""
-struct MvNormal{T<:Real,Cov<:AbstractPDMat,Mean<:Union{Vector, ZeroVector}} <: AbstractMvNormal
+""" """ struct MvNormal{T<:Real,Cov<:AbstractPDMat,Mean<:Union{Vector, ZeroVector}} <: AbstractMvNormal
     μ::Mean
     Σ::Cov
 end

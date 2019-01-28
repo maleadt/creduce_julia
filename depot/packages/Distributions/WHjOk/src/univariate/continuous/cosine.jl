@@ -1,10 +1,4 @@
-"""
-    Cosine(μ, σ)
-A raised Cosine distribution.
-External link:
-* [Cosine distribution on wikipedia](http://en.wikipedia.org/wiki/Raised_cosine_distribution)
-"""
-struct Cosine{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct Cosine{T<:Real} <: ContinuousUnivariateDistribution
     μ::T
     σ::T
     Cosine{T}(μ::T, σ::T) where {T} = (@check_args(Cosine, σ > zero(σ)); new{T}(μ, σ))

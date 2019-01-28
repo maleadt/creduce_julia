@@ -1,10 +1,4 @@
-"""
-    GroupedDataFrame
-The result of a `groupby` operation on an AbstractDataFrame; a
-view into the AbstractDataFrame grouped by rows.
-Not meant to be constructed directly, see `groupby`.
-"""
-struct GroupedDataFrame{T<:AbstractDataFrame}
+""" """ struct GroupedDataFrame{T<:AbstractDataFrame}
     parent::T
     cols::Vector{Int}    # columns used for grouping
     groups::Vector{Int}  # group indices for each row
@@ -12,47 +6,8 @@ struct GroupedDataFrame{T<:AbstractDataFrame}
     starts::Vector{Int}  # starts of groups
     ends::Vector{Int}    # ends of groups
 end
-"""
-    parent(gd::GroupedDataFrame)
-Return the parent data frame of `gd`.
-"""
-Base.parent(gd::GroupedDataFrame) = getfield(gd, :parent)
-"""
-A view of an AbstractDataFrame split into row groups
-```julia
-groupby(d::AbstractDataFrame, cols; sort = false, skipmissing = false)
-groupby(cols; sort = false, skipmissing = false)
-```
-* `d` : an AbstractDataFrame to split (optional, see [Returns](#returns))
-* `cols` : data table columns to group by
-* `sort`: whether to sort rows according to the values of the grouping columns `cols`
-* `skipmissing`: whether to skip rows with `missing` values in one of the grouping columns `cols`
-A `GroupedDataFrame` : a grouped view into `d`
-An iterator over a `GroupedDataFrame` returns a `SubDataFrame` view
-for each grouping into `d`. A `GroupedDataFrame` also supports
-indexing by groups, `map` (which applies a function to each group)
-and `combine` (which applies a function to each group
-and combines the result into a data frame).
-See the following for additional split-apply-combine operations:
-* `by` : split-apply-combine using functions
-* `aggregate` : split-apply-combine; applies functions in the form of a cross product
-* `colwise` : apply a function to each column in an `AbstractDataFrame` or `GroupedDataFrame`
-* `map` : apply a function to each group of a `GroupedDataFrame` (without combining)
-* `combine` : combine a `GroupedDataFrame`, optionally applying a function to each group
-```julia
-df = DataFrame(a = repeat([1, 2, 3, 4], outer=[2]),
-               b = repeat([2, 1], outer=[4]),
-               c = randn(8))
-gd = groupby(df, :a)
-gd[1]
-last(gd)
-vcat([g[:b] for g in gd]...)
-for g in gd
-    println(g)
-end
-```
-"""
-function groupby(df::AbstractDataFrame, cols::AbstractVector;
+""" """ Base.parent(gd::GroupedDataFrame) = getfield(gd, :parent)
+""" """ function groupby(df::AbstractDataFrame, cols::AbstractVector;
                  sort::Bool = false, skipmissing::Bool = false)
     intcols = index(df)[cols]
     sdf = df[intcols]
@@ -92,82 +47,7 @@ function Base.isequal(gd1::GroupedDataFrame, gd2::GroupedDataFrame)
 end
 Base.names(gd::GroupedDataFrame) = names(gd.parent)
 _names(gd::GroupedDataFrame) = _names(gd.parent)
-"""
-    map(cols => f, gd::GroupedDataFrame)
-    map(f, gd::GroupedDataFrame)
-Apply a function to each group of rows and return a `GroupedDataFrame`.
-If the first argument is a `cols => f` pair, `cols` must be a column name or index, or
-a vector or tuple thereof, and `f` must be a callable. If `cols` is a single column index,
-`f` is called with a `SubArray` view into that column for each group; else, `f` is called
-with a named tuple holding `SubArray` views into these columns.
-If the first argument is a vector, tuple or named tuple of such pairs, each pair is
-handled as described above. If a named tuple, field names are used to name
-each generated column.
-If the first argument is a callable, it is passed a `SubDataFrame` view for each group,
-and the returned `DataFrame` then consists of the returned rows plus the grouping columns.
-Note that this second form is much slower than the first one due to type instability.
-`f` can return a single value, a row or multiple rows. The type of the returned value
-determines the shape of the resulting data frame:
-- A single value gives a data frame with a single column and one row per group.
-- A named tuple of single values or a `DataFrameRow` gives a data frame with one column
-  for each field and one row per group.
-- A vector gives a data frame with a single column and as many rows
-  for each group as the length of the returned vector for that group.
-- A data frame, a named tuple of vectors or a matrix gives a data frame
-  with the same columns and as many rows for each group as the rows returned for that group.
-As a special case, if a tuple or vector of pairs is passed as the first argument, each function
-is required to return a single value or vector, which will produce each a separate column.
-In all cases, the resulting `GroupedDataFrame` contains all the grouping columns in addition
-to those listed above. Column names are automatically generated when necessary: for functions
-operating on a single column and returning a single value or vector, the function name is
-appended to the input column name; for other functions, columns are called `x1`, `x2`
-and so on.
-Note that `f` must always return the same type of object for
-all groups, and (if a named tuple or data frame) with the same fields or columns.
-Due to type instability, returning a single value or a named tuple is dramatically
-faster than returning a data frame.
-Optimized methods are used when standard summary functions (`sum`, `prod`,
-`minimum`, `maximum`, `mean`, `var`, `std`, `first`, `last` and `length)
-are specified using the pair syntax (e.g. `col => sum`).
-When computing the `sum` or `mean` over floating point columns, results will be less
-accurate than the standard [`sum`](@ref) function (which uses pairwise summation). Use
-`col => x -> sum(x)` to avoid the optimized method and use the slower, more accurate one.
-```jldoctest
-julia> df = DataFrame(a = repeat([1, 2, 3, 4], outer=[2]),
-                      b = repeat([2, 1], outer=[4]),
-                      c = 1:8);
-julia> gd = groupby(df, :a);
-julia> map(:c => sum, gd)
-GroupedDataFrame{DataFrame} with 4 groups based on key: :a
-First Group: 1 row
-│ Row │ a     │ c_sum │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 1     │ 6     │
-⋮
-Last Group: 1 row
-│ Row │ a     │ c_sum │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 4     │ 12    │
-julia> map(df -> sum(df.c), gd) # Slower variant
-GroupedDataFrame{DataFrame} with 4 groups based on key: :a
-First Group: 1 row
-│ Row │ a     │ x1    │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 1     │ 6     │
-⋮
-Last Group: 1 row
-│ Row │ a     │ x1    │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 4     │ 12    │
-```
-See [`by`](@ref) for more examples.
-`combine(f, gd)` returns a `DataFrame` rather than a `GroupedDataFrame`
-"""
-function Base.map(f::Any, gd::GroupedDataFrame)
+""" """ function Base.map(f::Any, gd::GroupedDataFrame)
     if length(gd) > 0
         idx, valscat = _combine(f, gd)
         parent = hcat!(gd.parent[idx, gd.cols], valscat, makeunique=true)
@@ -192,92 +72,7 @@ function Base.map(f::Any, gd::GroupedDataFrame)
                                 Int[], Int[], Int[], Int[])
     end
 end
-"""
-    combine(gd::GroupedDataFrame)
-    combine(gd::GroupedDataFrame, cols => f...)
-    combine(gd::GroupedDataFrame; (colname = cols => f)...)
-    combine(gd::GroupedDataFrame, f)
-    combine(f, gd::GroupedDataFrame)
-Transform a `GroupedDataFrame` into a `DataFrame`.
-If the last argument(s) consist(s) in one or more `cols => f` pair(s), or if
-`colname = cols => f` keyword arguments are provided, `cols` must be
-a column name or index, or a vector or tuple thereof, and `f` must be a callable.
-A pair or a (named) tuple of pairs can also be provided as the first or last argument.
-If `cols` is a single column index, `f` is called with a `SubArray` view into that
-column for each group; else, `f` is called with a named tuple holding `SubArray`
-views into these columns.
-If the last argument is a callable `f`, it is passed a `SubDataFrame` view for each group,
-and the returned `DataFrame` then consists of the returned rows plus the grouping columns.
-Note that this second form is much slower than the first one due to type instability.
-A method is defined with `f` as the first argument, so do-block
-notation can be used.
-`f` can return a single value, a row or multiple rows. The type of the returned value
-determines the shape of the resulting data frame:
-- A single value gives a data frame with a single column and one row per group.
-- A named tuple of single values or a `DataFrameRow` gives a data frame with one column
-  for each field and one row per group.
-- A vector gives a data frame with a single column and as many rows
-  for each group as the length of the returned vector for that group.
-- A data frame, a named tuple of vectors or a matrix gives a data frame
-  with the same columns and as many rows for each group as the rows returned for that group.
-As a special case, if a tuple or vector of pairs is passed as the first argument, each function
-is required to return a single value or vector, which will produce each a separate column.
-In all cases, the resulting data frame contains all the grouping columns in addition
-to those listed above. Column names are automatically generated when necessary: for functions
-operating on a single column and returning a single value or vector, the function name is
-appended to the input column name; for other functions, columns are called `x1`, `x2`
-and so on. The resulting data frame will be sorted if `sort=true` was passed to the
-[`groupby`](@ref) call from which `gd` was constructed. Otherwise, ordering of rows
-is undefined.
-Note that `f` must always return the same type of object for
-all groups, and (if a named tuple or data frame) with the same fields or columns.
-Due to type instability, returning a single value or a named tuple is dramatically
-faster than returning a data frame.
-Optimized methods are used when standard summary functions (`sum`, `prod`,
-`minimum`, `maximum`, `mean`, `var`, `std`, `first`, `last` and `length)
-are specified using the pair syntax (e.g. `col => sum`).
-When computing the `sum` or `mean` over floating point columns, results will be less
-accurate than the standard [`sum`](@ref) function (which uses pairwise summation). Use
-`col => x -> sum(x)` to avoid the optimized method and use the slower, more accurate one.
-```jldoctest
-julia> df = DataFrame(a = repeat([1, 2, 3, 4], outer=[2]),
-                      b = repeat([2, 1], outer=[4]),
-                      c = 1:8);
-julia> gd = groupby(df, :a);
-julia> combine(gd, :c => sum)
-4×2 DataFrame
-│ Row │ a     │ c_sum │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 1     │ 6     │
-│ 2   │ 2     │ 8     │
-│ 3   │ 3     │ 10    │
-│ 4   │ 4     │ 12    │
-julia> combine(:c => sum, gd)
-4×2 DataFrame
-│ Row │ a     │ c_sum │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 1     │ 6     │
-│ 2   │ 2     │ 8     │
-│ 3   │ 3     │ 10    │
-│ 4   │ 4     │ 12    │
-julia> combine(df -> sum(df.c), gd) # Slower variant
-4×2 DataFrame
-│ Row │ a     │ x1    │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 1     │ 6     │
-│ 2   │ 2     │ 8     │
-│ 3   │ 3     │ 10    │
-│ 4   │ 4     │ 12    │
-```
-See [`by`](@ref) for more examples.
-[`by(f, df, cols)`](@ref) is a shorthand for `combine(f, groupby(df, cols))`.
-[`map`](@ref): `combine(f, groupby(df, cols))` is a more efficient equivalent
-of `combine(map(f, groupby(df, cols)))`.
-"""
-function combine(f::Any, gd::GroupedDataFrame)
+""" """ function combine(f::Any, gd::GroupedDataFrame)
     if length(gd) > 0
         idx, valscat = _combine(f, gd)
         return hcat!(gd.parent[idx, gd.cols], valscat, makeunique=true)
@@ -715,144 +510,10 @@ function _combine_with_first!(first::Union{AbstractDataFrame,
     end
     outcols
 end
-"""
-Apply a function to each column in an AbstractDataFrame or
-GroupedDataFrame
-```julia
-colwise(f, d)
-```
-* `f` : a function or vector of functions
-* `d` : an AbstractDataFrame of GroupedDataFrame
-* various, depending on the call
-```julia
-df = DataFrame(a = repeat([1, 2, 3, 4], outer=[2]),
-               b = repeat([2, 1], outer=[4]),
-               c = randn(8))
-colwise(sum, df)
-colwise([sum, length], df)
-colwise((minimum, maximum), df)
-colwise(sum, groupby(df, :a))
-```
-"""
-colwise(f, d::AbstractDataFrame) = [f(d[i]) for i in 1:ncol(d)]
+""" """ colwise(f, d::AbstractDataFrame) = [f(d[i]) for i in 1:ncol(d)]
 colwise(fns::Union{AbstractVector, Tuple}, d::AbstractDataFrame) = [f(d[i]) for f in fns, i in 1:ncol(d)]
 colwise(f, gd::GroupedDataFrame) = [colwise(f, g) for g in gd]
-"""
-    by(d::AbstractDataFrame, keys, cols => f...; sort::Bool = false)
-    by(d::AbstractDataFrame, keys; (colname = cols => f)..., sort::Bool = false)
-    by(d::AbstractDataFrame, keys, f; sort::Bool = false)
-    by(f, d::AbstractDataFrame, keys; sort::Bool = false)
-Split-apply-combine in one step: apply `f` to each grouping in `d`
-based on grouping columns `keys`, and return a `DataFrame`.
-`keys` can be either a single column index, or a vector thereof.
-If the last argument(s) consist(s) in one or more `cols => f` pair(s), or if
-`colname = cols => f` keyword arguments are provided, `cols` must be
-a column name or index, or a vector or tuple thereof, and `f` must be a callable.
-A pair or a (named) tuple of pairs can also be provided as the first or last argument.
-If `cols` is a single column index, `f` is called with a `SubArray` view into that
-column for each group; else, `f` is called with a named tuple holding `SubArray`
-views into these columns.
-If the last argument is a callable `f`, it is passed a `SubDataFrame` view for each group,
-and the returned `DataFrame` then consists of the returned rows plus the grouping columns.
-Note that this second form is much slower than the first one due to type instability.
-A method is defined with `f` as the first argument, so do-block
-notation can be used.
-`f` can return a single value, a row or multiple rows. The type of the returned value
-determines the shape of the resulting data frame:
-- A single value gives a data frame with a single column and one row per group.
-- A named tuple of single values or a `DataFrameRow` gives a data frame with one column
-  for each field and one row per group.
-- A vector gives a data frame with a single column and as many rows
-  for each group as the length of the returned vector for that group.
-- A data frame, a named tuple of vectors or a matrix gives a data frame
-  with the same columns and as many rows for each group as the rows returned for that group.
-As a special case, if multiple pairs are passed as last arguments, each function
-is required to return a single value or vector, which will produce each a separate column.
-In all cases, the resulting data frame contains all the grouping columns in addition
-to those listed above. Column names are automatically generated when necessary: for functions
-operating on a single column and returning a single value or vector, the function name is
-appended to the input colummn name; for other functions, columns are called `x1`, `x2`
-and so on. The resulting data frame will be sorted on `keys` if `sort=true`.
-Otherwise, ordering of rows is undefined.
-Note that `f` must always return the same type of object for
-all groups, and (if a named tuple or data frame) with the same fields or columns.
-Due to type instability, returning a single value or a named tuple is dramatically
-faster than returning a data frame.
-Optimized methods are used when standard summary functions (`sum`, `prod`,
-`minimum`, `maximum`, `mean`, `var`, `std`, `first`, `last` and `length)
-are specified using the pair syntax (e.g. `col => sum`).
-When computing the `sum` or `mean` over floating point columns, results will be less
-accurate than the standard [`sum`](@ref) function (which uses pairwise summation). Use
-`col => x -> sum(x)` to avoid the optimized method and use the slower, more accurate one.
-`by(d, cols, f)` is equivalent to `combine(f, groupby(d, cols))` and to the
-less efficient `combine(map(f, groupby(d, cols)))`.
-```jldoctest
-julia> df = DataFrame(a = repeat([1, 2, 3, 4], outer=[2]),
-                      b = repeat([2, 1], outer=[4]),
-                      c = 1:8);
-julia> by(df, :a, :c => sum)
-4×2 DataFrame
-│ Row │ a     │ c_sum │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 1     │ 6     │
-│ 2   │ 2     │ 8     │
-│ 3   │ 3     │ 10    │
-│ 4   │ 4     │ 12    │
-julia> by(df, :a, d -> sum(d.c)) # Slower variant
-4×2 DataFrame
-│ Row │ a     │ x1    │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 1     │ 6     │
-│ 2   │ 2     │ 8     │
-│ 3   │ 3     │ 10    │
-│ 4   │ 4     │ 12    │
-julia> by(df, :a) do d # do syntax for the slower variant
-           sum(d.c)
-       end
-4×2 DataFrame
-│ Row │ a     │ x1    │
-│     │ Int64 │ Int64 │
-├─────┼───────┼───────┤
-│ 1   │ 1     │ 6     │
-│ 2   │ 2     │ 8     │
-│ 3   │ 3     │ 10    │
-│ 4   │ 4     │ 12    │
-julia> by(df, :a, :c => x -> 2 .* x)
-8×2 DataFrame
-│ Row │ a     │ c_function │
-│     │ Int64 │ Int64      │
-├─────┼───────┼────────────┤
-│ 1   │ 1     │ 2          │
-│ 2   │ 1     │ 10         │
-│ 3   │ 2     │ 4          │
-│ 4   │ 2     │ 12         │
-│ 5   │ 3     │ 6          │
-│ 6   │ 3     │ 14         │
-│ 7   │ 4     │ 8          │
-│ 8   │ 4     │ 16         │
-julia> by(df, :a, c_sum = :c => sum, c_sum2 = :c => x -> sum(x.^2))
-4×3 DataFrame
-│ Row │ a     │ c_sum │ c_sum2 │
-│     │ Int64 │ Int64 │ Int64  │
-├─────┼───────┼───────┼────────┤
-│ 1   │ 1     │ 6     │ 26     │
-│ 2   │ 2     │ 8     │ 40     │
-│ 3   │ 3     │ 10    │ 58     │
-│ 4   │ 4     │ 12    │ 80     │
-julia> by(df, :a, (:b, :c) => x -> (minb = minimum(x.b), sumc = sum(x.c)))
-4×3 DataFrame
-│ Row │ a     │ minb  │ sumc  │
-│     │ Int64 │ Int64 │ Int64 │
-├─────┼───────┼───────┼───────┤
-│ 1   │ 1     │ 2     │ 6     │
-│ 2   │ 2     │ 1     │ 8     │
-│ 3   │ 3     │ 2     │ 10    │
-│ 4   │ 4     │ 1     │ 12    │
-```
-"""
-by(d::AbstractDataFrame, cols::Any, f::Any; sort::Bool = false) =
+""" """ by(d::AbstractDataFrame, cols::Any, f::Any; sort::Bool = false) =
     combine(f, groupby(d, cols, sort = sort))
 by(f::Any, d::AbstractDataFrame, cols::Any; sort::Bool = false) =
     by(d, cols, f, sort = sort)
@@ -862,32 +523,7 @@ by(d::AbstractDataFrame, cols::Any, f::Pair...; sort::Bool = false) =
     combine(f, groupby(d, cols, sort = sort))
 by(d::AbstractDataFrame, cols::Any; sort::Bool = false, f...) =
     combine(values(f), groupby(d, cols, sort = sort))
-"""
-Split-apply-combine that applies a set of functions over columns of an
-AbstractDataFrame or GroupedDataFrame
-```julia
-aggregate(d::AbstractDataFrame, cols, fs)
-aggregate(gd::GroupedDataFrame, fs)
-```
-* `d` : an AbstractDataFrame
-* `gd` : a GroupedDataFrame
-* `cols` : a column indicator (Symbol, Int, Vector{Symbol}, etc.)
-* `fs` : a function or vector of functions to be applied to vectors
-  within groups; expects each argument to be a column vector
-Each `fs` should return a value or vector. All returns must be the
-same length.
-* `::DataFrame`
-```julia
-using Statistics
-df = DataFrame(a = repeat([1, 2, 3, 4], outer=[2]),
-               b = repeat([2, 1], outer=[4]),
-               c = randn(8))
-aggregate(df, :a, sum)
-aggregate(df, :a, [sum, x->mean(skipmissing(x))])
-aggregate(groupby(df, :a), [sum, x->mean(skipmissing(x))])
-```
-"""
-aggregate(d::AbstractDataFrame, fs::Any; sort::Bool=false) =
+""" """ aggregate(d::AbstractDataFrame, fs::Any; sort::Bool=false) =
     aggregate(d, [fs], sort=sort)
 function aggregate(d::AbstractDataFrame, fs::AbstractVector; sort::Bool=false)
     headers = _makeheaders(fs, _names(d))

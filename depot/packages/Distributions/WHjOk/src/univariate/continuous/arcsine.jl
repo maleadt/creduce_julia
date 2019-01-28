@@ -1,23 +1,4 @@
-"""
-    Arcsine(a,b)
-The *Arcsine distribution* has probability density function
-```math
-f(x) = \\frac{1}{\\pi \\sqrt{(x - a) (b - x)}}, \\quad x \\in [a, b]
-```
-```julia
-Arcsine()        # Arcsine distribution with support [0, 1]
-Arcsine(b)       # Arcsine distribution with support [0, b]
-Arcsine(a, b)    # Arcsine distribution with support [a, b]
-params(d)        # Get the parameters, i.e. (a, b)
-minimum(d)       # Get the lower bound, i.e. a
-maximum(d)       # Get the upper bound, i.e. b
-location(d)      # Get the left bound, i.e. a
-scale(d)         # Get the span of the support, i.e. b - a
-```
-External links
-* [Arcsine distribution on Wikipedia](http://en.wikipedia.org/wiki/Arcsine_distribution)
-"""
-struct Arcsine{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct Arcsine{T<:Real} <: ContinuousUnivariateDistribution
     a::T
     b::T
     Arcsine{T}(a::T, b::T) where {T} = (@check_args(Arcsine, a < b); new{T}(a, b))

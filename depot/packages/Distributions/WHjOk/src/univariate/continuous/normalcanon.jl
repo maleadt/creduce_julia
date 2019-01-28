@@ -1,8 +1,4 @@
-"""
-    NormalCanon(η, λ)
-Canonical Form of Normal distribution
-"""
-struct NormalCanon{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct NormalCanon{T<:Real} <: ContinuousUnivariateDistribution
     η::T       # σ^(-2) * μ
     λ::T       # σ^(-2)
     μ::T       # μ

@@ -71,11 +71,7 @@ Base.length(pool::CategoricalPool) = length(pool.index)
 Base.getindex(pool::CategoricalPool, i::Integer) = pool.valindex[i]
 Base.get(pool::CategoricalPool, level::Any) = pool.invindex[level]
 Base.get(pool::CategoricalPool, level::Any, default::Any) = get(pool.invindex, level, default)
-"""
-add the returned value to pool.invindex, this function doesn't do this itself to
-avoid doing a dict lookup twice
-"""
-@inline function push_level!(pool::CategoricalPool{T, R}, level) where {T, R}
+""" """ @inline function push_level!(pool::CategoricalPool{T, R}, level) where {T, R}
     x = convert(T, level)
     n = length(pool)
     if n >= typemax(R)

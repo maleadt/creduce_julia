@@ -152,60 +152,7 @@ function update_row_maps!(left_table::AbstractDataFrame,
     end
     return to_bimap(left_ixs), to_bimap(leftonly_ixs), to_bimap(right_ixs), to_bimap(rightonly_ixs)
 end
-"""
-    join(df1, df2; on = Symbol[], kind = :inner, makeunique = false,
-         indicator = nothing, validate = (false, false))
-Join two `DataFrame` objects
-* `df1`, `df2` : the two AbstractDataFrames to be joined
-* `on` : A column, or vector of columns to join df1 and df2 on. If the column(s)
-    that df1 and df2 will be joined on have different names, then the columns
-    should be `(left, right)` tuples or `left => right` pairs, or a vector of
-    such tuples or pairs. `on` is a required argument for all joins except for
-    `kind = :cross`
-* `kind` : the type of join, options include:
-  - `:inner` : only include rows with keys that match in both `df1`
-    and `df2`, the default
-  - `:outer` : include all rows from `df1` and `df2`
-  - `:left` : include all rows from `df1`
-  - `:right` : include all rows from `df2`
-  - `:semi` : return rows of `df1` that match with the keys in `df2`
-  - `:anti` : return rows of `df1` that do not match with the keys in `df2`
-  - `:cross` : a full Cartesian product of the key combinations; every
-    row of `df1` is matched with every row of `df2`
-* `makeunique` : if `false` (the default), an error will be raised
-  if duplicate names are found in columns not joined on;
-  if `true`, duplicate names will be suffixed with `_i`
-  (`i` starting at 1 for the first duplicate).
-* `indicator` : Default: `nothing`. If a `Symbol`, adds categorical indicator
-   column named `Symbol` for whether a row appeared in only `df1` (`"left_only"`),
-   only `df2` (`"right_only"`) or in both (`"both"`). If `Symbol` is already in use,
-   the column name will be modified if `makeunique=true`.
-* `validate` : whether to check that columns passed as the `on` argument
-   define unique keys in each input data frame (according to [`isequal`](@ref)).
-   Can be a tuple or a pair, with the first element indicating whether to
-   run check for `df1` and the second element for `df2`.
-   By default no check is performed.
-For the three join operations that may introduce missing values (`:outer`, `:left`,
-and `:right`), all columns of the returned data table will support missing values.
-When merging `on` categorical columns that differ in the ordering of their levels, the
-ordering of the left `DataFrame` takes precedence over the ordering of the right `DataFrame`
-* `::DataFrame` : the joined DataFrame
-```julia
-name = DataFrame(ID = [1, 2, 3], Name = ["John Doe", "Jane Doe", "Joe Blogs"])
-job = DataFrame(ID = [1, 2, 4], Job = ["Lawyer", "Doctor", "Farmer"])
-join(name, job, on = :ID)
-join(name, job, on = :ID, kind = :outer)
-join(name, job, on = :ID, kind = :left)
-join(name, job, on = :ID, kind = :right)
-join(name, job, on = :ID, kind = :semi)
-join(name, job, on = :ID, kind = :anti)
-join(name, job, kind = :cross)
-job2 = DataFrame(identifier = [1, 2, 4], Job = ["Lawyer", "Doctor", "Farmer"])
-join(name, job2, on = (:ID, :identifier))
-join(name, job2, on = :ID => :identifier)
-```
-"""
-function Base.join(df1::AbstractDataFrame,
+""" """ function Base.join(df1::AbstractDataFrame,
                    df2::AbstractDataFrame;
                    on::Union{<:OnType, AbstractVector{<:OnType}} = Symbol[],
                    kind::Symbol = :inner, makeunique::Bool=false,

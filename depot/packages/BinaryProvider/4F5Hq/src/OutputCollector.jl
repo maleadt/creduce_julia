@@ -5,12 +5,7 @@ struct LineStream
     lines::Vector{Tuple{Float64,String}}
     task::Task
 end
-"""
-    readuntil_many(s::IO, delims)
-Given a collection of delimiter characters, read from `s` until one of those
-delimiters is reached, or we reach the end of `s`.
-"""
-function readuntil_many(s::IO, delims)
+""" """ function readuntil_many(s::IO, delims)
     out = IOBuffer()
     while !eof(s)
         c = read(s, Char)
@@ -21,13 +16,7 @@ function readuntil_many(s::IO, delims)
     end
     return String(take!(out))
 end
-"""
-    LineStream(pipe::Pipe)
-Given a `Pipe` that has been initialized by `spawn()`, create an async Task to
-read in lines as they come in and annotate the time the line was captured for
-later replay/merging with other simultaneously captured streams.
-"""
-function LineStream(pipe::Pipe, event::Condition)
+""" """ function LineStream(pipe::Pipe, event::Condition)
     close(pipe.in)
     lines = Tuple{Float64,String}[]
     task = @async begin
@@ -46,20 +35,10 @@ function LineStream(pipe::Pipe, event::Condition)
     end
     return LineStream(pipe, lines, task)
 end
-"""
-    alive(s::LineStream)
-Returns `true`` if the task owned by this `LineStream` is still processing
-output from an underlying `Pipe`.
-"""
-function alive(s::LineStream)
+""" """ function alive(s::LineStream)
     return !(s.task.state in [:done, :failed])
 end
-"""
-    OutputCollector
-A `run()` wrapper class that captures subprocess `stdout` and `stderr` streams
-independently, resynthesizing and colorizing the streams appropriately.
-"""
-mutable struct OutputCollector
+""" """ mutable struct OutputCollector
     cmd::Base.AbstractCmd
     P::Base.AbstractPipe
     stdout_linestream::LineStream
@@ -76,13 +55,7 @@ mutable struct OutputCollector
                    tail_error, false, Task[])
     end
 end
-"""
-    OutputCollector(cmd::AbstractCmd; verbose::Bool = false)
-Run `cmd`, and collect the output such that `stdout` and `stderr` are captured
-independently, but with the time of each line recorded such that they can be
-stored/analyzed independently, but replayed synchronously.
-"""
-function OutputCollector(cmd::Base.AbstractCmd; verbose::Bool=false,
+""" """ function OutputCollector(cmd::Base.AbstractCmd; verbose::Bool=false,
                          tail_error::Bool=true, tee_stream::IO=stdout)
     out_pipe = Pipe()
     err_pipe = Pipe()
@@ -102,14 +75,7 @@ function OutputCollector(cmd::Base.AbstractCmd; verbose::Bool=false,
     end
     return self
 end
-"""
-    wait(collector::OutputCollector)
-Wait for the command and all line streams within an `OutputCollector` to finish
-their respective tasks and be ready for full merging.  Return the success of
-the underlying process.  Prints out the last 10 lines of the process if it does
-not complete successfully unless the OutputCollector was created as `verbose`.
-"""
-function wait(collector::OutputCollector)
+""" """ function wait(collector::OutputCollector)
     if !collector.done
         wait(collector.P)
         fetch(collector.stdout_linestream.task)
@@ -125,14 +91,7 @@ function wait(collector::OutputCollector)
     end
     return success(collector.P)
 end
-"""
-    merge(collector::OutputCollector; colored::Bool = false)
-Merge the stdout and stderr streams of the `OutputCollector` on a per-line
-basis, returning a single string containing all collected lines, interleaved by
-capture time.  If `colored` is set to true, embeds terminal color codes to
-print `stderr` in red.
-"""
-function merge(collector::OutputCollector; colored::Bool = false)
+""" """ function merge(collector::OutputCollector; colored::Bool = false)
     wait(collector)
     stdout_lines = copy(collector.stdout_linestream.lines)
     stderr_lines = copy(collector.stderr_linestream.lines)
@@ -169,25 +128,13 @@ function merge(collector::OutputCollector; colored::Bool = false)
     end
     return String(take!(output))
 end
-"""
-    collect_stdout(collector::OutputCollector)
-Returns all stdout lines collected by this collector so far.
-"""
-function collect_stdout(collector::OutputCollector)
+""" """ function collect_stdout(collector::OutputCollector)
     return join([l[2] for l in collector.stdout_linestream.lines], "")
 end
-"""
-    collect_stderr(collector::OutputCollector)
-Returns all stderr lines collected by this collector so far.
-"""
-function collect_stderr(collector::OutputCollector)
+""" """ function collect_stderr(collector::OutputCollector)
     return join([l[2] for l in collector.stderr_linestream.lines], "")
 end
-"""
-    tail(collector::OutputCollector; len::Int = 100, colored::Bool = false)
-Write out the last `len` lines, optionally writing colored lines.
-"""
-function tail(collector::OutputCollector; len::Int = 100,
+""" """ function tail(collector::OutputCollector; len::Int = 100,
               colored::Bool = false)
     out = merge(collector; colored=colored)
     idx = length(out)
@@ -204,12 +151,7 @@ function tail(collector::OutputCollector; len::Int = 100,
     end
     return out[idx+1:end]
 end
-"""
-    tee(c::OutputCollector; colored::Bool = false, stream::IO = stdout)
-Spawn a background task to incrementally output lines from `collector` to the
-standard output, optionally colored.
-"""
-function tee(c::OutputCollector; colored::Bool=Base.have_color,
+""" """ function tee(c::OutputCollector; colored::Bool=Base.have_color,
              stream::IO=stdout)
     tee_task = @async begin
         out_idx = 1

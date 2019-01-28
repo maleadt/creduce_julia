@@ -1,7 +1,4 @@
-"""
-    Epanechnikov(μ, σ)
-"""
-struct Epanechnikov{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct Epanechnikov{T<:Real} <: ContinuousUnivariateDistribution
     μ::T
     σ::T
     Epanechnikov{T}(μ::T, σ::T) where {T} = (@check_args(Epanechnikov, σ > zero(σ)); new{T}(μ, σ))

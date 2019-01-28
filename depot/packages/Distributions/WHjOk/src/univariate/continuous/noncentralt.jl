@@ -1,7 +1,4 @@
-"""
-    NoncentralT(ν, λ)
-"""
-struct NoncentralT{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct NoncentralT{T<:Real} <: ContinuousUnivariateDistribution
     ν::T
     λ::T
     function NoncentralT{T}(ν::T, λ::T) where T

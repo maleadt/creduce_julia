@@ -33,39 +33,12 @@ for f in (:erfcx, :erfi, :Dawson)
         ($fname)(x::AbstractFloat) = throw(MethodError($fname,(x,)))
     end
 end
-"""
-    erf(x)
-Compute the error function of `x`, defined by ``\\frac{2}{\\sqrt{\\pi}} \\int_0^x e^{-t^2} dt``
-for arbitrary complex `x`.
-"""
-erf
-"""
-    erfc(x)
-Compute the complementary error function of `x`, defined by ``1 - \\operatorname{erf}(x)``.
-"""
-erfc
-"""
-    erfcx(x)
-Compute the scaled complementary error function of `x`, defined by ``e^{x^2} \\operatorname{erfc}(x)``.
-Note also that ``\\operatorname{erfcx}(-ix)`` computes the Faddeeva function ``w(x)``.
-"""
-erfcx
-"""
-    erfi(x)
-Compute the imaginary error function of `x`, defined by ``-i \\operatorname{erf}(ix)``.
-"""
-erfi
-"""
-    dawson(x)
-Compute the Dawson function (scaled imaginary error function) of `x`, defined by
-``\\frac{\\sqrt{\\pi}}{2} e^{-x^2} \\operatorname{erfi}(x)``.
-"""
-dawson
-"""
-    erfinv(x)
-Compute the inverse error function of a real `x`, defined by ``\\operatorname{erf}(\\operatorname{erfinv}(x)) = x``.
-"""
-function erfinv(x::Float64)
+""" """ erf
+""" """ erfc
+""" """ erfcx
+""" """ erfi
+""" """ dawson
+""" """ function erfinv(x::Float64)
     a = abs(x)
     if a >= 1.0
         if x == 1.0
@@ -175,12 +148,7 @@ function erfinv(x::Float32)
     end
 end
 erfinv(x::Integer) = erfinv(float(x))
-"""
-    erfcinv(x)
-Compute the inverse error complementary function of a real `x`, defined by
-``\\operatorname{erfc}(\\operatorname{erfcinv}(x)) = x``.
-"""
-function erfcinv(y::Float64)
+""" """ function erfcinv(y::Float64)
     if y > 0.0625
         return erfinv(1.0 - y)
     elseif y <= 0.0

@@ -1,20 +1,10 @@
 using IterableTables
 using IterableTables: getiterator
 using Compat: findall
-"""
-    getinternalnodes(t::AbstractTree)
-Function to retrieve only the internal nodes from a tree, `t`, which does not
-include tips or root.
-"""
-function getinternalnodes(t::AbstractTree)
+""" """ function getinternalnodes(t::AbstractTree)
     return collect(nodenamefilter(x->!isleaf(x) & !isroot(x), t))
 end
-"""
-    droptips!(t::T, tips::Vector{NL}) where {NL, BL, T <: AbstractTree{NL, BL}}
-Function to drop tips from a phylogenetic tree `t`, which are found in
-the vector of tip names, `tips`.
-"""
-function droptips!(t::T, tips::Vector{NL}) where {NL, BL, T <: AbstractTree{NL, BL}}
+""" """ function droptips!(t::T, tips::Vector{NL}) where {NL, BL, T <: AbstractTree{NL, BL}}
     tree_names = getleafnames(t)
     keep_tips = setdiff(tree_names, tips)
     for i in tips
@@ -53,12 +43,7 @@ function droptips!(t::T, tips::Vector{NL}) where {NL, BL, T <: AbstractTree{NL, 
     end
     return tips
 end
-"""
-    keeptips!(t::T, tips::Vector{NL}) where {NL, BL, T <: AbstractTree{NL, BL}}
-Function to keep only the tips in a phylogenetic tree, `t`, that are found in
-the vector of tip names, `tip`.
-"""
-function keeptips!(t::T, tips::Vector{NL}) where {NL, BL, T <: AbstractTree{NL, BL}}
+""" """ function keeptips!(t::T, tips::Vector{NL}) where {NL, BL, T <: AbstractTree{NL, BL}}
     tree_names = getleafnames(t)
     cut_names = setdiff(tree_names, tips)
     droptips!(t, cut_names)

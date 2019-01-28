@@ -1,20 +1,4 @@
-"""
-    Exponential(θ)
-The *Exponential distribution* with scale parameter `θ` has probability density function
-```math
-f(x; \\theta) = \\frac{1}{\\theta} e^{-\\frac{x}{\\theta}}, \\quad x > 0
-```
-```julia
-Exponential()      # Exponential distribution with unit scale, i.e. Exponential(1)
-Exponential(b)     # Exponential distribution with scale b
-params(d)          # Get the parameters, i.e. (b,)
-scale(d)           # Get the scale parameter, i.e. b
-rate(d)            # Get the rate parameter, i.e. 1 / b
-```
-External links
-* [Exponential distribution on Wikipedia](http://en.wikipedia.org/wiki/Exponential_distribution)
-"""
-struct Exponential{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct Exponential{T<:Real} <: ContinuousUnivariateDistribution
     θ::T        # note: scale not rate
     Exponential{T}(θ::Real) where {T} = (@check_args(Exponential, θ > zero(θ)); new{T}(θ))
 end

@@ -1,25 +1,5 @@
 const ≅ = isequal
-"""
-    recode!(dest::AbstractArray, src::AbstractArray[, default::Any], pairs::Pair...)
-Fill `dest` with elements from `src`, replacing those matching a key of `pairs`
-with the corresponding value.
-For each `Pair` in `pairs`, if the element is equal to (according to [`isequal`](@ref)))
-the key (first item of the pair) or to one of its entries if it is a collection,
-then the corresponding value (second item) is copied to `dest`.
-If the element matches no key and `default` is not provided or `nothing`, it is copied as-is;
-if `default` is specified, it is used in place of the original element.
-`dest` and `src` must be of the same length, but not necessarily of the same type.
-Elements of `src` as well as values from `pairs` will be `convert`ed when possible
-on assignment.
-If an element matches more than one key, the first match is used.
-    recode!(dest::CategoricalArray, src::AbstractArray[, default::Any], pairs::Pair...)
-If `dest` is a `CategoricalArray` then the ordering of resulting levels is determined
-by the order of passed `pairs` and `default` will be the last level if provided.
-    recode!(dest::AbstractArray, src::AbstractArray{>:Missing}[, default::Any], pairs::Pair...)
-If `src` contains missing values, they are never replaced with `default`:
-use `missing` in a pair to recode them.
-"""
-function recode! end
+""" """ function recode! end
 recode!(dest::AbstractArray, src::AbstractArray, pairs::Pair...) =
     recode!(dest, src, nothing, pairs...)
 recode!(dest::CategoricalArray, src::AbstractArray, pairs::Pair...) =
@@ -182,84 +162,14 @@ function recode!(dest::CategoricalArray{T}, src::CategoricalArray, default::Any,
     end
     dest
 end
-"""
-    recode!(a::AbstractArray[, default::Any], pairs::Pair...)
-Convenience function for in-place recoding, equivalent to `recode!(a, a, ...)`.
-```jldoctest
-julia> using CategoricalArrays
-julia> x = collect(1:10);
-julia> recode!(x, 1=>100, 2:4=>0, [5; 9:10]=>-1);
-julia> x
-10-element Array{Int64,1}:
- 100
-   0
-   0
-   0
-  -1
-   6
-   7
-   8
-  -1
-  -1
-```
-"""
-recode!(a::AbstractArray, default::Any, pairs::Pair...) =
+""" """ recode!(a::AbstractArray, default::Any, pairs::Pair...) =
     recode!(a, a, default, pairs...)
 recode!(a::AbstractArray, pairs::Pair...) = recode!(a, a, nothing, pairs...)
 promote_valuetype(x::Pair{K, V}) where {K, V} = V
 promote_valuetype(x::Pair{K, V}, y::Pair...) where {K, V} = promote_type(V, promote_valuetype(y...))
 keytype_hasmissing(x::Pair{K}) where {K} = K === Missing
 keytype_hasmissing(x::Pair{K}, y::Pair...) where {K} = K === Missing || keytype_hasmissing(y...)
-"""
-    recode(a::AbstractArray[, default::Any], pairs::Pair...)
-Return a copy of `a`, replacing elements matching a key of `pairs` with the corresponding value.
-The type of the array is chosen so that it can
-hold all recoded elements (but not necessarily original elements from `a`).
-For each `Pair` in `pairs`, if the element is equal to (according to [`isequal`](@ref))
-or [`in`](@ref) the key (first item of the pair), then the corresponding value
-(second item) is used.
-If the element matches no key and `default` is not provided or `nothing`, it is copied as-is;
-if `default` is specified, it is used in place of the original element.
-If an element matches more than one key, the first match is used.
-    recode(a::CategoricalArray[, default::Any], pairs::Pair...)
-If `a` is a `CategoricalArray` then the ordering of resulting levels is determined
-by the order of passed `pairs` and `default` will be the last level if provided.
-```jldoctest
-julia> using CategoricalArrays
-julia> recode(1:10, 1=>100, 2:4=>0, [5; 9:10]=>-1)
-10-element Array{Int64,1}:
- 100
-   0
-   0
-   0
-  -1
-   6
-   7
-   8
-  -1
-  -1
-```
-     recode(a::AbstractArray{>:Missing}[, default::Any], pairs::Pair...)
-If `a` contains missing values, they are never replaced with `default`:
-use `missing` in a pair to recode them. If that's not the case, the returned array
-will accept missing values.
-```jldoctest
-julia> using CategoricalArrays
-julia> recode(1:10, 1=>100, 2:4=>0, [5; 9:10]=>-1, 6=>missing)
-10-element Array{Union{Missing, Int64},1}:
- 100    
-   0    
-   0    
-   0    
-  -1    
-    missing
-   7    
-   8    
-  -1    
-  -1    
-```
-"""
-function recode end
+""" """ function recode end
 recode(a::AbstractArray, pairs::Pair...) = recode(a, nothing, pairs...)
 recode(a::CategoricalArray, pairs::Pair...) = recode(a, nothing, pairs...)
 function recode(a::AbstractArray, default::Any, pairs::Pair...)

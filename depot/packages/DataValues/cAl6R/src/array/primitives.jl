@@ -1,11 +1,6 @@
 isna(X::DataValueArray, I::Int...) = X.isna[I...]
 Base.values(X::DataValueArray, I::Int...) = X.values[I...]
-"""
-    size(X::DataValueArray, [d::Real])
-Return a tuple containing the lengths of each dimension of `X`, or if `d` is
-specific, the length of `X` along dimension `d`.
-"""
-Base.size(X::DataValueArray) = size(X.values)
+""" """ Base.size(X::DataValueArray) = size(X.values)
 function Base.similar(x::AbstractArray, ::Type{DataValue{T}}, dims::Dims) where {T}
     return DataValueArray{T}(dims)
 end
@@ -15,21 +10,10 @@ end
 function Base.similar(x::SubArray, ::Type{DataValue{T}}, dims::Dims) where {T}
     return DataValueArray{T}(dims)
 end
-"""
-    copy(X::DataValueArray)
-Return a shallow copy of `X`; the outer structure of `X` will be copied, but
-all elements will be identical to those of `X`.
-"""
-function Base.copy(X::DataValueArray{T}) where {T}
+""" """ function Base.copy(X::DataValueArray{T}) where {T}
     return Base.copyto!(similar(X, DataValue{T}), X)
 end
-"""
-    copyto!(dest::DataValueArray, src::DataValueArray)
-Copy the initialized values of a source DataValueArray into the respective
-indices of the destination DataValueArray. If an entry in `src` is null, then
-this method nullifies the respective entry in `dest`.
-"""
-function Base.copyto!(dest::DataValueArray, src::DataValueArray)
+""" """ function Base.copyto!(dest::DataValueArray, src::DataValueArray)
     if isbitstype(eltype(dest)) && isbitstype(eltype(src))
         copyto!(dest.values, src.values)
     else
@@ -43,13 +27,7 @@ function Base.copyto!(dest::DataValueArray, src::DataValueArray)
     copyto!(dest.isna, src.isna)
     return dest
 end
-"""
-    fill!(X::DataValueArray, x::DataValue)
-Fill `X` with the value `x`. If `x` is empty, then `fill!(X, x)` nullifies each
-entry of `X`. Otherwise, `fill!(X, x)` fills `X.values` with the value of `x`
-and designates each entry of `X` as present.
-"""
-function Base.fill!(X::DataValueArray, x::DataValue)
+""" """ function Base.fill!(X::DataValueArray, x::DataValue)
     if isna(x)
         fill!(X.isna, true)
     else
@@ -58,33 +36,15 @@ function Base.fill!(X::DataValueArray, x::DataValue)
     end
     return X
 end
-"""
-    fill!(X::DataValueArray, x::DataValue)
-Fill `X` with the value `x` and designate each entry as present. If `x` is an
-object reference, all elements will refer to the same object. Note that
-`fill!(X, Foo())` will return `X` filled with the result of evaluating `Foo()`
-once.
-"""
-function Base.fill!(X::DataValueArray, x::Any)
+""" """ function Base.fill!(X::DataValueArray, x::Any)
     fill!(X.values, x)
     fill!(X.isna, false)
     return X
 end
-"""
-    Base.deepcopy(X::DataValueArray)
-Return a `DataValueArray` object whose internal `values` and `isna` fields are
-deep copies of `X.values` and `X.isna` respectively.
-"""
-function Base.deepcopy(X::DataValueArray)
+""" """ function Base.deepcopy(X::DataValueArray)
     return DataValueArray(deepcopy(X.values), deepcopy(X.isna))
 end
-"""
-    resize!(X::DataValueVector, n::Int)
-Resize a one-dimensional `DataValueArray` `X` to contain precisely `n` elements.
-If `n` is greater than the current length of `X`, then each new entry will be
-designated as null.
-"""
-function Base.resize!(X::DataValueArray{T,1}, n::Int) where {T}
+""" """ function Base.resize!(X::DataValueArray{T,1}, n::Int) where {T}
     resize!(X.values, n)
     oldn = length(X.isna)
     resize!(X.isna, n)
@@ -94,28 +54,10 @@ end
 function Base.reshape(X::DataValueArray, dims::Dims)
     return DataValueArray(reshape(X.values, dims), reshape(X.isna, dims))
 end
-"""
-    ndims(X::DataValueArray)
-Returns the number of dimensions of `X`.
-"""
-Base.ndims(X::DataValueArray) = ndims(X.values)
-"""
-    length(X::DataValueArray)
-Returns the maximum index `i` for which `getindex(X, i)` is valid.
-"""
-Base.length(X::DataValueArray) = length(X.values)
-"""
-    lastindex(X::DataValueArray)
-Returns the last entry of `X`.
-"""
-Base.lastindex(X::DataValueArray) = lastindex(X.values)
-"""
-    dropna(X::AbstractVector)
-Return a vector containing only the non-missing entries of `X`,
-unwrapping `DataValue` entries. A copy is always returned, even when
-`X` does not contain any missing values.
-"""
-function dropna(X::AbstractVector{T}) where {T}
+""" """ Base.ndims(X::DataValueArray) = ndims(X.values)
+""" """ Base.length(X::DataValueArray) = length(X.values)
+""" """ Base.lastindex(X::DataValueArray) = lastindex(X.values)
+""" """ function dropna(X::AbstractVector{T}) where {T}
     if !(DataValue <: T) && !(T <: DataValue)
         return copy(X)
     else
@@ -128,13 +70,7 @@ function dropna(X::AbstractVector{T}) where {T}
     end
 end
 dropna(X::DataValueVector) = X.values[(!).(X.isna)]
-"""
-    dropna!(X::AbstractVector)
-Remove missing entries of `X` in-place and return a `Vector` view of the
-unwrapped `DataValue` entries. If no missing values are present, this is a no-op
-and `X` is returned.
-"""
-function dropna!(X::AbstractVector{T}) where {T}                 # -> AbstractVector
+""" """ function dropna!(X::AbstractVector{T}) where {T}                 # -> AbstractVector
     if !(DataValue <: T) && !(T <: DataValue)
         return X
     else
@@ -146,24 +82,8 @@ function dropna!(X::AbstractVector{T}) where {T}                 # -> AbstractVe
         return res
     end
 end
-"""
-    dropna!(X::DataValueVector)
-Remove missing entries of `X` in-place and return a `Vector` view of the
-unwrapped `DataValue` entries.
-"""
-dropna!(X::DataValueVector) = deleteat!(X, (LinearIndices(X.isna))[findall(X.isna)]).values # -> Vector
-"""
-    convert(T, X::DataValueArray)
-Convert `X` to an `AbstractArray` of type `T`. Note that if `X` contains any
-null entries then calling `convert` without supplying a replacement value for
-null entries will result in an error.
-Currently supported return type arguments include: `Array`, `Array{T}`,
-`Vector`, `Matrix`.
-    convert(T, X::DataValueArray, replacement)
-Convert `X` to an `AbstractArray` of type `T` and replace all null entries of
-`X` with `replacement` in the result.
-"""
-function Base.convert(::Type{Array{S, N}}, X::DataValueArray{T, N}) where {S,T,N}
+""" """ dropna!(X::DataValueVector) = deleteat!(X, (LinearIndices(X.isna))[findall(X.isna)]).values # -> Vector
+""" """ function Base.convert(::Type{Array{S, N}}, X::DataValueArray{T, N}) where {S,T,N}
     if any(isna, X)
         throw(DataValueException())
     else

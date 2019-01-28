@@ -24,14 +24,7 @@ end
        !(ii[2].address in ii[1].bt.useddatacells) ? 0 :
          ii[2].address == 1 ?                       2 :
          ii[2].address == 2 ?                       3 : 1
-"""
-    compare(m::SAContainer, s::IntSemiToken, t::IntSemiToken)
-Determines the  relative positions of the  data items indexed
-by `(m,s)` and  `(m,t)` in the sorted order. The  return value is `-1`
-if `(m,s)` precedes `(m,t)`, `0` if they are equal, and `1` if `(m,s)`
-succeeds `(m,t)`. `s`  and `t`  are semitokens  for the  same container `m`.
-"""
-@inline compare(m::SAContainer, s::IntSemiToken, t::IntSemiToken) =
+""" """ @inline compare(m::SAContainer, s::IntSemiToken, t::IntSemiToken) =
       compareInd(m.bt, s.address, t.address)
 @inline function deref(ii::SDMToken)
     has_data(ii)

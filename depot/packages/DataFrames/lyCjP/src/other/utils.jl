@@ -39,12 +39,7 @@ end
 function make_unique(names::Vector{Symbol}; makeunique::Bool=false)
     make_unique!(similar(names), names, makeunique=makeunique)
 end
-"""
-    gennames(n::Integer)
-Generate standardized names for columns of a DataFrame. The first name will be `:x1`, the
-second `:x2`, etc.
-"""
-function gennames(n::Integer)
+""" """ function gennames(n::Integer)
     res = Array{Symbol}(undef, n)
     for i in 1:n
         res[i] = Symbol(@sprintf "x%d" i)

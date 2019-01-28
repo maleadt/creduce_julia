@@ -43,28 +43,16 @@ mutable struct Deque{T}
     end
     Deque{T}() where {T} = Deque{T}(DEFAULT_DEQUEUE_BLOCKSIZE)
 end
-"""
-    deque(T)
-Create a deque of type `T`.
-"""
-deque(::Type{T}) where {T} = Deque{T}()
+""" """ deque(::Type{T}) where {T} = Deque{T}()
 isempty(q::Deque) = q.len == 0
 length(q::Deque) = q.len
 num_blocks(q::Deque) = q.nblocks
-"""
-    front(q::Deque)
-Returns the first element of the deque `q`.
-"""
-function front(q::Deque)
+""" """ function front(q::Deque)
     isempty(q) && throw(ArgumentError("Deque must be non-empty"))
     blk = q.head
     blk.data[blk.front]
 end
-"""
-    back(q::Deque)
-Returns the last element of the deque `q`.
-"""
-function back(q::Deque)
+""" """ function back(q::Deque)
     isempty(q) && throw(ArgumentError("Deque must be non-empty"))
     blk = q.rear
     blk.data[blk.back]

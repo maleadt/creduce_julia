@@ -36,19 +36,11 @@ struct OrderedLevelsException{T, S} <: Exception
     newlevel::S
     levels::Vector{T}
 end
-"""
-Default categorical value type for
-referencing values of type `T`.
-"""
-struct CategoricalValue{T, R <: Integer}
+""" """ struct CategoricalValue{T, R <: Integer}
     level::R
     pool::CategoricalPool{T, R, CategoricalValue{T, R}}
 end
-"""
-`String` categorical value.
-Provides `AbstractString` interoperability.
-"""
-struct CategoricalString{R <: Integer} <: AbstractString
+""" """ struct CategoricalString{R <: Integer} <: AbstractString
     level::R
     pool::CategoricalPool{String, R, CategoricalString{R}}
 end

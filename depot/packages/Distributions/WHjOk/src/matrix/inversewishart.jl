@@ -1,10 +1,4 @@
-"""
-    InverseWishart(nu, P)
-The [Inverse Wishart distribution](http://en.wikipedia.org/wiki/Inverse-Wishart_distribution)
-is usually used as the conjugate prior for the covariance matrix of a multivariate normal
-distribution, which is characterized by a degree of freedom ν, and a base matrix Φ.
-"""
-struct InverseWishart{T<:Real, ST<:AbstractPDMat} <: ContinuousMatrixDistribution
+""" """ struct InverseWishart{T<:Real, ST<:AbstractPDMat} <: ContinuousMatrixDistribution
     df::T     # degree of freedom
     Ψ::ST           # scale matrix
     c0::T     # log of normalizing constant

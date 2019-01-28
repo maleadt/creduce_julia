@@ -1,8 +1,4 @@
-"""
-A mutable state type of transcoding streams.
-See Developer's notes for details.
-"""
-mutable struct State
+""" """ mutable struct State
     mode::Symbol  # {:idle, :read, :write, :stop, :close, :panic}
     code::Symbol  # {:ok, :end, :error}
     stop_on_end::Bool

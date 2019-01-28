@@ -1,22 +1,4 @@
-"""
-    InverseGaussian(μ,λ)
-The *inverse Gaussian distribution* with mean `μ` and shape `λ` has probability density function
-```math
-f(x; \\mu, \\lambda) = \\sqrt{\\frac{\\lambda}{2\\pi x^3}}
-\\exp\\!\\left(\\frac{-\\lambda(x-\\mu)^2}{2\\mu^2x}\\right), \\quad x > 0
-```
-```julia
-InverseGaussian()              # Inverse Gaussian distribution with unit mean and unit shape, i.e. InverseGaussian(1, 1)
-InverseGaussian(mu),           # Inverse Gaussian distribution with mean mu and unit shape, i.e. InverseGaussian(u, 1)
-InverseGaussian(mu, lambda)    # Inverse Gaussian distribution with mean mu and shape lambda
-params(d)           # Get the parameters, i.e. (mu, lambda)
-mean(d)             # Get the mean parameter, i.e. mu
-shape(d)            # Get the shape parameter, i.e. lambda
-```
-External links
-* [Inverse Gaussian distribution on Wikipedia](http://en.wikipedia.org/wiki/Inverse_Gaussian_distribution)
-"""
-struct InverseGaussian{T<:Real} <: ContinuousUnivariateDistribution
+""" """ struct InverseGaussian{T<:Real} <: ContinuousUnivariateDistribution
     μ::T
     λ::T
     function InverseGaussian{T}(μ::T, λ::T) where T

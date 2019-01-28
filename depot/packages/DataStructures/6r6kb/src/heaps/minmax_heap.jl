@@ -87,12 +87,7 @@ end
 @inline haschildren(i, A) = lchild(i) ≤ length(A)
 @inline isgrandchild(j, i) = j > rchild(i)
 @inline hasgrandparent(i) = i ≥ 4 
-"""
-    children_and_grandchildren(maxlen, i)
-Return the indices of all children and grandchildren of
-position `i`.
-"""
-function children_and_grandchildren(maxlen::T, i::T) where {T <: Integer}
+""" """ function children_and_grandchildren(maxlen::T, i::T) where {T <: Integer}
     _children_and_grandchildren = T[]
     for child in children(i)
         for desc in (child, lchild(child), rchild(child))
@@ -103,13 +98,7 @@ function children_and_grandchildren(maxlen::T, i::T) where {T <: Integer}
     end
     return _children_and_grandchildren
 end
-"""
-    is_minmax_heap(h::AbstractVector) -> Bool
-Return `true` if `A` is a min-max heap. A min-max heap is a
-heap where the minimum element is the root and the maximum
-element is a child of the root.
-"""
-function is_minmax_heap(A::AbstractVector)
+""" """ function is_minmax_heap(A::AbstractVector)
     for i in 1:length(A)
         if on_minlevel(i)
             for j in children_and_grandchildren(length(A), i)
@@ -125,15 +114,8 @@ function is_minmax_heap(A::AbstractVector)
 end
 length(h::BinaryMinMaxHeap) = length(h.valtree)
 isempty(h::BinaryMinMaxHeap) = isempty(h.valtree)
-"""
-    pop!(h::BinaryMinMaxHeap) = popmin!(h)
-"""
-@inline pop!(h::BinaryMinMaxHeap) = popmin!(h)
-"""
-    popmin!(h::BinaryMinMaxHeap) -> min
-Remove the minimum value from the heap.
-"""
-function popmin!(h::BinaryMinMaxHeap)
+""" """ @inline pop!(h::BinaryMinMaxHeap) = popmin!(h)
+""" """ function popmin!(h::BinaryMinMaxHeap)
     valtree = h.valtree
     !isempty(valtree) || throw(ArgumentError("heap must be non-empty"))
     x = valtree[1]
@@ -144,18 +126,10 @@ function popmin!(h::BinaryMinMaxHeap)
     end
     return x
 end
-"""
-    popmin!(h::BinaryMinMaxHeap, k::Integer) -> vals
-Remove up to the `k` smallest values from the heap.
-"""
-@inline function popmin!(h::BinaryMinMaxHeap, k::Integer) 
+""" """ @inline function popmin!(h::BinaryMinMaxHeap, k::Integer) 
     return [popmin!(h) for _ in 1:min(length(h), k)]
 end
-"""
-    popmax!(h::BinaryMinMaxHeap) -> max
-Remove the maximum value from the heap.
-"""
-function popmax!(h::BinaryMinMaxHeap)
+""" """ function popmax!(h::BinaryMinMaxHeap)
     valtree = h.valtree
     !isempty(valtree) || throw(ArgumentError("heap must be non-empty"))
     @inbounds x, i = maximum(((valtree[j], j) for j in 1:min(length(valtree), 3)))
@@ -166,11 +140,7 @@ function popmax!(h::BinaryMinMaxHeap)
     end
     return x    
 end
-"""
-    popmax!(h::BinaryMinMaxHeap, k::Integer) -> vals
-Remove up to the `k` largest values from the heap.
-"""
-@inline function popmax!(h::BinaryMinMaxHeap, k::Integer) 
+""" """ @inline function popmax!(h::BinaryMinMaxHeap, k::Integer) 
     return [popmax!(h) for _ in 1:min(length(h), k)]                    
 end
 function push!(h::BinaryMinMaxHeap, v)
@@ -178,11 +148,7 @@ function push!(h::BinaryMinMaxHeap, v)
     push!(valtree, v)
     _minmax_heap_bubble_up!(valtree, length(valtree))
 end
-"""
-    top(h::BinaryMinMaxHeap)
-Get the top (minimum) of the heap.
-"""
-@inline top(h::BinaryMinMaxHeap) = minimum(h)
+""" """ @inline top(h::BinaryMinMaxHeap) = minimum(h)
 @inline function minimum(h::BinaryMinMaxHeap) 
     valtree = h.valtree
     !isempty(h) || throw(ArgumentError("heap must be non-empty"))
@@ -194,12 +160,6 @@ end
     return @inbounds maximum(valtree[1:min(end, 3)])
 end
 empty!(h::BinaryMinMaxHeap) = (empty!(h.valtree); h)
-"""
-    popall!(h::BinaryMinMaxHeap, ::Ordering = Forward)
-Remove and return all the elements of `h` according to
-the given ordering. Default is `Forward` (smallest to 
-largest).
-"""
-popall!(h::BinaryMinMaxHeap) = popall!(h, Forward)
+""" """ popall!(h::BinaryMinMaxHeap) = popall!(h, Forward)
 popall!(h::BinaryMinMaxHeap, ::ForwardOrdering) = popmin!(h, length(h))
 popall!(h::BinaryMinMaxHeap, ::ReverseOrdering) = popmax!(h, length(h))

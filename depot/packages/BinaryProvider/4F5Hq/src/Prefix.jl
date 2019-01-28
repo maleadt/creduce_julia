@@ -14,19 +14,7 @@ function safe_isfile(path)
         rethrow(e)
     end
 end
-"""
-    temp_prefix(func::Function)
-Create a temporary prefix, passing the prefix into the user-defined function so
-that build/packaging operations can occur within the temporary prefix, which is
-then cleaned up after all operations are finished.  If the path provided exists
-already, it will be deleted.
-Usage example:
-    out_path = abspath("./libfoo")
-    temp_prefix() do p
-        tarball_path, tarball_hash = package(p, out_path)
-    end
-"""
-function temp_prefix(func::Function)
+""" """ function temp_prefix(func::Function)
     function _tempdir()
         @static if Sys.isapple()
             return "/tmp"
@@ -60,14 +48,7 @@ joinpath(prefix::Prefix, args...) = joinpath(prefix.path, args...)
 joinpath(s::AbstractString, prefix::Prefix, args...) = joinpath(s, prefix.path, args...)
 convert(::Type{AbstractString}, prefix::Prefix) = prefix.path
 show(io::IO, prefix::Prefix) = show(io, "Prefix($(prefix.path))")
-"""
-    withenv(f::Function, prefixes::Vector{Prefix}; julia_libdir::Bool = true)
-Wrapper function designed to help executables find dynamic libraries and child
-binaries by wrapping PATH and `(DY)LD_(FALLBACK_)LIBRARY_PATH`.  If
-`julia_libdir` is true, then the private library directory of this Julia
-distribution will be added on to the end of the LD_LIBRARY_PATH settings.
-"""
-function withenv(f::Function, prefixes::Vector{Prefix};
+""" """ function withenv(f::Function, prefixes::Vector{Prefix};
                  julia_libdir::Bool = true)
     function joinenv(key, dirs, sep, tail_dirs = [])
         value = [dirs..., split(get(ENV, key, ""), sep)..., tail_dirs...]
@@ -87,45 +68,23 @@ function withenv(f::Function, prefixes::Vector{Prefix};
     return withenv(f, mapping...)
 end
 withenv(f::Function, prefix::Prefix) = withenv(f, [prefix])
-"""
-    bindir(prefix::Prefix)
-Returns the binary directory for the given `prefix`.
-"""
-function bindir(prefix::Prefix)
+""" """ function bindir(prefix::Prefix)
     return joinpath(prefix, "bin")
 end
-"""
-    libdir(prefix::Prefix, platform = platform_key_abi())
-Returns the library directory for the given `prefix` (note that this differs
-between unix systems and windows systems).
-"""
-function libdir(prefix::Prefix, platform = platform_key_abi())
+""" """ function libdir(prefix::Prefix, platform = platform_key_abi())
     if Sys.iswindows(platform)
         return joinpath(prefix, "bin")
     else
         return joinpath(prefix, "lib")
     end
 end
-"""
-    includedir(prefix::Prefix)
-Returns the include directory for the given `prefix`
-"""
-function includedir(prefix::Prefix)
+""" """ function includedir(prefix::Prefix)
     return joinpath(prefix, "include")
 end
-"""
-    logdir(prefix::Prefix)
-Returns the logs directory for the given `prefix`.
-"""
-function logdir(prefix::Prefix)
+""" """ function logdir(prefix::Prefix)
     return joinpath(prefix, "logs")
 end
-"""
-    extract_platform_key(path::AbstractString)
-Given the path to a tarball, return the platform key of that tarball. If none
-can be found, prints a warning and return the current platform suffix.
-"""
-function extract_platform_key(path::AbstractString)
+""" """ function extract_platform_key(path::AbstractString)
     try
         return extract_name_version_platform_key(path)[3]
     catch
@@ -133,12 +92,7 @@ function extract_platform_key(path::AbstractString)
         return platform_key_abi()
     end
 end
-"""
-    extract_name_version_platform_key(path::AbstractString)
-Given the path to a tarball, return the name, platform key and version of that
-tarball. If any of those things cannot be found, throw an error.
-"""
-function extract_name_version_platform_key(path::AbstractString)
+""" """ function extract_name_version_platform_key(path::AbstractString)
     m = match(r"^(.*?)\.v(.*?)\.([^\.\-]+-[^\.\-]+-([^\-]+-){0,2}[^\-]+).tar.gz$", basename(path))
     if m === nothing
         error("Could not parse name, platform key and version from $(path)")
@@ -148,17 +102,7 @@ function extract_name_version_platform_key(path::AbstractString)
     platkey = platform_key_abi(m.captures[3])
     return name, version, platkey
 end
-"""
-    isinstalled(tarball_url::AbstractString,
-                hash::AbstractString;
-                prefix::Prefix = global_prefix)
-Given a `prefix`, a `tarball_url` and a `hash`, check whether the
-tarball with that hash has been installed into `prefix`.
-In particular, it checks for the tarball, matching hash file, and manifest
-installed by `install`, and checks that the files listed in the manifest
-are installed and are not older than the tarball.
-"""
-function isinstalled(tarball_url::AbstractString, hash::AbstractString;
+""" """ function isinstalled(tarball_url::AbstractString, hash::AbstractString;
                      prefix::Prefix = global_prefix)
     tarball_path = joinpath(prefix, "downloads", basename(tarball_url))
     hash_path = "$(tarball_path).sha256"
@@ -180,24 +124,7 @@ function isinstalled(tarball_url::AbstractString, hash::AbstractString;
     end
     return true
 end
-"""
-    install(tarball_url::AbstractString,
-            hash::AbstractString;
-            prefix::Prefix = global_prefix,
-            force::Bool = false,
-            ignore_platform::Bool = false,
-            verbose::Bool = false)
-Given a `prefix`, a `tarball_url` and a `hash`, download that tarball into the
-prefix, verify its integrity with the `hash`, and install it into the `prefix`.
-Also save a manifest of the files into the prefix for uninstallation later.
-This will not overwrite any files within `prefix` unless `force=true` is set.
-If `force=true` is set, installation will overwrite files as needed, and it
-will also delete any files previously installed for `tarball_url`
-as listed in a pre-existing manifest (if any).
-By default, this will not install a tarball that does not match the platform of
-the current host system, this can be overridden by setting `ignore_platform`.
-"""
-function install(tarball_url::AbstractString,
+""" """ function install(tarball_url::AbstractString,
                  hash::AbstractString;
                  prefix::Prefix = global_prefix,
                  tarball_path::AbstractString =
@@ -262,13 +189,7 @@ function install(tarball_url::AbstractString,
     end
     return true
 end
-"""
-    uninstall(manifest::AbstractString; verbose::Bool = false)
-Uninstall a package from a prefix by providing the `manifest_path` that was
-generated during `install()`.  To find the `manifest_file` for a particular
-installed file, use `manifest_for_file(file_path; prefix=prefix)`.
-"""
-function uninstall(manifest::AbstractString;
+""" """ function uninstall(manifest::AbstractString;
                    verbose::Bool = false)
     if !isfile(manifest)
         error("Manifest path $(manifest) does not exist")
@@ -306,20 +227,11 @@ function uninstall(manifest::AbstractString;
     rm(manifest; force=true)
     return true
 end
-"""
-    manifest_from_url(url::AbstractString; prefix::Prefix = global_prefix())
-Returns the file path of the manifest file for the tarball located at `url`.
-"""
-function manifest_from_url(url::AbstractString;
+""" """ function manifest_from_url(url::AbstractString;
                            prefix::Prefix = global_prefix())
     return joinpath(prefix, "manifests", basename(url)[1:end-7] * ".list")
 end
-"""
-    manifest_for_file(path::AbstractString; prefix::Prefix = global_prefix)
-Returns the manifest file containing the installation receipt for the given
-`path`, throws an error if it cannot find a matching manifest.
-"""
-function manifest_for_file(path::AbstractString;
+""" """ function manifest_for_file(path::AbstractString;
                            prefix::Prefix = global_prefix)
     if !isfile(path)
         error("File $(path) does not exist")
@@ -337,11 +249,7 @@ function manifest_for_file(path::AbstractString;
     end
     error("Could not find $(search_path) in any manifest files")
 end
-"""
-    list_tarball_files(path::AbstractString; verbose::Bool = false)
-Given a `.tar.gz` filepath, list the compressed contents.
-"""
-function list_tarball_files(path::AbstractString; verbose::Bool = false)
+""" """ function list_tarball_files(path::AbstractString; verbose::Bool = false)
     if !isfile(path)
         error("Tarball path $(path) does not exist")
     end
@@ -355,25 +263,7 @@ function list_tarball_files(path::AbstractString; verbose::Bool = false)
     end
     return parse_tarball_listing(collect_stdout(oc))
 end
-"""
-    verify(path::AbstractString, hash::AbstractString;
-           verbose::Bool = false, report_cache_status::Bool = false)
-Given a file `path` and a `hash`, calculate the SHA256 of the file and compare
-it to `hash`.  If an error occurs, `verify()` will throw an error.  This method
-caches verification results in a `"\$(path).sha256"` file to accelerate re-
-verification of files that have been previously verified.  If no `".sha256"`
-file exists, a full verification will be done and the file will be created,
-with the calculated hash being stored within the `".sha256"` file..  If a
-`".sha256"` file does exist, its contents are checked to ensure that the hash
-contained within matches the given `hash` parameter, and its modification time
-shows that the file located at `path` has not been modified since the last
-verification.
-If `report_cache_status` is set to `true`, then the return value will be a
-`Symbol` giving a granular status report on the state of the hash cache, in
-addition to the `true`/`false` signifying whether verification completed
-successfully.
-"""
-function verify(path::AbstractString, hash::AbstractString; verbose::Bool = false,
+""" """ function verify(path::AbstractString, hash::AbstractString; verbose::Bool = false,
                 report_cache_status::Bool = false, hash_path::AbstractString="$(path).sha256")
     if length(hash) != 64
         msg  = "Hash must be 256 bits (64 characters) long, "
@@ -452,20 +342,7 @@ function verify(path::AbstractString, hash::AbstractString; verbose::Bool = fals
         return true
     end
 end
-"""
-    package(prefix::Prefix, output_base::AbstractString,
-            version::VersionNumber;
-            platform::Platform = platform_key_abi(),
-            verbose::Bool = false, force::Bool = false)
-Build a tarball of the `prefix`, storing the tarball at `output_base`,
-appending a version number, a platform-dependent suffix and a file extension.
-If no platform is given, defaults to current platform. Runs an `audit()` on the
-`prefix`, to ensure that libraries can be `dlopen()`'ed, that all dependencies
-are located within the prefix, etc... See the `audit()` documentation for a
-full list of the audit steps.  Returns the full path to and hash of the
-generated tarball.
-"""
-function package(prefix::Prefix,
+""" """ function package(prefix::Prefix,
                  output_base::AbstractString,
                  version::VersionNumber;
                  platform::Platform = platform_key_abi(),

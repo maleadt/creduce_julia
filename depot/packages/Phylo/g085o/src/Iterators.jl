@@ -25,72 +25,36 @@ struct NodeIterator{T <: AbstractTree} <: AbstractNodeIterator{T}
     tree::T
     filterfn::Union{Function, Nothing}
 end
-"""
-    nodeiter(tree::AbstractTree)
-Returns an iterator over the nodes of any tree.
-"""
-nodeiter(tree::T) where T <: AbstractTree =
+""" """ nodeiter(tree::T) where T <: AbstractTree =
     NodeIterator{T}(tree, nothing)
-"""
-    nodefilter(filterfn::Function, tree::AbstractTree)
-Returns an iterator over the nodes of any tree, where the
-`AbstractNode` is filtered by the function `filterfn`.
-"""
-nodefilter(filterfn::Function, tree::T) where T <: AbstractTree =
+""" """ nodefilter(filterfn::Function, tree::T) where T <: AbstractTree =
     NodeIterator{T}(tree, filterfn)
 eltype(ni::NodeIterator{T}) where T <: AbstractTree = nodetype(ni.tree)
 struct NodeNameIterator{T <: AbstractTree} <: AbstractNodeIterator{T}
     tree::T
     filterfn::Union{Function, Nothing}
 end
-"""
-    nodenameiter(tree::AbstractTree)
-Returns an iterator over the names of the nodes of any tree.
-"""
-nodenameiter(tree::T) where T <: AbstractTree =
+""" """ nodenameiter(tree::T) where T <: AbstractTree =
     NodeNameIterator{T}(tree, nothing)
-"""
-    nodenamefilter(filterfn::Function, tree::AbstractTree)
-Returns an iterator over the nodenames of any tree, where the
-`AbstractNode` itself is filtered by the function `filterfn`.
-"""
-nodenamefilter(filterfn::Function, tree::T) where T <: AbstractTree =
+""" """ nodenamefilter(filterfn::Function, tree::T) where T <: AbstractTree =
     NodeNameIterator{T}(tree, filterfn)
 eltype(ni::NodeNameIterator{T}) where T <: AbstractTree = nodenametype(ni.tree)
 struct BranchIterator{T <: AbstractTree} <: AbstractBranchIterator{T}
     tree::T
     filterfn::Union{Function, Nothing}
 end
-"""
-    branchiter(tree::AbstractTree)
-Returns an iterator over the branches of any tree.
-"""
-branchiter(tree::T) where T <: AbstractTree =
+""" """ branchiter(tree::T) where T <: AbstractTree =
     BranchIterator{T}(tree, nothing)
-"""
-    branchfilter(filterfn::Function, tree::AbstractTree)
-Returns an iterator over the branches of any tree, where the
-`AbstractBranch` is filtered by the function `filterfn`.
-"""
-branchfilter(filterfn::Function, tree::T) where T <: AbstractTree =
+""" """ branchfilter(filterfn::Function, tree::T) where T <: AbstractTree =
     BranchIterator{T}(tree, filterfn)
 eltype(bi::BranchIterator{T}) where T <: AbstractTree = branchtype(bi.tree)
 struct BranchNameIterator{T <: AbstractTree} <: AbstractBranchIterator{T}
     tree::T
     filterfn::Union{Function, Nothing}
 end
-"""
-    branchnameiter(tree::AbstractTree)
-Returns an iterator over the names of branches of any tree.
-"""
-branchnameiter(tree::T) where T <: AbstractTree =
+""" """ branchnameiter(tree::T) where T <: AbstractTree =
     BranchNameIterator{T}(tree, nothing)
-"""
-    branchnamefilter(filterfn::Function, tree::AbstractTree)
-Returns an iterator over the names of the branches of any tree, where
-the `AbstractBranch` is filtered by the function `filterfn`.
-"""
-branchnamefilter(filterfn::Function, tree::T) where T <: AbstractTree =
+""" """ branchnamefilter(filterfn::Function, tree::T) where T <: AbstractTree =
     BranchNameIterator{T}(tree, filterfn)
 eltype(bi::BranchNameIterator{T}) where T <: AbstractTree = branchnametype(bi.tree)
 @static if VERSION >= v"0.7.0"

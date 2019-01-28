@@ -1,7 +1,4 @@
-"""
-Full positive definite matrix together with a Cholesky factorization object.
-"""
-struct PDMat{T<:Real,S<:AbstractMatrix} <: AbstractPDMat{T}
+""" """ struct PDMat{T<:Real,S<:AbstractMatrix} <: AbstractPDMat{T}
     dim::Int
     mat::S
     chol::CholType{T,S}
@@ -44,16 +41,8 @@ function unwhiten!(r::StridedVecOrMat, a::PDMat, x::StridedVecOrMat)
 end
 quad(a::PDMat, x::StridedVector) = dot(x, a * x)
 invquad(a::PDMat, x::StridedVector) = dot(x, a \ x)
-"""
-    quad!(r::AbstractArray, a::AbstractPDMat, x::StridedMatrix)
-Overwrite `r` with the value of the quadratic form defined by `a` applied columnwise to `x`
-"""
-quad!(r::AbstractArray, a::PDMat, x::StridedMatrix) = colwise_dot!(r, x, a.mat * x)
-"""
-    invquad!(r::AbstractArray, a::AbstractPDMat, x::StridedMatrix)
-Overwrite `r` with the value of the quadratic form defined by `inv(a)` applied columnwise to `x`
-"""
-invquad!(r::AbstractArray, a::PDMat, x::StridedMatrix) = colwise_dot!(r, x, a.mat \ x)
+""" """ quad!(r::AbstractArray, a::PDMat, x::StridedMatrix) = colwise_dot!(r, x, a.mat * x)
+""" """ invquad!(r::AbstractArray, a::PDMat, x::StridedMatrix) = colwise_dot!(r, x, a.mat \ x)
 function X_A_Xt(a::PDMat, x::StridedMatrix)
     z = copy(x)
     cf = a.chol.UL

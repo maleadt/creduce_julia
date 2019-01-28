@@ -1,49 +1,15 @@
 export Product, LibraryProduct, FileProduct, ExecutableProduct, satisfied,
        locate, write_deps_file, variable_name
 import Base: repr
-"""
-A `Product` is an expected result after building or installation of a package.
-Examples of `Product`s include `LibraryProduct`, `ExecutableProduct` and
-`FileProduct`.  All `Product` types must define the following minimum set of
-functionality:
-* `locate(::Product)`: given a `Product`, locate it within the wrapped `Prefix`
-  returning its location as a string
-* `satisfied(::Product)`: given a `Product`, determine whether it has been
-  successfully satisfied (e.g. it is locateable and it passes all callbacks)
-* `variable_name(::Product)`: return the variable name assigned to a `Product`
-* `repr(::Product)`: Return a representation of this `Product`, useful for
-  auto-generating source code that constructs `Products`, if that's your thing.
-"""
-abstract type Product end
-"""
-    satisfied(p::Product; platform::Platform = platform_key_abi(),
-              verbose::Bool = false, isolate::Bool = false)
-Given a `Product`, return `true` if that `Product` is satisfied, e.g. whether
-a file exists that matches all criteria setup for that `Product`.  If `isolate`
-is set to `true`, will isolate all checks from the main Julia process in the
-event that `dlopen()`'ing a library might cause issues.
-"""
-function satisfied(p::Product; platform::Platform = platform_key_abi(),
+""" """ abstract type Product end
+""" """ function satisfied(p::Product; platform::Platform = platform_key_abi(),
                                verbose::Bool = false, isolate::Bool = false)
     return locate(p; platform=platform, verbose=verbose, isolate=isolate) != nothing
 end
-"""
-    variable_name(p::Product)
-Return the variable name associated with this `Product` as a string
-"""
-function variable_name(p::Product)
+""" """ function variable_name(p::Product)
     return string(p.variable_name)
 end
-"""
-A `LibraryProduct` is a special kind of `Product` that not only needs to exist,
-but needs to be `dlopen()`'able.  You must know which directory the library
-will be installed to, and its name, e.g. to build a `LibraryProduct` that
-refers to `"/lib/libnettle.so"`, the "directory" would be "/lib", and the
-"libname" would be "libnettle".  Note that a `LibraryProduct` can support
-multiple libnames, as some software projects change the libname based on the
-build configuration.
-"""
-struct LibraryProduct <: Product
+""" """ struct LibraryProduct <: Product
     dir_path::Union{String, Nothing}
     libnames::Vector{String}
     variable_name::Symbol
@@ -94,16 +60,7 @@ function repr(p::LibraryProduct)
         return "LibraryProduct(prefix, $(libnames), $(varname))"
     end
 end
-"""
-locate(lp::LibraryProduct; verbose::Bool = false,
-        platform::Platform = platform_key_abi())
-If the given library exists (under any reasonable name) and is `dlopen()`able,
-(assuming it was built for the current platform) return its location.  Note
-that the `dlopen()` test is only run if the current platform matches the given
-`platform` keyword argument, as cross-compiled libraries cannot be `dlopen()`ed
-on foreign platforms.
-"""
-function locate(lp::LibraryProduct; verbose::Bool = false,
+""" """ function locate(lp::LibraryProduct; verbose::Bool = false,
                 platform::Platform = platform_key_abi(), isolate::Bool = false)
     dir_path = lp.dir_path
     if dir_path === nothing
@@ -154,14 +111,7 @@ function locate(lp::LibraryProduct; verbose::Bool = false,
     end
     return nothing
 end
-"""
-An `ExecutableProduct` is a `Product` that represents an executable file.
-On all platforms, an ExecutableProduct checks for existence of the file.  On
-non-Windows platforms, it will check for the executable bit being set.  On
-Windows platforms, it will check that the file ends with ".exe", (adding it on
-automatically, if it is not already present).
-"""
-struct ExecutableProduct <: Product
+""" """ struct ExecutableProduct <: Product
     path::AbstractString
     variable_name::Symbol
     prefix::Union{Prefix, Nothing}
@@ -193,16 +143,7 @@ function repr(p::ExecutableProduct)
         return "ExecutableProduct(prefix, $(repr(rp)), $(varname))"
     end
 end
-"""
-`locate(fp::ExecutableProduct; platform::Platform = platform_key_abi(),
-                               verbose::Bool = false, isolate::Bool = false)`
-If the given executable file exists and is executable, return its path.
-On all platforms, an ExecutableProduct checks for existence of the file.  On
-non-Windows platforms, it will check for the executable bit being set.  On
-Windows platforms, it will check that the file ends with ".exe", (adding it on
-automatically, if it is not already present).
-"""
-function locate(ep::ExecutableProduct; platform::Platform = platform_key_abi(),
+""" """ function locate(ep::ExecutableProduct; platform::Platform = platform_key_abi(),
                 verbose::Bool = false, isolate::Bool = false)
     path = if platform isa Windows && !endswith(ep.path, ".exe")
         "$(ep.path).exe"
@@ -225,10 +166,7 @@ function locate(ep::ExecutableProduct; platform::Platform = platform_key_abi(),
     end
     return path
 end
-"""
-A `FileProduct` represents a file that simply must exist to be satisfied.
-"""
-struct FileProduct <: Product
+""" """ struct FileProduct <: Product
     path::AbstractString
     variable_name::Symbol
     prefix::Union{Prefix, Nothing}
@@ -262,13 +200,7 @@ function repr(p::FileProduct)
         return "FileProduct(prefix, $(repr(rp)), $(varname))"
     end
 end
-"""
-locate(fp::FileProduct; platform::Platform = platform_key_abi(),
-                        verbose::Bool = false, isolate::Bool = false)
-If the given file exists, return its path.  The platform argument is ignored
-here, but included for uniformity.
-"""
-function locate(fp::FileProduct; platform::Platform = platform_key_abi(),
+""" """ function locate(fp::FileProduct; platform::Platform = platform_key_abi(),
                                  verbose::Bool = false, isolate::Bool = false)
     mappings = Dict()
     for (var, val) in [("target", triplet(platform)), ("nbits", wordsize(platform))]
@@ -290,31 +222,7 @@ function locate(fp::FileProduct; platform::Platform = platform_key_abi(),
     end
     return nothing
 end
-"""
-    write_deps_file(depsjl_path::AbstractString, products::Vector{Product};
-                    verbose::Bool = false)
-Generate a `deps.jl` file that contains the variables referred to by the
-products within `products`.  As an example, running the following code:
-    fooifier = ExecutableProduct(..., :foo_exe)
-    libbar = LibraryProduct(..., :libbar)
-    write_deps_file(joinpath(@__DIR__, "deps.jl"), [fooifier, libbar])
-Will generate a `deps.jl` file that contains definitions for the two variables
-`foo_exe` and `libbar`.  If any `Product` object cannot be satisfied (e.g.
-`LibraryProduct` objects must be `dlopen()`-able, `FileProduct` objects must
-exist on the filesystem, etc...) this method will error out.  Ensure that you
-have used `install()` to install the binaries you wish to write a `deps.jl`
-file for.
-The result of this method is a `deps.jl` file containing variables named as
-defined within the `Product` objects passed in to it, holding the full path to the
-installed binaries.  Given the example above, it would contain code similar to:
-    global const foo_exe = "<pkg path>/deps/usr/bin/fooifier"
-    global const libbar = "<pkg path>/deps/usr/lib/libbar.so"
-This `deps.jl` file is intended to be `include()`'ed from within the top-level
-source of your package.  Note that all files are checked for consistency on
-package load time, and if an error is discovered, package loading will fail,
-asking the user to re-run `Pkg.build("package_name")`.
-"""
-function write_deps_file(depsjl_path::AbstractString, products::Vector{P};
+""" """ function write_deps_file(depsjl_path::AbstractString, products::Vector{P};
                          verbose::Bool=false) where {P <: Product}
     escape_path = path -> replace(path, "\\" => "\\\\")
     if basename(dirname(dirname(dirname(dirname(depsjl_path))))) == "packages"

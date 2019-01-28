@@ -1,12 +1,4 @@
-"""
-    KSDist(n)
-Distribution of the (two-sided) Kolmogorov-Smirnoff statistic
-```math
-D_n = \\sup_x | \\hat{F}_n(x) -F(x)| \\sqrt(n)
-```
-``D_n`` converges a.s. to the Kolmogorov distribution.
-"""
-struct KSDist <: ContinuousUnivariateDistribution
+""" """ struct KSDist <: ContinuousUnivariateDistribution
     n::Int
 end
 @distr_support KSDist 1 / (2 * d.n) 1.0
