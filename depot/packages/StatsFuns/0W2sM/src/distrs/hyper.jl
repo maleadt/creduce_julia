@@ -1,5 +1,3 @@
-# functions related to hyper-geometric distribution
-
 import .RFunctions:
     hyperpdf,
     hyperlogpdf,

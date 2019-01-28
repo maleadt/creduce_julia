@@ -3,12 +3,9 @@ using Tokenize
 using Tokenize.Lexers
 using Missings
 const T = Tokenize.Tokens
-
 noname(name::String) = name == ""
-
 tokenerror(token, str) = error("Unexpected $(token.kind) token " *
                                "'$(untokenize(token))' instead of '$str'")
-
 isWHITESPACE(token) = token.kind == T.WHITESPACE
 isEQ(token) = token.kind == T.EQ
 isEQorRSQUARE(token) = token.kind ∈ [T.EQ, T.RSQUARE]
@@ -22,7 +19,6 @@ isDIMENSIONS(token) = isIDENTIFIER(token, "dimensions")
 isTAXLABELS(token) = isIDENTIFIER(token, "taxlabels")
 isTRANSLATE(token) = isIDENTIFIER(token, "translate")
 isEND(token) = (token.kind == T.END) | isIDENTIFIER(token, "end")
-
 function iterateskip(tokens, state = nothing)
     if VERSION < v"0.7.0-"
     if state !== nothing && done(tokens, state)
@@ -46,7 +42,6 @@ function iterateskip(tokens, state = nothing)
     return token, state
     end
 end
-
 function tokensgetkey(token, state, tokens, finished::Function = isEQ)
     sofar = String[]
     while !finished(token) && token.kind != T.ENDMARKER
@@ -61,7 +56,6 @@ function tokensgetkey(token, state, tokens, finished::Function = isEQ)
     end
     return token, state, join(sofar)
 end
-
 function checktosemi(test::Function, token, state, tokens)
     if !test(token)
         return false
@@ -74,7 +68,6 @@ function checktosemi(test::Function, token, state, tokens)
     end
     return true
 end
-
 function parsevector(token, state, tokens, ::Type{TY}, sgn) where TY <: Real
     vec = TY[]
     while token.kind != T.RBRACE && token.kind != T.ENDMARKER
@@ -101,15 +94,12 @@ function parsevector(token, state, tokens, ::Type{TY}, sgn) where TY <: Real
             token, state = result
         end
     end
-
     return token, state, vec
 end
-
 function parsevector(token, state, tokens)
     result = iterateskip(tokens, state)
     result === nothing && return nothing
     token, state = result
-
     sgn = +;
     if token.kind == T.MINUS
         sgn = -;
@@ -121,13 +111,11 @@ function parsevector(token, state, tokens)
         result === nothing && return nothing
         token, state = result
     end
-
     if token.kind == T.INTEGER
         return parsevector(token, state, tokens, Int, sgn)
     elseif token.kind == T.FLOAT
         return parsevector(token, state, tokens, Float64, sgn)
     end
-
     vec = String[]
     while token.kind != T.RBRACE && token.kind != T.ENDMARKER
         if token.kind ∈ [T.STRING, T.CHAR]
@@ -146,10 +134,8 @@ function parsevector(token, state, tokens)
             token, state = result
         end
     end
-
     return token, state, vec
 end
-
 function parsedict(token, state, tokens)
     dict = Dict{String, Any}()
     result = iterateskip(tokens, state)
@@ -162,7 +148,6 @@ function parsedict(token, state, tokens)
         result === nothing && return nothing
         token, state = result
     end
-
     while token.kind != T.RSQUARE && token.kind != T.ENDMARKER
         token, state, key = tokensgetkey(token, state, tokens, isEQorRSQUARE)
         if token.kind != T.RSQUARE # Allow [&R] as a valid (empty) dict
@@ -184,7 +169,6 @@ function parsedict(token, state, tokens)
                     result === nothing && return nothing
                     token, state = result
                 end
-
                 if token.kind == T.INTEGER
                     value = sgn(parse(Int, untokenize(token)))
                 elseif token.kind == T.FLOAT
@@ -196,7 +180,6 @@ function parsedict(token, state, tokens)
                 end
             end
             dict[key] = value
-
             result = iterateskip(tokens, state)
             result === nothing && return nothing
             token, state = result
@@ -209,16 +192,13 @@ function parsedict(token, state, tokens)
             end
         end
     end
-
     if token.kind == T.RSQUARE
         result = iterateskip(tokens, state)
         result === nothing && return nothing
         token, state = result
     end
-
     return token, state, dict
 end
-
 function parsenode(token, state, tokens, tree::TREE,
                    lookup, siblings, istip) where {NL, BL,
                                                    TREE <: AbstractBranchTree{NL, BL}}
@@ -252,7 +232,6 @@ function parsenode(token, state, tokens, tree::TREE,
         end
         myname = addnode!(tree)
     end
-
     foundcolon = false
     if token.kind == T.COLON
         foundcolon = true
@@ -260,14 +239,12 @@ function parsenode(token, state, tokens, tree::TREE,
         result === nothing && return nothing
         token, state = result
     end
-
     siblings[myname] = Dict{String, Any}()
     if token.kind == T.LSQUARE
         token, state, dict = parsedict(token, state, tokens)
         siblings[myname]["dict"] = dict
         setnoderecord!(tree, myname, dict)
     end
-
     if token.kind == T.COLON || foundcolon
         if token.kind == T.COLON
             result = iterateskip(tokens, state)
@@ -295,10 +272,8 @@ function parsenode(token, state, tokens, tree::TREE,
         result === nothing && return nothing
         token, state = result
     end
-
     return token, state, myname
 end
-
 function parsenewick!(token, state, tokens, tree::TREE,
                      lookup = Dict(), depth = 0,
                      children = Dict{NL, Dict{String, Any}}()) where
@@ -330,11 +305,8 @@ function parsenewick!(token, state, tokens, tree::TREE,
             addbranch!(tree, nodename, child, dict["length"]) :
             addbranch!(tree, nodename, child)
     end
-
     if depth == 0
-        # Should be at end of tree
         if token.kind == T.SEMICOLON
-            # Am at end of tree
             result = iterateskip(tokens, state)
             result === nothing && return nothing
             token, state = result
@@ -343,10 +315,8 @@ function parsenewick!(token, state, tokens, tree::TREE,
         end
         tree = resetleaves!(tree)
     end
-
     return token, state
 end
-
 function parsenewick(tokens::Tokenize.Lexers.Lexer,
                      ::Type{TREE}) where TREE <: AbstractBranchTree{String, Int}
     result = iterateskip(tokens)
@@ -366,23 +336,17 @@ function parsenewick(tokens::Tokenize.Lexers.Lexer,
               "at start of newick file")
     end
 end
-
 parsenewick(io::IOBuffer, ::Type{TREE}) where TREE <: AbstractBranchTree =
     parsenewick(tokenize(io), TREE)
-
 parsenewick(s::String, ::Type{TREE}) where TREE <: AbstractBranchTree =
     parsenewick(IOBuffer(s), TREE)
-
-
 function parsenewick(ios::IOStream, ::Type{TREE}) where TREE <: AbstractBranchTree
     buf = IOBuffer()
     print(buf, read(ios, String))
     seek(buf, 0)
     return parsenewick(buf, TREE)
 end
-
 parsenewick(inp) = parsenewick(inp, NamedTree)
-
 function parsetaxa(token, state, tokens, taxa)
     if !isDIMENSIONS(token)
         tokenerror(token, "Dimensions")
@@ -436,7 +400,6 @@ function parsetaxa(token, state, tokens, taxa)
     if length(taxa) != ntax
         @warn "Taxa list length ($(length(taxa))) and ntax ($ntax) do not match"
     end
-
     result = iterateskip(tokens, state)
     result === nothing && return nothing
     token, state = result
@@ -445,7 +408,6 @@ function parsetaxa(token, state, tokens, taxa)
     end
     return iterateskip(tokens, state)
 end
-
 function parsetrees(token, state, tokens,
                     ::Type{TREE}, taxa) where TREE <: AbstractBranchTree{String, Int}
     notaxa = isempty(taxa)
@@ -481,7 +443,6 @@ function parsetrees(token, state, tokens,
         result === nothing && return nothing
         token, state = result
     end
-
     trees = Dict{String, TREE}()
     treedata = Dict{String, Dict{String, Any}}()
     while isTREE(token)
@@ -517,13 +478,11 @@ function parsetrees(token, state, tokens,
     if !checktosemi(isEND, token, state, tokens)
         tokenerror(token, "End;")
     end
-
     result = iterateskip(tokens, state)
     result === nothing && return nothing
     token, state = result
     return token, state, trees, treedata
 end
-
 function parsenexus(token, state, tokens,
                     ::Type{TREE}) where {NL, BL,
                                          TREE <: AbstractBranchTree{NL, BL}}
@@ -556,13 +515,11 @@ function parsenexus(token, state, tokens,
             end
         end
     end
-
     if token.kind != T.ENDMARKER
         tokenerror(token, "end of file")
     end
     return TreeSet(trees, treedata)
 end
-
 function parsenexus(tokens::Tokenize.Lexers.Lexer,
                     ::Type{TREE}) where TREE <: AbstractBranchTree{String, Int}
     result = iterateskip(tokens)
@@ -578,15 +535,12 @@ function parsenexus(tokens::Tokenize.Lexers.Lexer,
               "at start of nexus file")
     end
 end
-
 parsenexus(io::IOBuffer, ::Type{TREE}) where TREE <: AbstractBranchTree =
     parsenexus(tokenize(io), TREE)
-
 function parsenexus(ios::IOStream, ::Type{TREE}) where TREE <: AbstractBranchTree
     buf = IOBuffer()
     print(buf, read(ios, String))
     seek(buf, 0)
     return parsenexus(buf, TREE)
 end
-
 parsenexus(inp) = parsenexus(inp, NamedTree)

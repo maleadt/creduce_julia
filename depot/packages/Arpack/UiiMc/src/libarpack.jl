@@ -1,9 +1,4 @@
-# This file is a part of Julia. License is MIT: https://julialang.org/license
-
 import LinearAlgebra: BlasInt, ARPACKException
-
-## aupd and eupd wrappers
-
 function aupd_wrapper(T, matvecA!::Function, matvecB::Function, solveSI::Function, n::Integer,
                       sym::Bool, cmplx::Bool, bmat::String,
                       nev::Integer, ncv::Integer, which::String,
@@ -11,12 +6,10 @@ function aupd_wrapper(T, matvecA!::Function, matvecB::Function, solveSI::Functio
     lworkl = cmplx ? ncv * (3*ncv + 5) : (sym ? ncv * (ncv + 8) :  ncv * (3*ncv + 6) )
     TR = cmplx ? T.types[1] : T
     TOL = Ref{TR}(tol)
-
     v     = Matrix{T}(undef, n, ncv)
     workd = Vector{T}(undef, 3*n)
     workl = Vector{T}(undef, lworkl)
     rwork = cmplx ? Vector{TR}(undef, ncv) : Vector{TR}()
-
     if isempty(v0)
         resid = Vector{T}(undef, n)
         info  = Ref{BlasInt}(0)
@@ -27,13 +20,10 @@ function aupd_wrapper(T, matvecA!::Function, matvecB::Function, solveSI::Functio
     iparam = zeros(BlasInt, 11)
     ipntr  = zeros(BlasInt, (sym && !cmplx) ? 11 : 14)
     ido    = Ref{BlasInt}(0)
-
     iparam[1] = BlasInt(1)       # ishifts
     iparam[3] = BlasInt(maxiter) # maxiter
     iparam[7] = BlasInt(mode)    # mode
-
     zernm1 = 0:(n-1)
-
     while true
         if cmplx
             naupd(ido, bmat, n, which, nev, TOL, resid, ncv, v, n,
@@ -48,7 +38,6 @@ function aupd_wrapper(T, matvecA!::Function, matvecB::Function, solveSI::Functio
         if info[] != 0
             throw(ARPACKException(info[]))
         end
-
         x = view(workd, ipntr[1] .+ zernm1)
         y = view(workd, ipntr[2] .+ zernm1)
         if mode == 1  # corresponds to dsdrv1, dndrv1 or zndrv1
@@ -97,10 +86,8 @@ function aupd_wrapper(T, matvecA!::Function, matvecB::Function, solveSI::Functio
             throw(ArgumentError("ARPACK mode ($mode) not yet supported"))
         end
     end
-
     return (resid, v, n, iparam, ipntr, workd, workl, lworkl, rwork, TOL)
 end
-
 function eupd_wrapper(T, n::Integer, sym::Bool, cmplx::Bool, bmat::String,
                       nev::Integer, which::String, ritzvec::Bool,
                       TOL::Ref, resid, ncv::Integer, v, ldv, sigma, iparam, ipntr,
@@ -108,7 +95,6 @@ function eupd_wrapper(T, n::Integer, sym::Bool, cmplx::Bool, bmat::String,
     howmny = "A"
     select = Vector{BlasInt}(undef, ncv)
     info   = Ref{BlasInt}(0)
-
     dmap = x -> abs.(x)
     if iparam[7] == 3 # shift-and-invert
         dmap = x -> abs.(1 ./ (x .- sigma))
@@ -121,7 +107,6 @@ function eupd_wrapper(T, n::Integer, sym::Bool, cmplx::Bool, bmat::String,
     elseif which == "SI"
         dmap = x -> -imag(x)
     end
-
     if cmplx
         d = Vector{T}(undef, nev+1)
         sigmar = Ref{T}(sigma)
@@ -132,7 +117,6 @@ function eupd_wrapper(T, n::Integer, sym::Bool, cmplx::Bool, bmat::String,
         if info[] != 0
             throw(ARPACKException(info[]))
         end
-
         p = sortperm(dmap(d[1:nev]), rev=true)
         return ritzvec ? (d[p], v[1:n, p],iparam[5],iparam[3],iparam[9],resid) : (d[p],iparam[5],iparam[3],iparam[9],resid)
     elseif sym
@@ -144,7 +128,6 @@ function eupd_wrapper(T, n::Integer, sym::Bool, cmplx::Bool, bmat::String,
         if info[] != 0
             throw(ARPACKException(info[]))
         end
-
         p = sortperm(dmap(d), rev=true)
         return ritzvec ? (d[p], v[1:n, p],iparam[5],iparam[3],iparam[9],resid) : (d[p],iparam[5],iparam[3],iparam[9],resid)
     else
@@ -162,7 +145,6 @@ function eupd_wrapper(T, n::Integer, sym::Bool, cmplx::Bool, bmat::String,
             throw(ARPACKException(info[]))
         end
         evec = complex.(Matrix{T}(undef, n, nev+1), Matrix{T}(undef, n, nev+1))
-
         j = 1
         while j <= nev
             if di[j] == 0
@@ -182,20 +164,16 @@ function eupd_wrapper(T, n::Integer, sym::Bool, cmplx::Bool, bmat::String,
                 throw(ARPACKException("unexpected behavior"))
             end
         end
-
         d = complex.(dr, di)
-
         if j == nev+1
             p = sortperm(dmap(d[1:nev]), rev=true)
         else
             p = sortperm(dmap(d), rev=true)
             p = p[1:nev]
         end
-
         return ritzvec ? (d[p], evec[1:n, p],iparam[5],iparam[3],iparam[9],resid) : (d[p],iparam[5],iparam[3],iparam[9],resid)
     end
 end
-
 for (T, saupd_name, seupd_name, naupd_name, neupd_name) in
     ((:Float64, :dsaupd_, :dseupd_, :dnaupd_, :dneupd_),
      (:Float32, :ssaupd_, :sseupd_, :snaupd_, :sneupd_))
@@ -210,7 +188,6 @@ for (T, saupd_name, seupd_name, naupd_name, neupd_name) in
                   TOL, resid, ncv, v, ldv,
                   iparam, ipntr, workd, workl, lworkl, info, sizeof(bmat), sizeof(evtype))
         end
-
         function neupd(rvec, howmny, select, dr, di, z, ldz, sigmar, sigmai,
                   workev::Vector{$T}, bmat, n, evtype, nev, TOL::Ref{$T}, resid::Vector{$T}, ncv, v, ldv,
                   iparam, ipntr, workd::Vector{$T}, workl::Vector{$T}, lworkl, info)
@@ -224,7 +201,6 @@ for (T, saupd_name, seupd_name, naupd_name, neupd_name) in
                   TOL, resid, ncv, v, ldv,
                   iparam, ipntr, workd, workl, lworkl, info, sizeof(howmny), sizeof(bmat), sizeof(evtype))
         end
-
         function saupd(ido, bmat, n, which, nev, TOL::Ref{$T}, resid::Vector{$T}, ncv, v::Matrix{$T}, ldv,
                        iparam, ipntr, workd::Vector{$T}, workl::Vector{$T}, lworkl, info)
             ccall(($(string(saupd_name)), libarpack), Cvoid,
@@ -235,7 +211,6 @@ for (T, saupd_name, seupd_name, naupd_name, neupd_name) in
                   TOL, resid, ncv, v, ldv,
                   iparam, ipntr, workd, workl, lworkl, info, sizeof(bmat), sizeof(which))
         end
-
         function seupd(rvec, howmny, select, d, z, ldz, sigma,
                        bmat, n, evtype, nev, TOL::Ref{$T}, resid::Vector{$T}, ncv, v::Matrix{$T}, ldv,
                        iparam, ipntr, workd::Vector{$T}, workl::Vector{$T}, lworkl, info)
@@ -251,7 +226,6 @@ for (T, saupd_name, seupd_name, naupd_name, neupd_name) in
         end
     end
 end
-
 for (T, TR, naupd_name, neupd_name) in
     ((:ComplexF64, :Float64, :znaupd_, :zneupd_),
      (:ComplexF32, :Float32, :cnaupd_, :cneupd_))
@@ -267,7 +241,6 @@ for (T, TR, naupd_name, neupd_name) in
                   TOL, resid, ncv, v, ldv,
                   iparam, ipntr, workd, workl, lworkl, rwork, info)
         end
-
         function neupd(rvec, howmny, select, d, z, ldz, sigma, workev::Vector{$T},
                        bmat, n, evtype, nev, TOL::Ref{$TR}, resid::Vector{$T}, ncv, v::Matrix{$T}, ldv,
                        iparam, ipntr, workd::Vector{$T}, workl::Vector{$T}, lworkl,

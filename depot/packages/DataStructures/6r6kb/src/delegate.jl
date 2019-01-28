@@ -1,14 +1,10 @@
-# by JMW
-
 function unquote(e::Expr)
     @assert e.head == :quote
     return e.args[1]
 end
-
 function unquote(e::QuoteNode)
     return e.value
 end
-
 macro delegate(source, targets)
     typename = esc(source.args[1])
     fieldname = unquote(source.args[2])
@@ -24,7 +20,6 @@ macro delegate(source, targets)
     end
     return Expr(:block, fdefs...)
 end
-
 macro delegate_return_parent(source, targets)
     typename = esc(source.args[1])
     fieldname = unquote(source.args[2])

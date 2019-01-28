@@ -1,5 +1,3 @@
-# functions related to negative binomial distribution
-
 import .RFunctions:
     nbinompdf,
     nbinomlogpdf,

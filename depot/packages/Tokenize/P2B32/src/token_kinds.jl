@@ -7,7 +7,6 @@
     AT_SIGN, # @
     COMMA, #,
     SEMICOLON, # ;
-
     begin_keywords,
         KEYWORD, # general
         ABSTRACT,
@@ -44,7 +43,6 @@
         USING,
         WHILE,
     end_keywords,
-
     begin_cstparser,
         INVISIBLE_BRACKETS,
         NOTHING,
@@ -53,7 +51,6 @@
         NEWLINE_WS,
         EMPTY_WS,
     end_cstparser,
-
     begin_literal,
         LITERAL, # general
         INTEGER, # 4
@@ -68,7 +65,6 @@
         TRIPLE_CMD, # ```cmd ...```
         TRUE, FALSE,
     end_literal,
-
     begin_delimiters,
         LSQUARE, # [
         RSQUARE, # [
@@ -77,12 +73,9 @@
         LPAREN, # (
         RPAREN,  # )
     end_delimiters,
-
     begin_ops,
         OP, # general
         DDDOT, # ...
-
-        # Level 1
         begin_assignments,
             EQ, # =
             PLUS_EQ, # +=
@@ -104,17 +97,12 @@
             EX_OR_EQ, # $=
             XOR_EQ, # ⊻=
         end_assignments,
-
         begin_pairarrow,
             PAIR_ARROW, # =>
         end_pairarrow,
-
-        # Level 2
         begin_conditional,
             CONDITIONAL, # ?
         end_conditional,
-
-        # Level 3
         begin_arrow,
             RIGHT_ARROW, # -->
             LEFTWARDS_ARROW, # ←
@@ -233,18 +221,12 @@
             HALFWIDTH_LEFTWARDS_ARROW, # ￩
             HALFWIDTH_RIGHTWARDS_ARROW, # ￫
         end_arrow,
-
-        # Level 4
         begin_lazyor,
             LAZY_OR, # ||
         end_lazyor,
-
-        # Level 5
         begin_lazyand,
             LAZY_AND, # &&
         end_lazyand,
-
-        # Level 6
         begin_comparison,
             ISSUBTYPE, # <:
             ISSUPERTYPE, # >:
@@ -535,20 +517,14 @@
             LEFT_TACK, # ⊣
             PERP, # ⟂
         end_comparison,
-
-        # Level 7
         begin_pipe,
             LPIPE, # |>
             RPIPE, # <|
         end_pipe,
-
-        # Level 8
         begin_colon,
             COLON, # :
             DDOT, # ..
         end_colon,
-
-        # Level 9
         begin_plus,
             EX_OR, # $
             PLUS, # +
@@ -608,15 +584,11 @@
             LOGICAL_OR_WITH_DOUBLE_OVERBAR, # ⩢
             LOGICAL_OR_WITH_DOUBLE_UNDERBAR, # ⩣
         end_plus,
-
-        # Level 10
         begin_bitshifts,
           LBITSHIFT, # <<
           RBITSHIFT, # >>
           UNSIGNED_BITSHIFT, # >>>
         end_bitshifts,
-
-        # Level 11
         begin_times,
             STAR,  # *
             FWD_SLASH, # /
@@ -695,13 +667,9 @@
             RIGHT_OUTER_JOIN, # ⟖
             FULL_OUTER_JOIN, # ⟗
         end_times,
-
-        # Level 12
         begin_rational,
             FWDFWD_SLASH, # //
         end_rational,
-
-        # Level 13
         begin_power,
             CIRCUMFLEX_ACCENT, # ^
             UPWARDS_ARROW, # ↑
@@ -735,27 +703,19 @@
             HALFWIDTH_UPWARDS_ARROW, # ￪
             HALFWIDTH_DOWNWARDS_ARROW, # ￬
         end_power,
-
-        # Level 14
         begin_decl,
             DECLARATION, # ::
         end_decl,
-
-        # Level 15
         begin_where,
             WHERE,
         end_where,
-
-        # Level 16
         begin_dot,
             DOT,# .
         end_dot,
-
         NOT, # !
         PRIME, # '
         TRANSPOSE, # .'
         ANON_FUNC, # ->
-
         begin_unicode_ops,
             NOT_SIGN, # ¬
             SQUARE_ROOT, # √
@@ -764,8 +724,6 @@
         end_unicode_ops,
     end_ops,
 )
-
-
 const UNICODE_OPS = Dict{Char, Kind}(
 '÷' => DIVISION_SIGN,
 '¬' => NOT_SIGN,
@@ -1317,13 +1275,10 @@ const UNICODE_OPS = Dict{Char, Kind}(
 '￪' => HALFWIDTH_UPWARDS_ARROW,
 '￬' => HALFWIDTH_DOWNWARDS_ARROW,
 '⋅' => UNICODE_DOT)
-
-
 const UNICODE_OPS_REVERSE = Dict{Kind,Symbol}()
 for (k, v) in UNICODE_OPS
     UNICODE_OPS_REVERSE[v] = Symbol(k)
 end
-
 UNICODE_OPS_REVERSE[EQ] = :(=)
 UNICODE_OPS_REVERSE[PLUS_EQ] = :(+=)
 UNICODE_OPS_REVERSE[MINUS_EQ] = :(-=)

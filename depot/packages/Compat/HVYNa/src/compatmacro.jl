@@ -1,9 +1,5 @@
-# The @compat macro is used to implement compatibility rules that require
-# syntax rewriting rather than simply new function/constant/module definitions.
-
 using Base.Meta
 export @compat
-
 if !isdefined(Base, :UndefKeywordError)
     struct UndefKeywordError <: Exception
         kw
@@ -11,13 +7,11 @@ if !isdefined(Base, :UndefKeywordError)
     Base.showerror(io::IO, e::UndefKeywordError) = print(io, "UndefKeywordError: keyword argument $(e.kw) not assigned")
     export UndefKeywordError
 end
-
 "Convert a functions symbol argument to the corresponding required keyword argument."
 function symbol2kw(sym::Symbol)
     Expr(:kw, sym, Expr(:call, throw, UndefKeywordError(sym)))
 end
 symbol2kw(arg) = arg
-
 function _compat(ex::Expr)
     if ex.head === :call
         f = ex.args[1]
@@ -26,7 +20,6 @@ function _compat(ex::Expr)
             params.args = map(symbol2kw, params.args)
         end
     elseif ex.head === :quote && isa(ex.args[1], Symbol)
-        # Passthrough
         return ex
     end
     if VERSION < v"0.7.0-DEV.880"
@@ -44,9 +37,7 @@ function _compat(ex::Expr)
     end
     return Expr(ex.head, map(_compat, ex.args)...)
 end
-
 _compat(ex) = ex
-
 macro compat(ex)
     esc(_compat(ex))
 end

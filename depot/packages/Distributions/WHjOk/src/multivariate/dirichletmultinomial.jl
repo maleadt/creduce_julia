@@ -2,7 +2,6 @@ struct DirichletMultinomial{T <: Real} <: DiscreteMultivariateDistribution
     n::Int
     α::Vector{T}
     α0::T
-
     function DirichletMultinomial{T}(n::Integer, α::Vector{T}) where T
         α0 = sum(abs, α)
         sum(α) == α0 || throw(ArgumentError("alpha must be a positive vector."))
@@ -13,19 +12,12 @@ end
 DirichletMultinomial(n::Integer, α::Vector{T}) where {T <: Real} = DirichletMultinomial{T}(n, α)
 DirichletMultinomial(n::Integer, α::Vector{T}) where {T <: Integer} = DirichletMultinomial(n, float(α))
 DirichletMultinomial(n::Integer, k::Integer) = DirichletMultinomial(n, ones(k))
-
 Base.show(io::IO, d::DirichletMultinomial) = show(io, d, (:n, :α,))
-
-
-# Parameters
 ncategories(d::DirichletMultinomial) = length(d.α)
 length(d::DirichletMultinomial) = ncategories(d)
 ntrials(d::DirichletMultinomial) = d.n
 params(d::DirichletMultinomial) = (d.n, d.α)
 @inline partype(d::DirichletMultinomial{T}) where {T<:Real} = T
-
-
-# Statistics
 mean(d::DirichletMultinomial) = d.α .* (d.n / d.α0)
 function var(d::DirichletMultinomial{T}) where T <: Real
     v = fill(d.n * (d.n + d.α0) / (1 + d.α0), length(d))
@@ -44,9 +36,6 @@ function cov(d::DirichletMultinomial{T}) where T <: Real
     end
     c
 end
-
-
-# Evaluation
 function insupport(d::DirichletMultinomial, x::AbstractVector{T}) where T<:Real
     k = length(d)
     length(x) == k || return false
@@ -63,16 +52,9 @@ function _logpdf(d::DirichletMultinomial{S}, x::AbstractVector{T}) where {T<:Rea
     end
     c
 end
-
-
-# Sampling
 function _rand!(d::DirichletMultinomial, x::AbstractVector{T}) where T<:Real
     multinom_rand!(ntrials(d), rand(Dirichlet(d.α)), x)
 end
-
-
-# Fit Model
-# Using https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2945396/pdf/nihms205488.pdf
 struct DirichletMultinomialStats <: SufficientStats
     n::Int
     s::Matrix{Float64}  # s_{jk} = ∑_i x_{ij} ≥ (k - 1),  k = 1,...,(n - 1)

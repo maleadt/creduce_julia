@@ -1,15 +1,9 @@
-# an AbstractIndex is a thing that can be used to look up ordered things by name, but that
-# will also accept a position or set of positions or range or other things and pass them
-# through cleanly.
 abstract type AbstractIndex end
-
 const ColumnIndex = Union{Signed, Unsigned, Symbol}
-
 struct Index <: AbstractIndex   # an OrderedDict would be nice here...
     lookup::Dict{Symbol, Int}      # name => names array position
     names::Vector{Symbol}
 end
-
 function Index(names::Vector{Symbol}; makeunique::Bool=false)
     u = make_unique(names, makeunique=makeunique)
     lookup = Dict{Symbol, Int}(zip(u, 1:length(u)))
@@ -23,8 +17,6 @@ Base.copy(x::Index) = Index(copy(x.lookup), copy(x.names))
 Base.deepcopy(x::Index) = copy(x) # all eltypes immutable
 Base.isequal(x::AbstractIndex, y::AbstractIndex) = _names(x) == _names(y) # it is enough to check names
 Base.:(==)(x::AbstractIndex, y::AbstractIndex) = isequal(x, y)
-
-
 function names!(x::Index, nms::Vector{Symbol}; makeunique::Bool=false)
     if !makeunique
         if length(unique(nms)) != length(nms)
@@ -45,7 +37,6 @@ function names!(x::Index, nms::Vector{Symbol}; makeunique::Bool=false)
     end
     return x
 end
-
 function rename!(x::Index, nms)
     for (from, to) in nms
         from == to && continue # No change, nothing to do
@@ -57,13 +48,10 @@ function rename!(x::Index, nms)
     end
     return x
 end
-
 rename!(x::Index, nms::Pair{Symbol,Symbol}...) = rename!(x::Index, collect(nms))
 rename!(f::Function, x::Index) = rename!(x, [(x=>f(x)) for x in x.names])
-
 rename(x::Index, args...) = rename!(copy(x), args...)
 rename(f::Function, x::Index) = rename!(f, copy(x))
-
 @inline function Base.permute!(x::Index, p::AbstractVector)
     @boundscheck if !(length(p) == length(x) && isperm(p))
         throw(ArgumentError("$p is not a valid column permutation for this Index"))
@@ -76,20 +64,16 @@ rename(f::Function, x::Index) = rename!(f, copy(x))
     end
     x
 end
-
 Base.haskey(x::Index, key::Symbol) = haskey(x.lookup, key)
 Base.haskey(x::Index, key::Integer) = 1 <= key <= length(x.names)
 Base.haskey(x::Index, key::Bool) =
     throw(ArgumentError("invalid key: $key of type Bool"))
 Base.keys(x::Index) = names(x)
-
-# TODO: If this should stay 'unsafe', perhaps make unexported
 function Base.push!(x::Index, nm::Symbol)
     x.lookup[nm] = length(x) + 1
     push!(x.names, nm)
     return x
 end
-
 function Base.merge!(x::Index, y::AbstractIndex; makeunique::Bool=false)
     adds = add_names(x, y, makeunique=makeunique)
     i = length(x)
@@ -100,12 +84,9 @@ function Base.merge!(x::Index, y::AbstractIndex; makeunique::Bool=false)
     append!(x.names, adds)
     return x
 end
-
 Base.merge(x::Index, y::AbstractIndex; makeunique::Bool=false) =
     merge!(copy(x), y, makeunique=makeunique)
-
 function Base.delete!(x::Index, idx::Integer)
-    # reset the lookup's beyond the deleted item
     for i in (idx + 1):length(x.names)
         x.lookup[x.names[i]] = i - 1
     end
@@ -113,7 +94,6 @@ function Base.delete!(x::Index, idx::Integer)
     deleteat!(x.names, idx)
     return x
 end
-
 function Base.delete!(x::Index, nm::Symbol)
     if !haskey(x.lookup, nm)
         return x
@@ -121,13 +101,11 @@ function Base.delete!(x::Index, nm::Symbol)
     idx = x.lookup[nm]
     return delete!(x, idx)
 end
-
 function Base.empty!(x::Index)
     empty!(x.lookup)
     empty!(x.names)
     x
 end
-
 function Base.insert!(x::Index, idx::Integer, nm::Symbol)
     1 <= idx <= length(x.names)+1 || error(BoundsError())
     for i = idx:length(x.names)
@@ -137,31 +115,25 @@ function Base.insert!(x::Index, idx::Integer, nm::Symbol)
     insert!(x.names, idx, nm)
     x
 end
-
 @inline Base.getindex(x::AbstractIndex, idx::Bool) = throw(ArgumentError("invalid index: $idx of type Bool"))
 @inline Base.getindex(x::AbstractIndex, idx::Integer) = Int(idx)
 @inline Base.getindex(x::AbstractIndex, idx::AbstractVector{Int}) = idx
 @inline Base.getindex(x::AbstractIndex, idx::AbstractRange{Int}) = idx
 @inline Base.getindex(x::AbstractIndex, idx::AbstractRange{<:Integer}) = collect(Int, idx)
 @inline Base.getindex(x::AbstractIndex, ::Colon) = Base.OneTo(length(x))
-
 @inline Base.getindex(x::Index, idx::Symbol) = x.lookup[idx]
 @inline Base.getindex(x::Index, idx::AbstractVector{Symbol}) = [x.lookup[i] for i in idx]
-
 @inline function Base.getindex(x::AbstractIndex, idx::AbstractVector{<:Integer})
     if any(v -> v isa Bool, idx)
         throw(ArgumentError("Bool values except for AbstractVector{Bool} are not allowed for column indexing"))
     end
     Vector{Int}(idx)
 end
-
 @inline Base.getindex(x::AbstractIndex, idx::AbstractRange{Bool}) = getindex(x, collect(idx))
 @inline function Base.getindex(x::AbstractIndex, idx::AbstractVector{Bool})
     length(x) == length(idx) || throw(BoundsError(x, idx))
     findall(idx)
 end
-
-# catch all method handling cases when type of idx is not narrowest possible, Any in particular
 @inline function Base.getindex(x::AbstractIndex, idxs::AbstractVector)
     length(idxs) == 0 && return Int[] # special case of empty idxs
     if idxs[1] isa Real
@@ -174,15 +146,10 @@ end
     throw(ArgumentError("idxs[1] has type $(typeof(idxs[1])); "*
                         "DataFrame only supports indexing columns with integers, symbols or boolean vectors"))
 end
-
-# Helpers
-
 function add_names(ind::Index, add_ind::AbstractIndex; makeunique::Bool=false)
     u = names(add_ind)
-
     seen = Set(_names(ind))
     dups = Int[]
-
     for i in 1:length(u)
         name = u[i]
         in(name, seen) ? push!(dups, i) : push!(seen, name)
@@ -208,28 +175,19 @@ function add_names(ind::Index, add_ind::AbstractIndex; makeunique::Bool=false)
             k += 1
         end
     end
-
     return u
 end
-
 @inline parentcols(ind::Index) = Base.OneTo(length(ind))
 @inline parentcols(ind::Index, cols) = cols
-
-### SubIndex of Index. Used by SubDataFrame, DataFrameRow, and DataFrameRows
-
 struct SubIndex{I<:AbstractIndex,S<:AbstractVector{Int},T<:AbstractVector{Int}} <: AbstractIndex
     parent::I
     cols::S # columns from idx selected in SubIndex
     remap::T # reverse mapping from cols to their position in the SubIndex
 end
-
 SubIndex(parent::AbstractIndex, ::Colon) = parent
-
 @inline parentcols(ind::SubIndex) = ind.cols
-
 Base.@propagate_inbounds parentcols(ind::SubIndex, idx::Union{Integer,AbstractVector{<:Integer}}) =
     ind.cols[idx]
-
 Base.@propagate_inbounds function parentcols(ind::SubIndex, idx::Symbol)
     parentcol = ind.parent[idx]
     @boundscheck begin
@@ -239,12 +197,9 @@ Base.@propagate_inbounds function parentcols(ind::SubIndex, idx::Symbol)
     end
     return parentcol
 end
-
 Base.@propagate_inbounds parentcols(ind::SubIndex, idx::AbstractVector{Symbol}) =
     [parentcols(ind, i) for i in idx]
-
 Base.@propagate_inbounds parentcols(ind::SubIndex, ::Colon) = ind.cols
-
 Base.@propagate_inbounds function SubIndex(parent::AbstractIndex, cols::AbstractUnitRange{Int})
     l = last(cols)
     f = first(cols)
@@ -254,7 +209,6 @@ Base.@propagate_inbounds function SubIndex(parent::AbstractIndex, cols::Abstract
     remap = (1:l) .- f .+ 1
     SubIndex(parent, cols, remap)
 end
-
 Base.@propagate_inbounds function SubIndex(parent::AbstractIndex, cols::AbstractVector{Int})
     ncols = length(parent)
     @boundscheck if !all(x -> 0 < x ≤ ncols, cols)
@@ -263,20 +217,15 @@ Base.@propagate_inbounds function SubIndex(parent::AbstractIndex, cols::Abstract
     remap = Int[]
     SubIndex(parent, cols, remap)
 end
-
 @inline SubIndex(parent::AbstractIndex, cols::ColumnIndex) =
     throw(ArgumentError("cols argument must be a vector (got $cols)"))
-
 Base.@propagate_inbounds SubIndex(parent::AbstractIndex, cols) =
     SubIndex(parent, parent[cols])
-
-# a helper function that lazily creates remap when needed
 function lazyremap!(x::SubIndex)
     remap = x.remap
     remap isa AbstractUnitRange{Int} && return remap
     if length(remap) == 0
         resize!(remap, length(x.parent))
-        # we set non-existing mappings to 0
         fill!(remap, 0)
         for (i, col) in enumerate(x.cols)
             remap[col] = i
@@ -284,11 +233,9 @@ function lazyremap!(x::SubIndex)
     end
     remap
 end
-
 Base.length(x::SubIndex) = length(x.cols)
 Base.names(x::SubIndex) = copy(_names(x))
 _names(x::SubIndex) = view(_names(x.parent), x.cols)
-
 function Base.haskey(x::SubIndex, key::Symbol)
     haskey(x.parent, key) || return false
     pos = x.parent[key]
@@ -297,12 +244,10 @@ function Base.haskey(x::SubIndex, key::Symbol)
     checkbounds(Bool, remap, pos) || return false
     remap[pos] > 0
 end
-
 Base.haskey(x::SubIndex, key::Integer) = 1 <= key <= length(x)
 Base.haskey(x::SubIndex, key::Bool) =
     throw(ArgumentError("invalid key: $key of type Bool"))
 Base.keys(x::SubIndex) = names(x)
-
 function Base.getindex(x::SubIndex, idx::Symbol)
     remap = x.remap
     length(remap) == 0 && lazyremap!(x)

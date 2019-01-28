@@ -1,20 +1,4 @@
 using Base.Math: @horner
-
-# Compute the sine integral: ∫_0^x sin(t)/t dt,
-# and the cosine integral: γ + log x + ∫_0^x (cos(t)-1)/t dt,
-# using the rational approximants tabulated in:
-#     A.J. MacLeod, "Rational approximations, software and test methods for
-#     sine and cosine integrals," Numer. Algor. 12, pp. 259--272 (1996).
-#         http://dx.doi.org/10.1007/BF02142806
-#         https://link.springer.com/article/10.1007/BF02142806
-#
-# Note: the second zero of Ci(x) has a typo that is fixed:
-#
-# r1 = 3.38418 04228 51186 42639 78511 46402 in the article, but is in fact:
-#
-# r1 = 3.38418 04225 51186 42639 78511 46402.
-#
-
 function sinint(x::Float64)
     t = x*x
     if t ≤ 36.0
@@ -114,7 +98,6 @@ function sinint(x::Float64)
         return copysign(π/2, x)
     end
 end
-
 function cosint(x::Float64)
     t, r0, r1 = x*x, 0.616505485620716233797110404100, 3.384180422551186426397851146402
     r01, r02 = 0.6162109375, 0.29454812071623379711E-3
@@ -230,7 +213,6 @@ function cosint(x::Float64)
         return 0.0
     end
 end
-
 for f in (:sinint, :cosint)
     @eval begin
         ($f)(x::Float32) = Float32(($f)(Float64(x)))
@@ -239,19 +221,14 @@ for f in (:sinint, :cosint)
         ($f)(x::AbstractFloat) = error("not implemented for ", typeof(x))
     end
 end
-
-
 """
     sinint(x)
-
 Compute the sine integral function of `x`, defined by ``\\operatorname{Si}(x) := \\int_0^x\\frac{\\sin t}{t} dt``
 for real `x`.
 """
 sinint
-
 """
     cosint(x)
-
 Compute the cosine integral function of `x`, defined by ``\\operatorname{Ci}(x) := \\gamma + \\log x + \\int_0^x \\frac{\\cos t - 1}{t} dt``
 for real `x > 0`, where ``\\gamma`` is the Euler-Mascheroni constant.
 """

@@ -1,7 +1,5 @@
 using StatsBase
-
 StatsBase.describe(X::DataValueVector) = StatsBase.describe(STDOUT, X)
-
 function StatsBase.describe(io::IO, X::DataValueVector{T}) where {T <: Real}
     nullcount = sum(X.isna)
     pnull = 100nullcount/length(X)
@@ -15,7 +13,6 @@ function StatsBase.describe(io::IO, X::DataValueVector{T}) where {T <: Real}
     @printf(io, "%% Missing:      %.6f\n", pnull)
     return
 end
-
 function StatsBase.describe(io::IO, X::DataValueVector)
     nullcount = sum(X.isna)
     pnull = 100nullcount/length(X)
@@ -27,7 +24,6 @@ function StatsBase.describe(io::IO, X::DataValueVector)
     @printf(io, "%% Missing:      %.6f\n", pnull)
     return
 end
-
 function StatsBase.describe(io::IO, X::AbstractVector{DataValue{T}}) where {T <: Real}
     nullcount = sum(isna, X)
     pnull = 100nullcount/length(X)
@@ -41,7 +37,6 @@ function StatsBase.describe(io::IO, X::AbstractVector{DataValue{T}}) where {T <:
     @printf(io, "%% Missing:      %.6f\n", pnull)
     return
 end
-
 function StatsBase.describe(io::IO, X::AbstractVector{T}) where {T <: DataValue}
     nullcount = sum(isna, X)
     pnull = 100nullcount/length(X)

@@ -1,29 +1,17 @@
-# Edgeworth expansion approximations of sums, means and z statistics of iid variables.
-# Quantiles are computed via the Cornish-Fisher expansion
-# TODO: make the expansion of arbitrary order, using cumulants and Hermite polynomials
-
-# Edgeworth approximation of the Z statistic
-# EdgeworthSum and EdgeworthMean are both defined in terms of this
 abstract type EdgeworthAbstract <: ContinuousUnivariateDistribution end
-
 skewness(d::EdgeworthAbstract) = skewness(d.dist) / sqrt(d.n)
 kurtosis(d::EdgeworthAbstract) = kurtosis(d.dist) / d.n
-
 struct EdgeworthZ{D<:UnivariateDistribution} <: EdgeworthAbstract
     dist::D
     n::Float64
-
     function EdgeworthZ{D}(d::T, n::Real) where {D<:UnivariateDistribution,T<:UnivariateDistribution}
         @check_args(EdgeworthZ, n > zero(n))
         new{D}(d, n)
     end
 end
 EdgeworthZ(d::UnivariateDistribution,n::Real) = EdgeworthZ{typeof(d)}(d,n)
-
 mean(d::EdgeworthZ) = 0.0
 var(d::EdgeworthZ) = 1.0
-
-
 function pdf(d::EdgeworthZ, x::Float64)
     s = skewness(d)
     k = kurtosis(d)
@@ -52,9 +40,6 @@ function ccdf(d::EdgeworthZ, x::Float64)
                         k*x*(x2-3.0)/24.0
                         + s*s*x*(x2*(x2-10.0)+15.0)/72.0)
 end
-
-
-# Cornish-Fisher expansion.
 function quantile(d::EdgeworthZ, p::Float64)
     s = skewness(d)
     k = kurtosis(d)
@@ -62,7 +47,6 @@ function quantile(d::EdgeworthZ, p::Float64)
     z2 = z*z
     z + s*(z2-1)/6.0 + k*z*(z2-3)/24.0 - s*s/36.0*z*(2.0*z2-5.0)
 end
-
 function cquantile(d::EdgeworthZ, p::Float64)
     s = skewness(d)
     k = kurtosis(d)
@@ -70,10 +54,6 @@ function cquantile(d::EdgeworthZ, p::Float64)
     z2 = z*z
     z + s*(z2-1)/6.0 + k*z*(z2-3)/24.0 - s*s/36.0*z*(2.0*z2-5.0)
 end
-
-
-
-# Edgeworth approximation of the sum
 struct EdgeworthSum{D<:UnivariateDistribution} <: EdgeworthAbstract
     dist::D
     n::Float64
@@ -83,34 +63,25 @@ struct EdgeworthSum{D<:UnivariateDistribution} <: EdgeworthAbstract
     end
 end
 EdgeworthSum(d::UnivariateDistribution, n::Real) = EdgeworthSum{typeof(d)}(d,n)
-
 mean(d::EdgeworthSum) = d.n*mean(d.dist)
 var(d::EdgeworthSum) = d.n*var(d.dist)
-
-# Edgeworth approximation of the mean
 struct EdgeworthMean{D<:UnivariateDistribution} <: EdgeworthAbstract
     dist::D
     n::Float64
     function EdgeworthMean{D}(d::T, n::Real) where {D<:UnivariateDistribution,T<:UnivariateDistribution}
-        # although n would usually be an integer, no methods are require this
         n > zero(n) ||
             error("n must be positive")
         new{D}(d, Float64(n))
     end
 end
 EdgeworthMean(d::UnivariateDistribution,n::Real) = EdgeworthMean{typeof(d)}(d,n)
-
 mean(d::EdgeworthMean) = mean(d.dist)
 var(d::EdgeworthMean) = var(d.dist) / d.n
-
 function pdf(d::EdgeworthAbstract, x::Float64)
     m, s = mean(d), std(d)
     pdf(EdgeworthZ(d.dist,d.n),(x-m)/s)/s
 end
-
 cdf(d::EdgeworthAbstract, x::Float64) = cdf(EdgeworthZ(d.dist,d.n), (x-mean(d))/std(d))
-
 ccdf(d::EdgeworthAbstract, x::Float64) = ccdf(EdgeworthZ(d.dist,d.n), (x-mean(d))/std(d))
-
 quantile(d::EdgeworthAbstract, p::Float64) = mean(d) + std(d)*quantile(EdgeworthZ(d.dist,d.n), p)
 cquantile(d::EdgeworthAbstract, p::Float64) = mean(d) + std(d)*cquantile(EdgeworthZ(d.dist,d.n), p)

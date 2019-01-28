@@ -1,19 +1,7 @@
-# This contains code that was formerly a part of Julia. License is MIT: http://julialang.org/license
-
 import Base.Order: Forward, Ordering, lt
-
-
-# Heap operations on flat arrays
-# ------------------------------
-
-
-# Binary heap indexing
 heapleft(i::Integer) = 2i
 heapright(i::Integer) = 2i + 1
 heapparent(i::Integer) = div(i, 2)
-
-
-# Binary min-heap percolate down.
 function percolate_down!(xs::AbstractArray, i::Integer, x=xs[i], o::Ordering=Forward, len::Integer=length(xs))
     @inbounds while (l = heapleft(i)) <= len
         r = heapright(i)
@@ -27,11 +15,7 @@ function percolate_down!(xs::AbstractArray, i::Integer, x=xs[i], o::Ordering=For
     end
     xs[i] = x
 end
-
 percolate_down!(xs::AbstractArray, i::Integer, o::Ordering, len::Integer=length(xs)) = percolate_down!(xs, i, xs[i], o, len)
-
-
-# Binary min-heap percolate up.
 function percolate_up!(xs::AbstractArray, i::Integer, x=xs[i], o::Ordering=Forward)
     @inbounds while (j = heapparent(i)) >= 1
         if lt(o, x, xs[j])
@@ -43,12 +27,9 @@ function percolate_up!(xs::AbstractArray, i::Integer, x=xs[i], o::Ordering=Forwa
     end
     xs[i] = x
 end
-
 percolate_up!(xs::AbstractArray{T}, i::Integer, o::Ordering) where {T} = percolate_up!(xs, i, xs[i], o)
-
 """
     heappop!(v, [ord])
-
 Given a binary heap-ordered array, remove and return the lowest ordered element.
 For efficiency, this function does not check that the array is indeed heap-ordered.
 """
@@ -60,10 +41,8 @@ function heappop!(xs::AbstractArray, o::Ordering=Forward)
     end
     x
 end
-
 """
     heappush!(v, x, [ord])
-
 Given a binary heap-ordered array, push a new element `x`, preserving the heap property.
 For efficiency, this function does not check that the array is indeed heap-ordered.
 """
@@ -72,12 +51,8 @@ function heappush!(xs::AbstractArray, x, o::Ordering=Forward)
     percolate_up!(xs, length(xs), x, o)
     xs
 end
-
-
-# Turn an arbitrary array into a binary min-heap in linear time.
 """
     heapify!(v, ord::Ordering=Forward)
-
 In-place [`heapify`](@ref).
 """
 function heapify!(xs::AbstractArray, o::Ordering=Forward)
@@ -86,14 +61,11 @@ function heapify!(xs::AbstractArray, o::Ordering=Forward)
     end
     xs
 end
-
 """
     heapify(v, ord::Ordering=Forward)
-
 Returns a new vector in binary heap order, optionally using the given ordering.
 ```jldoctest
 julia> a = [1,3,4,5,2];
-
 julia> heapify(a)
 5-element Array{Int64,1}:
  1
@@ -101,7 +73,6 @@ julia> heapify(a)
  4
  5
  3
-
 julia> heapify(a, Base.Order.Reverse)
 5-element Array{Int64,1}:
  5
@@ -112,22 +83,17 @@ julia> heapify(a, Base.Order.Reverse)
 ```
 """
 heapify(xs::AbstractArray, o::Ordering=Forward) = heapify!(copyto!(similar(xs), xs), o)
-
 """
     isheap(v, ord::Ordering=Forward)
-
 Return `true` if an array is heap-ordered according to the given order.
-
 ```jldoctest
 julia> a = [1,2,3]
 3-element Array{Int64,1}:
  1
  2
  3
-
 julia> isheap(a,Base.Order.Forward)
 true
-
 julia> isheap(a,Base.Order.Reverse)
 false
 ```

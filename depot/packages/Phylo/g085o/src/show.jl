@@ -2,7 +2,6 @@ using Phylo
 using Phylo.API
 using Compat
 using Compat.Printf
-
 function show(io::IO, object::AbstractNode, n::String = "")
     node = "node"
     if !isempty(n)
@@ -72,12 +71,10 @@ function show(io::IO, object::AbstractNode, n::String = "")
         end
     end
 end
-
 function show(io::IO, p::Pair{NT, N}) where {N <: AbstractNode, NT}
     n = NT <: Number ? "$(p[1])" : "\"$(p[1])\""
     show(io, p[2], "$n")
 end
-
 function show(io::IO, object::B) where {B <: AbstractBranch}
     NT = typeof(_src(object))
     source = NT <: Number ? "$(_src(object))" : "\"$(_src(object))\""
@@ -85,7 +82,6 @@ function show(io::IO, object::B) where {B <: AbstractBranch}
     println(io, "[node $source]-->[$(_getlength(object)) length branch]-->" *
             "[node $destination]")
 end
-
 function show(io::IO, p::Pair{BT, B}) where {BT, B <: AbstractBranch}
     NT = typeof(_src(p[2]))
     source = NT <: Number ? "$(_src(p[2]))" : "\"$(_src(p[2]))\""
@@ -93,7 +89,6 @@ function show(io::IO, p::Pair{BT, B}) where {BT, B <: AbstractBranch}
     branch = BT <: Number ? "$(p[1])" : "\"$(p[1])\""
     println(io, "[node $source]-->[$(_getlength(p[2])) length branch $branch]-->[node $destination]")
 end
-
 function showsimple(io::IO, object::TreeSet)
     @printf(io, "TreeSet with %d trees, each with %d tips.\n",
             ntrees(object), nleaves(object))
@@ -108,7 +103,6 @@ function showsimple(io::IO, object::TreeSet)
                 "$(tn[end])")
     end
 end
-
 function show(io::IO, object::TreeSet)
     showsimple(io, object)
     for name in treenameiter(object)
@@ -116,7 +110,6 @@ function show(io::IO, object::TreeSet)
         showsimple(io, object[name])
     end
 end
-
 function showsimple(io::IO, object::TREE) where TREE <: AbstractBranchTree
     println(io, "$TREE with $(nleaves(object)) tips, " *
             "$(length(_getnodes(object))) nodes and " *
@@ -132,7 +125,6 @@ function showsimple(io::IO, object::TREE) where TREE <: AbstractBranchTree
                 "$(ln[end])")
     end
 end
-
 function show(io::IO, object::TREE) where TREE <: AbstractBranchTree
     showsimple(io, object)
     if !get(io, :compact, true)
@@ -142,7 +134,6 @@ function show(io::IO, object::TREE) where TREE <: AbstractBranchTree
         println(io, _getbranches(object))
     end
 end
-
 function show(io::IO, object::BinaryTree{LI, ND}) where {LI, ND}
     showsimple(io, object)
     if !get(io, :compact, true)
@@ -158,7 +149,6 @@ function show(io::IO, object::BinaryTree{LI, ND}) where {LI, ND}
         end
     end
 end
-
 function show(io::IO, object::PolytomousTree{LI, ND}) where {LI, ND}
     showsimple(io, object)
     if !get(io, :compact, true)

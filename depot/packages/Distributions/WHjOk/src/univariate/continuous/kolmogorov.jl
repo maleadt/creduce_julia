@@ -1,8 +1,6 @@
 """
     Kolmogorov()
-
 Kolmogorov distribution defined as
-
 ```math
 \\sup_{t \\in [0,1]} |B(t)|
 ```
@@ -11,33 +9,12 @@ test for large n.
 """
 struct Kolmogorov <: ContinuousUnivariateDistribution
 end
-
 @distr_support Kolmogorov 0.0 Inf
-
 params(d::Kolmogorov) = ()
-
-
-#### Statistics
-
 mean(d::Kolmogorov) = sqrt2π*log(2)/2
 var(d::Kolmogorov) = pi^2/12 - pi*log(2)^2/2
-# TODO: higher-order moments also exist, can be obtained by differentiating series
-
 mode(d::Kolmogorov) = 0.735467907916572
 median(d::Kolmogorov) = 0.8275735551899077
-
-#### Evaluation
-
-# cdf and ccdf are based on series truncation.
-# two different series are available, e.g. see:
-#   N. Smirnov, "Table for Estimating the Goodness of Fit of Empirical Distributions",
-#   The Annals of Mathematical Statistics , Vol. 19, No. 2 (Jun., 1948), pp. 279-281
-#   http://projecteuclid.org/euclid.aoms/1177730256
-# use one series for small x, one for large x
-# 5 terms seems to be sufficient for Float64 accuracy
-# some divergence from Smirnov's table in 6th decimal near 1 (e.g. 1.04): occurs in
-# both series so assume error in table.
-
 function cdf_raw(d::Kolmogorov, x::Real)
     a = -(pi*pi)/(x*x)
     f = exp(a)
@@ -45,7 +22,6 @@ function cdf_raw(d::Kolmogorov, x::Real)
     u = (1 + f*(1 + f2))
     sqrt2π*exp(a/8)*u/x
 end
-
 function ccdf_raw(d::Kolmogorov, x::Real)
     f = exp(-2*x*x)
     f2 = f*f
@@ -55,7 +31,6 @@ function ccdf_raw(d::Kolmogorov, x::Real)
     u = (1 - f3*(1 - f5*(1 - f7)))
     2f*u
 end
-
 function cdf(d::Kolmogorov,x::Real)
     if x <= 0
         0
@@ -74,9 +49,6 @@ function ccdf(d::Kolmogorov,x::Real)
         ccdf_raw(d,x)
     end
 end
-
-
-# TODO: figure out how best to truncate series
 function pdf(d::Kolmogorov,x::Real)
     if x <= 0
         return 0.0
@@ -96,23 +68,13 @@ function pdf(d::Kolmogorov,x::Real)
         return 8*x*s
     end
 end
-
-
 @quantile_newton Kolmogorov
-
-#### Sampling
-
-# Alternating series method, from:
-#   Devroye, Luc (1986) "Non-Uniform Random Variate Generation"
-#   Chapter IV.5, pp. 163-165.
 rand(d::Kolmogorov) = rand(GLOBAL_RNG, d)
 function rand(rng::AbstractRNG, d::Kolmogorov)
     t = 0.75
     if rand(rng) < 0.3728329582237386 # cdf(d,t)
-        # left interval
         while true
             g = rand_trunc_gamma(rng)
-
             x = pi/sqrt(8g)
             w = 0.0
             z = 1/(2g)
@@ -151,9 +113,6 @@ function rand(rng::AbstractRNG, d::Kolmogorov)
         end
     end
 end
-
-# equivalent to
-# rand(Truncated(Gamma(1.5,1),tp,Inf))
 function rand_trunc_gamma(rng::AbstractRNG)
     tp = 2.193245422464302 #pi^2/(8*t^2)
     while true

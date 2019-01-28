@@ -1,65 +1,34 @@
-# functions related to normal distribution
-
 xval(μ::Real, σ::Real, z::Number) = μ + σ * z
 zval(μ::Real, σ::Real, x::Number) = (x - μ) / σ
-
-# pdf
 normpdf(z::Number) = exp(-abs2(z)/2) * invsqrt2π
 normpdf(μ::Real, σ::Real, x::Number) = normpdf(zval(μ, σ, x)) / σ
-
-# logpdf
 normlogpdf(z::Number) = -(abs2(z) + log2π)/2
 normlogpdf(μ::Real, σ::Real, x::Number) = normlogpdf(zval(μ, σ, x)) - log(σ)
-
-# cdf
 normcdf(z::Number) = erfc(-z * invsqrt2)/2
 normcdf(μ::Real, σ::Real, x::Number) = normcdf(zval(μ, σ, x))
-
-# ccdf
 normccdf(z::Number) = erfc(z * invsqrt2)/2
 normccdf(μ::Real, σ::Real, x::Number) = normccdf(zval(μ, σ, x))
-
-# logcdf
 normlogcdf(z::Number) = z < -1.0 ?
     log(erfcx(-z * invsqrt2)/2) - abs2(z)/2 :
     log1p(-erfc(z * invsqrt2)/2)
 normlogcdf(μ::Real, σ::Real, x::Number) = normlogcdf(zval(μ, σ, x))
-
-# logccdf
 normlogccdf(z::Number) = z > 1.0 ?
     log(erfcx(z * invsqrt2)/2) - abs2(z)/2 :
     log1p(-erfc(-z * invsqrt2)/2)
 normlogccdf(μ::Real, σ::Real, x::Number) = normlogccdf(zval(μ, σ, x))
-
 norminvcdf(p::Real) = -erfcinv(2*p) * sqrt2
 norminvcdf(μ::Real, σ::Real, p::Real) = xval(μ, σ, norminvcdf(p))
-
 norminvccdf(p::Real) = erfcinv(2*p) * sqrt2
 norminvccdf(μ::Real, σ::Real, p::Real) = xval(μ, σ, norminvccdf(p))
-
-# invlogcdf. Fixme! Support more precisions than Float64
 norminvlogcdf(lp::Union{Float16,Float32}) = convert(typeof(lp), _norminvlogcdf_impl(Float64(lp)))
 norminvlogcdf(lp::Real) = _norminvlogcdf_impl(Float64(lp))
 norminvlogcdf(μ::Real, σ::Real, lp::Real) = xval(μ, σ, norminvlogcdf(lp))
-
-# invlogccdf. Fixme! Support more precisions than Float64
 norminvlogccdf(lp::Union{Float16,Float32}) = convert(typeof(lp), -_norminvlogcdf_impl(Float64(lp)))
 norminvlogccdf(lp::Real) = -_norminvlogcdf_impl(Float64(lp))
 norminvlogccdf(μ::Real, σ::Real, lp::Real) = xval(μ, σ, norminvlogccdf(lp))
-
-
-# norminvcdf & norminvlogcdf implementation
-#
-#   Rational approximations for the inverse cdf and its logarithm, from:
-#
-#   Wichura, M.J. (1988) Algorithm AS 241: The Percentage Points of the Normal Distribution
-#   Journal of the Royal Statistical Society. Series C (Applied Statistics), Vol. 37, No. 3, pp. 477-484
-#
-
 function _norminvlogcdf_impl(lp::Float64)
     if isfinite(lp) && lp < 0.0
         q = exp(lp) - 0.5
-        # qnorm_kernel(lp, q, true)
         if abs(q) <= 0.425
             _qnorm_ker1(q)
         else
@@ -72,9 +41,7 @@ function _norminvlogcdf_impl(lp::Float64)
         lp
     end
 end
-
 function _qnorm_ker1(q::Float64)
-    # pre-condition: abs(q) <= 0.425
     r = 0.180625 - q*q
     return q * @horner(r,
                        3.38713_28727_96366_6080e0,
@@ -95,7 +62,6 @@ function _qnorm_ker1(q::Float64)
             2.87290_85735_72194_2674e4,
             5.22649_52788_52854_5610e3)
 end
-
 function _qnorm_ker2(r::Float64)
     if r < 5.0
         r -= 1.6

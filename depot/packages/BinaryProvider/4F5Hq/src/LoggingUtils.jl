@@ -1,8 +1,6 @@
 print_cache = Dict()
-
 """
     info_onchange(msg, key, location)
-
 This macro is used to gate verbose messages within a function; within functions
 such as `verify()`, we want to print out that we successfully verified a file
 only once per session, so we keep track of which log message we printed within

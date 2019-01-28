@@ -1,5 +1,4 @@
 isalnum(c) = isletter(c) || isnumeric(c)
-
 is_url_char(c) =  ((@assert UInt32(c) < 0x80); 'A' <= c <= '~' || '$' <= c <= '>' || c == '\f' || c == '\t')
 is_mark(c) = (c == '-') || (c == '_') || (c == '.') || (c == '!') || (c == '~') ||
              (c == '*') || (c == '\'') || (c == '(') || (c == ')')
@@ -8,8 +7,6 @@ is_userinfo_char(c) = isalnum(c) || is_mark(c) || (c == '%') || (c == ';') ||
 isnum(c) = ('0' <= c <= '9')
 ishex(c) =  (isnum(c) || 'a' <= lowercase(c) <= 'f')
 is_host_char(c) = isalnum(c) || (c == '.') || (c == '-') || (c == '_') || (c == "~")
-
-
 struct URI
     scheme::String
     host::String
@@ -22,7 +19,6 @@ struct URI
     URI(scheme,host,port,path,query="",fragment="",userinfo="",specifies_authority=false) =
             new(scheme,host,UInt16(port),path,query,fragment,userinfo,specifies_authority)
 end
-
 ==(a::URI,b::URI) = isequal(a,b)
 isequal(a::URI,b::URI) = (a.scheme == b.scheme) &&
                          (a.host == b.host) &&
@@ -31,7 +27,6 @@ isequal(a::URI,b::URI) = (a.scheme == b.scheme) &&
                          (a.query == b.query) &&
                          (a.fragment == b.fragment) &&
                          (a.userinfo == b.userinfo)
-
 URI(host,path) = URI("http",host,UInt16(80),path,"","","",true)
 URI(uri::URI;
     scheme=uri.scheme,
@@ -43,13 +38,6 @@ URI(uri::URI;
     userinfo=uri.userinfo,
     specifies_authority=uri.specifies_authority) =
 URI( scheme, host, port, path, query, fragment, userinfo, specifies_authority)
-
-
-# URL parser based on the http-parser package by Joyent
-# Licensed under the BSD license
-
-# Parse authority (user@host:port)
-# return (host,port,user)
 function parse_authority(authority,seen_at)
     host=""
     port=""
@@ -62,11 +50,9 @@ function parse_authority(authority,seen_at)
             last_state = state
             state = :done
         end
-
         if s == 0
             s = li
         end
-
         if state != last_state
             r = s:prevind(authority,li)
             s = li
@@ -78,19 +64,15 @@ function parse_authority(authority,seen_at)
                 port = authority[r]
             end
         end
-
         if state == :done
             break
         end
-
         if i > ncodeunits(authority)
             li = i
             continue
         end
-
         li = i
         (ch,i) = iterate(authority,i)
-
         last_state = state
         if state == :http_userinfo || state == :http_userinfo_start
             if ch == '@'
@@ -138,7 +120,6 @@ function parse_authority(authority,seen_at)
     end
     (host, UInt16(port == "" ? 0 : parse(Int, port, base=10)), user)
 end
-
 function parse_url(url)
     scheme = ""
     host = ""
@@ -152,7 +133,6 @@ function parse_url(url)
     last_state = state = :req_spaces_before_url
     seen_at = false
     specifies_authority = false
-
     i = firstindex(url)
     li = s = 0
     while true
@@ -160,11 +140,9 @@ function parse_url(url)
             last_state = state
             state = :done
         end
-
         if s == 0
             s = li
         end
-
         if state != last_state
             r = s:prevind(url,li)
             s = li
@@ -182,25 +160,19 @@ function parse_url(url)
                 fragment = url[r]
             end
         end
-
         if state == :done
             break
         end
-
         if i > ncodeunits(url)
             li = i
             continue
         end
-
         li = i
         (ch,i) = iterate(url,i)
-
         if !isascii(ch)
             error("Non-ASCII characters not supported in URIs. Encode the URL and try again.")
         end
-
         last_state = state
-
         if state == :req_spaces_before_url
             if ch == '/' || ch == '*'
                 state = :req_path
@@ -233,16 +205,6 @@ function parse_url(url)
                 error("Expecting scheme:// or scheme: format not scheme:/$ch")
             end
         elseif state == :req_server_start || state == :req_server
-            # In accordence with RFC3986:
-            # 'The authority component is preceded by a double slash ("//") and isterminated by the next slash ("/")'
-            # This is different from the joyent http-parser, which considers empty hosts to be invalid. c.f. also the
-            # following part of RFC 3986:
-            # "If the URI scheme defines a default for host, then that default
-            # applies when the host subcomponent is undefined or when the
-            # registered name is empty (zero length).  For example, the "file" URI
-            # scheme is defined so that no authority, an empty host, and
-            # "localhost" all mean the end-user's machine, whereas the "http"
-            # scheme considers a missing authority or empty host invalid."
             if ch == '/'
                 state = :req_path
             elseif ch == '?'
@@ -294,11 +256,8 @@ function parse_url(url)
     host, port, user = parse_authority(server,seen_at)
     URI(lowercase(scheme),host,port,path,query,fragment,user,specifies_authority)
 end
-
 URI(url) = parse_url(url)
-
 show(io::IO, uri::URI) = print(io,"URI(",uri,")")
-
 function print(io::IO, uri::URI)
     if uri.specifies_authority || !isempty(uri.host)
         print(io,uri.scheme,"://")
@@ -324,7 +283,6 @@ function print(io::IO, uri::URI)
         print(io,"#",uri.fragment)
     end
 end
-
 function show(io::IO, ::MIME"text/html", uri::URI)
     print(io, "<a href=\"")
     print(io, uri)

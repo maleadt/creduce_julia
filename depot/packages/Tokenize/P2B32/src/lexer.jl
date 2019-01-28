@@ -1,50 +1,36 @@
 module Lexers
-
 include("utilities.jl")
-
 import ..Tokens
 import ..Tokens: AbstractToken, Token, RawToken, Kind, TokenError, UNICODE_OPS, EMPTY_TOKEN, isliteral
-
 import ..Tokens: FUNCTION, ABSTRACT, IDENTIFIER, BAREMODULE, BEGIN, BREAK, CATCH, CONST, CONTINUE,
                  DO, ELSE, ELSEIF, END, EXPORT, FALSE, FINALLY, FOR, FUNCTION, GLOBAL, LET, LOCAL, IF,
                  IMPORT, IMPORTALL, MACRO, MODULE, OUTER, QUOTE, RETURN, TRUE, TRY, TYPE, USING, WHILE, ISA, IN,
                  MUTABLE, PRIMITIVE, STRUCT, WHERE
-
-
 export tokenize
-
 @inline ishex(c::Char) = isdigit(c) || ('a' <= c <= 'f') || ('A' <= c <= 'F')
 @inline isbinary(c::Char) = c == '0' || c == '1'
 @inline isoctal(c::Char) =  '0' ≤ c ≤ '7'
 @inline iswhitespace(c::Char) = Base.isspace(c)
-
 mutable struct Lexer{IO_t <: IO, T <: AbstractToken}
     io::IO_t
     io_startpos::Int
-
     token_start_row::Int
     token_start_col::Int
     token_startpos::Int
-
     current_row::Int
     current_col::Int
     current_pos::Int
-
     last_token::Tokens.Kind
     charstore::IOBuffer
     current_char::Char
     doread::Bool
     dotop::Bool
 end
-
 Lexer(io::IO_t, T::Type{TT} = Token) where {IO_t,TT <: AbstractToken} = Lexer{IO_t,T}(io, position(io), 1, 1, position(io), 1, 1, position(io), Tokens.ERROR, IOBuffer(), ' ', false, false)
 Lexer(str::AbstractString, T::Type{TT} = Token) where TT <: AbstractToken = Lexer(IOBuffer(str), T)
-
 @inline token_type(l::Lexer{IO_t, TT}) where {IO_t, TT} = TT
-
 """
     tokenize(x, T = Token)
-
 Returns an `Iterable` containing the tokenized input. Can be reverted by e.g.
 `join(untokenize.(tokenize(x)))`. Setting `T` chooses the type of token
 produced by the lexer (`Token` or `RawToken`).
@@ -52,92 +38,67 @@ produced by the lexer (`Token` or `RawToken`).
 tokenize(x, ::Type{Token}) = Lexer(x, Token)
 tokenize(x, ::Type{RawToken}) = Lexer(x, RawToken)
 tokenize(x) = Lexer(x, Token)
-
-# Iterator interface
 Base.IteratorSize(::Type{Lexer{IO_t,T}}) where {IO_t,T} = Base.SizeUnknown()
 Base.IteratorEltype(::Type{Lexer{IO_t,T}}) where {IO_t,T} = Base.HasEltype()
 Base.eltype(::Type{Lexer{IO_t,T}}) where {IO_t,T} = T
-
-
 function Base.iterate(l::Lexer)
     seekstart(l)
     l.token_startpos = position(l)
     l.token_start_row = 1
     l.token_start_col = 1
-
     l.current_row = 1
     l.current_col = 1
     l.current_pos = l.io_startpos
     t = next_token(l)
     return t, t.kind == Tokens.ENDMARKER
 end
-
 function Base.iterate(l::Lexer, isdone::Any)
     isdone && return nothing
     t = next_token(l)
     return t, t.kind == Tokens.ENDMARKER
 end
-
 function Base.show(io::IO, l::Lexer)
     print(io, typeof(l), " at position: ", position(l))
 end
-
 """
     startpos(l::Lexer)
-
 Return the latest `Token`'s starting position.
 """
 startpos(l::Lexer) = l.token_startpos
-
 """
     startpos!(l::Lexer, i::Integer)
-
 Set a new starting position.
 """
 startpos!(l::Lexer, i::Integer) = l.token_startpos = i
-
 Base.seekstart(l::Lexer) = seek(l.io, l.io_startpos)
-
 """
     seek2startpos!(l::Lexer)
-
 Sets the lexer's current position to the beginning of the latest `Token`.
 """
 seek2startpos!(l::Lexer) = seek(l, startpos(l))
-
 """
     peekchar(l::Lexer)
-
 Returns the next character without changing the lexer's state.
 """
 peekchar(l::Lexer) = peekchar(l.io)
-
 """
 dpeekchar(l::Lexer)
-
 Returns the next two characters without changing the lexer's state.
 """
 dpeekchar(l::Lexer) = dpeekchar(l.io)
-
 """
     position(l::Lexer)
-
 Returns the current position.
 """
 Base.position(l::Lexer) = Base.position(l.io)
-
 """
     eof(l::Lexer)
-
 Determine whether the end of the lexer's underlying buffer has been reached.
 """
 eof(l::Lexer) = eof(l.io)
-
 Base.seek(l::Lexer, pos) = seek(l.io, pos)
-
 """
     start_token!(l::Lexer)
-
 Updates the lexer's state such that the next  `Token` will start at the current
 position.
 """
@@ -146,14 +107,11 @@ function start_token!(l::Lexer)
     l.token_start_row = l.current_row
     l.token_start_col = l.current_col
 end
-
 """
     readchar(l::Lexer)
-
 Returns the next character and increments the current position.
 """
 function readchar end
-
 function readchar(l::Lexer{I}) where {I <: IO}
     l.current_char = readchar(l.io)
     if l.doread
@@ -167,7 +125,6 @@ function readchar(l::Lexer{I}) where {I <: IO}
     end
     return l.current_char
 end
-
 readon(l::Lexer{I,RawToken}) where {I <: IO} = l.current_char
 function readon(l::Lexer{I,Token}) where {I <: IO}
     if l.charstore.size != 0
@@ -177,16 +134,13 @@ function readon(l::Lexer{I,Token}) where {I <: IO}
     l.doread = true
     return l.current_char
 end
-
 readoff(l::Lexer{I,RawToken}) where {I <: IO} = l.current_char
 function readoff(l::Lexer{I,Token})  where {I <: IO}
     l.doread = false
     return l.current_char
 end
-
 """
     accept(l::Lexer, f::Union{Function, Char, Vector{Char}, String})
-
 Consumes the next character `c` if either `f::Function(c)` returns true, `c == f`
 for `c::Char` or `c in f` otherwise. Returns `true` if a character has been
 consumed and `false` otherwise.
@@ -203,10 +157,8 @@ consumed and `false` otherwise.
     ok && readchar(l)
     return ok
 end
-
 """
     accept_batch(l::Lexer, f)
-
 Consumes all following characters until `accept(l, f)` is `false`.
 """
 @inline function accept_batch(l::Lexer, f)
@@ -216,10 +168,8 @@ Consumes all following characters until `accept(l, f)` is `false`.
     end
     return ok
 end
-
 """
     emit(l::Lexer, kind::Kind, err::TokenError=Tokens.NO_ERR)
-
 Returns a `Token` of kind `kind` with contents `str` and starts a new `Token`.
 """
 function emit(l::Lexer{IO_t,Token}, kind::Kind, err::TokenError = Tokens.NO_ERR) where IO_t
@@ -251,14 +201,12 @@ function emit(l::Lexer{IO_t,Token}, kind::Kind, err::TokenError = Tokens.NO_ERR)
     readoff(l)
     return tok
 end
-
 function emit(l::Lexer{IO_t,RawToken}, kind::Kind, err::TokenError = Tokens.NO_ERR) where IO_t
     if optakessuffix(kind)
         while isopsuffix(peekchar(l))
             readchar(l)
         end
     end
-
     if l.dotop
         tok = RawToken(kind, (l.token_start_row, l.token_start_col),
         (l.current_row, l.current_col - 1),
@@ -269,25 +217,19 @@ function emit(l::Lexer{IO_t,RawToken}, kind::Kind, err::TokenError = Tokens.NO_E
         (l.current_row, l.current_col - 1),
         startpos(l), position(l) - 1, err, false)
     end
-
     l.last_token = kind
     readoff(l)
     return tok
 end
-
 """
     emit_error(l::Lexer, err::TokenError=Tokens.UNKNOWN)
-
 Returns an `ERROR` token with error `err` and starts a new `Token`.
 """
 function emit_error(l::Lexer, err::TokenError = Tokens.UNKNOWN)
     return emit(l, Tokens.ERROR, err)
 end
-
-
 """
     next_token(l::Lexer)
-
 Returns the next `Token`.
 """
 function next_token(l::Lexer)
@@ -379,14 +321,10 @@ function next_token(l::Lexer)
         emit_error(l)
     end
 end
-
-
-# Lex whitespace, a whitespace char has been consumed
 function lex_whitespace(l::Lexer)
     accept_batch(l, iswhitespace)
     return emit(l, Tokens.WHITESPACE)
 end
-
 function lex_comment(l::Lexer, doemit=true)
     if peekchar(l) != '='
         while true
@@ -416,8 +354,6 @@ function lex_comment(l::Lexer, doemit=true)
         end
     end
 end
-
-# Lex a greater char, a '>' has been consumed
 function lex_greater(l::Lexer)
     if accept(l, '>') # >>
         if accept(l, '>') # >>>
@@ -439,8 +375,6 @@ function lex_greater(l::Lexer)
         return emit(l, Tokens.GREATER)
     end
 end
-
-# Lex a less char, a '<' has been consumed
 function lex_less(l::Lexer)
     if accept(l, '<') # <<
         if accept(l, '=') # <<=
@@ -458,9 +392,6 @@ function lex_less(l::Lexer)
         return emit(l, Tokens.LESS) # '<'
     end
 end
-
-# Lex all tokens that start with an = character.
-# An '=' char has been consumed
 function lex_equal(l::Lexer)
     if accept(l, '=') # ==
         if accept(l, '=') # ===
@@ -474,8 +405,6 @@ function lex_equal(l::Lexer)
         emit(l, Tokens.EQ)
     end
 end
-
-# Lex a colon, a ':' has been consumed
 function lex_colon(l::Lexer)
     if accept(l, ':') # '::'
         return emit(l, Tokens.DECLARATION)
@@ -485,7 +414,6 @@ function lex_colon(l::Lexer)
         return emit(l, Tokens.COLON)
     end
 end
-
 function lex_exclaim(l::Lexer)
     if accept(l, '=') # !=
         if accept(l, '=') # !==
@@ -497,7 +425,6 @@ function lex_exclaim(l::Lexer)
         return emit(l, Tokens.NOT)
     end
 end
-
 function lex_percent(l::Lexer)
     if accept(l, '=')
         return emit(l, Tokens.REM_EQ)
@@ -505,7 +432,6 @@ function lex_percent(l::Lexer)
         return emit(l, Tokens.REM)
     end
 end
-
 function lex_bar(l::Lexer)
     if accept(l, '=') # |=
         return emit(l, Tokens.OR_EQ)
@@ -517,7 +443,6 @@ function lex_bar(l::Lexer)
         emit(l, Tokens.OR) # '|'
     end
 end
-
 function lex_plus(l::Lexer)
     if accept(l, '+')
         return emit(l, Tokens.PLUSPLUS)
@@ -526,7 +451,6 @@ function lex_plus(l::Lexer)
     end
     return emit(l, Tokens.PLUS)
 end
-
 function lex_minus(l::Lexer)
     if accept(l, '-')
         if accept(l, '>')
@@ -541,7 +465,6 @@ function lex_minus(l::Lexer)
     end
     return emit(l, Tokens.MINUS)
 end
-
 function lex_star(l::Lexer)
     if accept(l, '*')
         return emit_error(l) # "**" is an invalid operator use ^
@@ -550,35 +473,30 @@ function lex_star(l::Lexer)
     end
     return emit(l, Tokens.STAR)
 end
-
 function lex_circumflex(l::Lexer)
     if accept(l, '=')
         return emit(l, Tokens.CIRCUMFLEX_EQ)
     end
     return emit(l, Tokens.CIRCUMFLEX_ACCENT)
 end
-
 function lex_division(l::Lexer)
     if accept(l, '=')
         return emit(l, Tokens.DIVISION_EQ)
     end
     return emit(l, Tokens.DIVISION_SIGN)
 end
-
 function lex_dollar(l::Lexer)
     if accept(l, '=')
         return emit(l, Tokens.EX_OR_EQ)
     end
     return emit(l, Tokens.EX_OR)
 end
-
 function lex_xor(l::Lexer)
     if accept(l, '=')
         return emit(l, Tokens.XOR_EQ)
     end
     return emit(l, Tokens.XOR)
 end
-
 function accept_number(l::Lexer, f::F) where {F}
     while true
         pc, ppc = dpeekchar(l)
@@ -591,8 +509,6 @@ function accept_number(l::Lexer, f::F) where {F}
         end
     end
 end
-
-# A digit has been consumed
 function lex_digit(l::Lexer, kind)
     accept_number(l, isdigit)
     pc,ppc = dpeekchar(l)
@@ -617,11 +533,9 @@ function lex_digit(l::Lexer, kind)
             || ppc == '?'
             || eof(ppc)))
             kind = Tokens.INTEGER
-
             return emit(l, kind)
         end
         readchar(l)
-
         kind = Tokens.FLOAT
         accept_number(l, isdigit)
         pc, ppc = dpeekchar(l)
@@ -640,7 +554,6 @@ function lex_digit(l::Lexer, kind)
             readchar(l)
             return emit_error(l)
         end
-
     elseif (pc == 'e' || pc == 'E' || pc == 'f') && (isdigit(ppc) || ppc == '+' || ppc == '-')
         kind = Tokens.FLOAT
         readchar(l)
@@ -681,7 +594,6 @@ function lex_digit(l::Lexer, kind)
     end
     return emit(l, kind)
 end
-
 function lex_prime(l)
     if l.last_token == Tokens.IDENTIFIER ||
         l.last_token == Tokens.DOT ||
@@ -696,10 +608,6 @@ function lex_prime(l)
             if accept(l, '\'')
                 return emit(l, Tokens.CHAR)
             else
-                # Empty char literal
-                # Arguably this should be an error here, but we generally
-                # look at the contents of the char literal in the parser,
-                # so we defer erroring until there.
                 return emit(l, Tokens.CHAR)
             end
         end
@@ -717,7 +625,6 @@ function lex_prime(l)
         end
     end
 end
-
 function lex_amper(l::Lexer)
     if accept(l, '&')
         return emit(l, Tokens.LAZY_AND)
@@ -727,9 +634,6 @@ function lex_amper(l::Lexer)
         return emit(l, Tokens.AND)
     end
 end
-
-# Parse a token starting with a quote.
-# A '"' has been consumed
 function lex_quote(l::Lexer, doemit=true)
     if accept(l, '"') # ""
         if accept(l, '"') # """
@@ -749,7 +653,6 @@ function lex_quote(l::Lexer, doemit=true)
         end
     end
 end
-
 function string_terminated(l, c, kind::Tokens.Kind)
     if (kind == Tokens.STRING || kind == Tokens.TRIPLE_STRING) && c == '"'
         if kind == Tokens.STRING
@@ -770,8 +673,6 @@ function string_terminated(l, c, kind::Tokens.Kind)
     end
     return false
 end
-
-# We just consumed a ", """, `, or ```
 function read_string(l::Lexer, kind::Tokens.Kind)
     while true
         c = readchar(l)
@@ -811,9 +712,6 @@ function read_string(l::Lexer, kind::Tokens.Kind)
         end
     end
 end
-
-# Parse a token starting with a forward slash.
-# A '/' has been consumed
 function lex_forwardslash(l::Lexer)
     if accept(l, "/") # //
         if accept(l, "=") # //=
@@ -827,15 +725,12 @@ function lex_forwardslash(l::Lexer)
         return emit(l, Tokens.FWD_SLASH)
     end
 end
-
 function lex_backslash(l::Lexer)
     if accept(l, '=')
         return emit(l, Tokens.BACKSLASH_EQ)
     end
     return emit(l, Tokens.BACKSLASH)
 end
-
-# TODO .op
 function lex_dot(l::Lexer)
     if accept(l, '.')
         if accept(l, '.')
@@ -924,9 +819,6 @@ function lex_dot(l::Lexer)
         end
     end
 end
-
-# A ` has been consumed
-# N.B.: cmds do not currently have special parser interpolation support
 function lex_cmd(l::Lexer, doemit=true)
     kind = Tokens.CMD
     if accept(l, '`') # ``
@@ -942,7 +834,6 @@ function lex_cmd(l::Lexer, doemit=true)
         string_terminated(l, c, kind) && return (doemit ? emit(l, kind) : EMPTY_TOKEN(token_type(l)))
     end
 end
-
 function tryread(l, str, k, c)
     for s in str
         c = peekchar(l)
@@ -960,7 +851,6 @@ function tryread(l, str, k, c)
     end
     return emit(l, k)
 end
-
 function readrest(l, c)
     while true
         pc, ppc = dpeekchar(l)
@@ -969,11 +859,8 @@ function readrest(l, c)
         end
         c = readchar(l)
     end
-
     return emit(l, IDENTIFIER)
 end
-
-
 function _doret(l, c)
     if !is_identifier_char(c)
         return emit(l, IDENTIFIER)
@@ -981,7 +868,6 @@ function _doret(l, c)
         return readrest(l, c)
     end
 end
-
 function lex_identifier(l, c)
     if c == 'a'
         return tryread(l, ('b', 's', 't', 'r', 'a', 'c', 't'), ABSTRACT, c)
@@ -1243,5 +1129,4 @@ function lex_identifier(l, c)
         return _doret(l, c)
     end
 end
-
 end # module

@@ -5,7 +5,6 @@ function depwarn_ex(msg, name)
         end
     end
 end
-
 function primarytype(@nospecialize(t))
     tn = t.name
     if isdefined(tn, :primary)
@@ -14,7 +13,6 @@ function primarytype(@nospecialize(t))
         return tn.wrapper
     end
 end
-
 export @functorize
 macro functorize(f)
     code = f === :scalarmax          ? :(Base.scalarmax) :
@@ -27,7 +25,6 @@ macro functorize(f)
         $code
     end
 end
-
 @static if VERSION >= v"0.6.0"
     Base.@deprecate_binding KERNEL Sys.KERNEL
     Base.@deprecate_binding UTF8String Core.String
@@ -51,7 +48,6 @@ else
     import Base.@irrational
     import Base.LinAlg.BLAS.@blasfunc
 end
-
 if VERSION < v"0.7.0-DEV.2915"
     const textwidth = Compat.Unicode.textwidth
     export textwidth

@@ -1,24 +1,17 @@
 using Base: PkgId, loaded_modules, package_callbacks, @get!
 using Base.Meta: isexpr
-
 export @require
-
 isprecompiling() = ccall(:jl_generating_output, Cint, ()) == 1
-
 loaded(pkg) = haskey(Base.loaded_modules, pkg)
-
 const _callbacks = Dict{PkgId, Vector{Function}}()
 callbacks(pkg) = @get!(_callbacks, pkg, [])
-
 listenpkg(f, pkg) =
   loaded(pkg) ? f() : push!(callbacks(pkg), f)
-
 function loadpkg(pkg)
   fs = callbacks(pkg)
   delete!(_callbacks, pkg)
   map(f->Base.invokelatest(f), fs)
 end
-
 function withpath(f, path)
   tls = task_local_storage()
   hassource = haskey(tls, :SOURCE_PATH)
@@ -32,7 +25,6 @@ function withpath(f, path)
       delete!(tls, :SOURCE_PATH)
   end
 end
-
 function err(f, listener, mod)
   try
     f()
@@ -43,7 +35,6 @@ function err(f, listener, mod)
       """
   end
 end
-
 function parsepkg(ex)
   isexpr(ex, :(=)) || @goto fail
   mod, id = ex.args
@@ -52,7 +43,6 @@ function parsepkg(ex)
   @label fail
   error("Requires syntax is: `@require Pkg=\"uuid\"`")
 end
-
 macro require(pkg, expr)
   pkg isa Symbol &&
     return Expr(:macrocall, Symbol("@warn"), __source__,

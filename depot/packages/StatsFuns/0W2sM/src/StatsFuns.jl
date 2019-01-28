@@ -1,12 +1,8 @@
 __precompile__(true)
-
 module StatsFuns
-
 import Base: Math.@horner, @irrational
 using SpecialFunctions
-
 export
-    # constants
     twoπ,       # 2π
     fourπ,      # 4π
     halfπ,      # π / 2
@@ -29,8 +25,6 @@ export
     logπ,       # log(π)
     log2π,      # log(2π)
     log4π,      # log(4π)
-
-    # basicfuns
     xlogx,          # x * log(x) for x > 0, or 0 when x == 0
     xlogy,          # x * log(y) for x > 0, or 0 when x == 0
     logistic,       # 1 / (1 + exp(-x))
@@ -48,8 +42,6 @@ export
     logsumexp,      # log(sum(exp(x)))
     softmax,        # exp(x_i) / sum(exp(x)), for i
     softmax!,       # inplace softmax
-
-    # distrs/beta
     betapdf,            # pdf of beta distribution
     betalogpdf,         # logpdf of beta distribution
     betacdf,            # cdf of beta distribution
@@ -60,8 +52,6 @@ export
     betainvccdf,        # inverse-ccdf of beta distribution
     betainvlogcdf,      # inverse-logcdf of beta distribution
     betainvlogccdf,     # inverse-logccdf of beta distribution
-
-    # distrs/binom
     binompdf,           # pdf of binomial distribution
     binomlogpdf,        # logpdf of binomial distribution
     binomcdf,           # cdf of binomial distribution
@@ -72,8 +62,6 @@ export
     binominvccdf,       # inverse-ccdf of binomial distribution
     binominvlogcdf,     # inverse-logcdf of binomial distribution
     binominvlogccdf,    # inverse-logccdf of binomial distribution
-
-    # distrs/chisq
     chisqpdf,           # pdf of chi-square distribution
     chisqlogpdf,        # logpdf of chi-square distribution
     chisqcdf,           # cdf of chi-square distribution
@@ -84,8 +72,6 @@ export
     chisqinvccdf,       # inverse-ccdf of chi-square distribution
     chisqinvlogcdf,     # inverse-logcdf of chi-square distribution
     chisqinvlogccdf,    # inverse-logccdf of chi-square distribution
-
-    # distrs/fdist
     fdistpdf,           # pdf of F distribution
     fdistlogpdf,        # logpdf of F distribution
     fdistcdf,           # cdf of F distribution
@@ -96,8 +82,6 @@ export
     fdistinvccdf,       # inverse-ccdf of F distribution
     fdistinvlogcdf,     # inverse-logcdf of F distribution
     fdistinvlogccdf,    # inverse-logccdf of F distribution
-
-    # distrs/gamma
     gammapdf,           # pdf of gamma distribution
     gammalogpdf,        # logpdf of gamma distribution
     gammacdf,           # cdf of gamma distribution
@@ -108,8 +92,6 @@ export
     gammainvccdf,       # inverse-ccdf of gamma distribution
     gammainvlogcdf,     # inverse-logcdf of gamma distribution
     gammainvlogccdf,    # inverse-logccdf of gamma distribution
-
-    # distrs/hyper
     hyperpdf,           # pdf of hypergeometric distribution
     hyperlogpdf,        # logpdf of hypergeometric distribution
     hypercdf,           # cdf of hypergeometric distribution
@@ -120,8 +102,6 @@ export
     hyperinvccdf,       # inverse-ccdf of hypergeometric distribution
     hyperinvlogcdf,     # inverse-logcdf of hypergeometric distribution
     hyperinvlogccdf,    # inverse-logccdf of hypergeometric distribution
-
-    # distrs/nbeta
     nbetapdf,           # pdf of noncentral beta distribution
     nbetalogpdf,        # logpdf of noncentral beta distribution
     nbetacdf,           # cdf of noncentral beta distribution
@@ -132,8 +112,6 @@ export
     nbetainvccdf,       # inverse-ccdf of noncentral beta distribution
     nbetainvlogcdf,     # inverse-logcdf of noncentral beta distribution
     nbetainvlogccdf,    # inverse-logccdf of noncentral beta distribution
-
-    # distrs/nbinom
     nbinompdf,           # pdf of negative nbinomial distribution
     nbinomlogpdf,        # logpdf of negative nbinomial distribution
     nbinomcdf,           # cdf of negative nbinomial distribution
@@ -144,8 +122,6 @@ export
     nbinominvccdf,       # inverse-ccdf of negative nbinomial distribution
     nbinominvlogcdf,     # inverse-logcdf of negative nbinomial distribution
     nbinominvlogccdf,    # inverse-logccdf of negative nbinomial distribution
-
-    # distrs/nchisq
     nchisqpdf,           # pdf of noncentral chi-square distribution
     nchisqlogpdf,        # logpdf of noncentral chi-square distribution
     nchisqcdf,           # cdf of noncentral chi-square distribution
@@ -156,8 +132,6 @@ export
     nchisqinvccdf,       # inverse-ccdf of noncentral chi-square distribution
     nchisqinvlogcdf,     # inverse-logcdf of noncentral chi-square distribution
     nchisqinvlogccdf,    # inverse-logccdf of noncentral chi-square distribution
-
-    # distrs/nfdist
     nfdistpdf,           # pdf of noncentral F distribution
     nfdistlogpdf,        # logpdf of noncentral F distribution
     nfdistcdf,           # cdf of noncentral F distribution
@@ -168,8 +142,6 @@ export
     nfdistinvccdf,       # inverse-ccdf of noncentral F distribution
     nfdistinvlogcdf,     # inverse-logcdf of noncentral F distribution
     nfdistinvlogccdf,    # inverse-logccdf of noncentral F distribution
-
-    # distrs/norm
     normpdf,            # pdf of normal distribution
     normlogpdf,         # logpdf of normal distribution
     normcdf,            # cdf of normal distribution
@@ -180,8 +152,6 @@ export
     norminvccdf,        # inverse-ccdf of normal distribution
     norminvlogcdf,      # inverse-logcdf of normal distribution
     norminvlogccdf,     # inverse-logccdf of normal distribution
-
-    # distrs/ntdist
     ntdistpdf,           # pdf of noncentral t distribution
     ntdistlogpdf,        # logpdf of noncentral t distribution
     ntdistcdf,           # cdf of noncentral t distribution
@@ -192,8 +162,6 @@ export
     ntdistinvccdf,       # inverse-ccdf of noncentral t distribution
     ntdistinvlogcdf,     # inverse-logcdf of noncentral t distribution
     ntdistinvlogccdf,    # inverse-logccdf of noncentral t distribution
-
-    # distrs/pois
     poispdf,           # pdf of Poisson distribution
     poislogpdf,        # logpdf of Poisson distribution
     poiscdf,           # cdf of Poisson distribution
@@ -204,8 +172,6 @@ export
     poisinvccdf,       # inverse-ccdf of Poisson distribution
     poisinvlogcdf,     # inverse-logcdf of Poisson distribution
     poisinvlogccdf,    # inverse-logccdf of Poisson distribution
-
-    # distrs/tdist
     tdistpdf,           # pdf of student's t distribution
     tdistlogpdf,        # logpdf of student's t distribution
     tdistcdf,           # cdf of student's t distribution
@@ -216,20 +182,13 @@ export
     tdistinvccdf,       # inverse-ccdf of student's t distribution
     tdistinvlogcdf,     # inverse-logcdf of student's t distribution
     tdistinvlogccdf,    # inverse-logccdf of student's t distribution
-
-    # misc
     logmvgamma,         # logarithm of multivariate gamma function
     lstirling_asym
-
-
-## source files
 include("constants.jl")
 include("basicfuns.jl")
 include("misc.jl")
 include("rmath.jl")
-
 using .RFunctions
-
 include(joinpath("distrs", "beta.jl"))
 include(joinpath("distrs", "binom.jl"))
 include(joinpath("distrs", "chisq.jl"))
@@ -244,5 +203,4 @@ include(joinpath("distrs", "norm.jl"))
 include(joinpath("distrs", "ntdist.jl"))
 include(joinpath("distrs", "pois.jl"))
 include(joinpath("distrs", "tdist.jl"))
-
 end # module

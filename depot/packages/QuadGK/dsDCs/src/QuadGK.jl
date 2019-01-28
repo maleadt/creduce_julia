@@ -1,22 +1,8 @@
-# This file was formerly a part of Julia. License is MIT: http://julialang.org/license
-
 VERSION < v"0.7.0-beta2.199" && __precompile__()
-
 module QuadGK
-
 export quadgk, gauss, kronrod
-
 using DataStructures, LinearAlgebra
 import Base.Order.Reverse
-
-# Adaptive Gauss-Kronrod quadrature routines (arbitrary precision),
-# written and contributed to Julia by Steven G. Johnson, 2013.
-
-###########################################################################
-
-# cache of (T,n) -> (x,w,gw) Kronrod rules, to avoid recomputing them
-# unnecessarily for repeated integration.   We initialize it with the
-# default n=7 rule for double-precision calculations.
 const rulecache = Dict{Any,Any}( (Float64,7) => # precomputed in 100-bit arith.
   ([-9.9145537112081263920685469752598e-01,
     -9.4910791234275852452618968404809e-01,
@@ -38,8 +24,6 @@ const rulecache = Dict{Any,Any}( (Float64,7) => # precomputed in 100-bit arith.
      2.797053914892766679014677714229e-01,
      3.8183005050511894495036977548818e-01,
      4.1795918367346938775510204081658e-01]) )
-
-# integration segment (a,b), estimated integral I, and estimated error E
 struct Segment
     a::Number
     b::Number
@@ -47,15 +31,9 @@ struct Segment
     E
 end
 Base.isless(i::Segment, j::Segment) = isless(i.E, j.E)
-
-
-# Internal routine: approximately integrate f(x) over the interval (a,b)
-# by evaluating the integration rule (x,w,gw). Return a Segment.
 function evalrule(f, a,b, x,w,gw, nrm)
-    # Ik and Ig are integrals via Kronrod and Gauss rules, respectively
     s = convert(eltype(x), 0.5) * (b-a)
     n1 = 1 - (length(x) & 1) # 0 if even order, 1 if odd order
-    # unroll first iterationof loop to get correct type of Ik and Ig
     fg = f(a + (1+x[2])*s) + f(a + (1-x[2])*s)
     fk = f(a + (1+x[1])*s) + f(a + (1-x[1])*s)
     Ig = fg * gw[1]
@@ -82,15 +60,8 @@ function evalrule(f, a,b, x,w,gw, nrm)
     end
     return Segment(a, b, Ik, E)
 end
-
 rulekey(::Type{BigFloat}, n) = (BigFloat, precision(BigFloat), n)
 rulekey(T,n) = (T,n)
-
-# Internal routine: integrate f over the union of the open intervals
-# (s[1],s[2]), (s[2],s[3]), ..., (s[end-1],s[end]), using h-adaptive
-# integration with the order-n Kronrod rule and weights of type Tw,
-# with absolute tolerance atol and relative tolerance rtol,
-# with maxevals an approximate maximum number of f evaluations.
 function do_quadgk(f, s, n, ::Type{Tw}, atol, rtol, maxevals, nrm) where Tw
     if eltype(s) <: Real # check for infinite or semi-infinite intervals
         s1 = s[1]; s2 = s[end]; inf1 = isinf(s1); inf2 = isinf(s2)
@@ -115,7 +86,6 @@ function do_quadgk(f, s, n, ::Type{Tw}, atol, rtol, maxevals, nrm) where Tw
             end
         end
     end
-
     key = rulekey(Tw,n)
     x,w,gw = haskey(rulecache, key) ? rulecache[key] :
        (rulecache[key] = kronrod(Tw, n))
@@ -130,8 +100,6 @@ function do_quadgk(f, s, n, ::Type{Tw}, atol, rtol, maxevals, nrm) where Tw
         I += segs[i].I
         E += segs[i].E
     end
-    # Pop the biggest-error segment and subdivide (h-adaptation)
-    # until convergence is achieved or maxevals is exceeded.
     while E > atol && E > rtol * nrm(I) && numevals < maxevals
         s = heappop!(segs, Reverse)
         mid = (s.a + s.b) / 2
@@ -143,7 +111,6 @@ function do_quadgk(f, s, n, ::Type{Tw}, atol, rtol, maxevals, nrm) where Tw
         E = (E - s.E) + s1.E + s2.E
         numevals += 4n+2
     end
-    # re-sum (paranoia about accumulated roundoff)
     I = segs[1].I
     E = segs[1].E
     for i in 2:length(segs)
@@ -152,24 +119,18 @@ function do_quadgk(f, s, n, ::Type{Tw}, atol, rtol, maxevals, nrm) where Tw
     end
     return (I, E)
 end
-
-# handle keyword deprecation
 function tols(atol,rtol,abstol,reltol)
     if !ismissing(abstol) || !ismissing(reltol)
         Base.depwarn("abstol and reltol keywords are now atol and rtol, respectively", :quadgk)
     end
     return coalesce(abstol,atol), coalesce(reltol,rtol)
 end
-
-# Gauss-Kronrod quadrature of f from a to b to c...
-
 function quadgk(f, a::T,b::T,c::T...;
                 atol=zero(T), rtol=sqrt(eps(T)), abstol=missing, reltol=missing,
                 maxevals=10^7, order=7, norm=norm) where T<:AbstractFloat
     atol_,rtol_ = tols(atol,rtol,abstol,reltol)
     do_quadgk(f, [a, b, c...], order, T, atol_, rtol_, maxevals, norm)
 end
-
 function quadgk(f, a::Complex{T},
                 b::Complex{T},c::Complex{T}...;
                 atol=zero(T), rtol=sqrt(eps(T)), abstol=missing, reltol=missing,
@@ -177,52 +138,40 @@ function quadgk(f, a::Complex{T},
     atol_,rtol_ = tols(atol,rtol,abstol,reltol)
     do_quadgk(f, [a, b, c...], order, T, atol_, rtol_, maxevals, norm)
 end
-
-# generic version: determine precision from a combination of
-# all the integration-segment endpoints
 """
     quadgk(f, a,b,c...; rtol=sqrt(eps), atol=0, maxevals=10^7, order=7, norm=norm)
-
 Numerically integrate the function `f(x)` from `a` to `b`, and optionally over additional
 intervals `b` to `c` and so on. Keyword options include a relative error tolerance `rtol`
 (defaults to `sqrt(eps)` in the precision of the endpoints), an absolute error tolerance
 `atol` (defaults to 0), a maximum number of function evaluations `maxevals` (defaults to
 `10^7`), and the `order` of the integration rule (defaults to 7).
-
 Returns a pair `(I,E)` of the estimated integral `I` and an estimated upper bound on the
 absolute error `E`. If `maxevals` is not exceeded then `E <= max(atol, rtol*norm(I))`
 will hold. (Note that it is useful to specify a positive `atol` in cases where `norm(I)`
 may be zero.)
-
 The endpoints `a` et cetera can also be complex (in which case the integral is performed over
 straight-line segments in the complex plane). If the endpoints are `BigFloat`, then the
 integration will be performed in `BigFloat` precision as well.
-
 !!! note
     It is advisable to increase the integration `order` in rough proportion to the
     precision, for smooth integrands.
-
 More generally, the precision is set by the precision of the integration
 endpoints (promoted to floating-point types).
-
 The integrand `f(x)` can return any numeric scalar, vector, or matrix type, or in fact any
 type supporting `+`, `-`, multiplication by real values, and a `norm` (i.e., any normed
 vector space). Alternatively, a different norm can be specified by passing a `norm`-like
 function as the `norm` keyword argument (which defaults to `norm`).
-
 !!! note
     Only one-dimensional integrals are provided by this function. For multi-dimensional
     integration (cubature), there are many different algorithms (often much better than simple
     nested 1d integrals) and the optimal choice tends to be very problem-dependent. See the
     Julia external-package listing for available algorithms for multidimensional integration or
     other specialized tasks (such as integrals of highly oscillatory or singular functions).
-
 The algorithm is an adaptive Gauss-Kronrod integration technique: the integral in each
 interval is estimated using a Kronrod rule (`2*order+1` points) and the error is estimated
 using an embedded Gauss rule (`order` points). The interval with the largest error is then
 subdivided into two intervals and the process is repeated until the desired error tolerance
 is achieved.
-
 These quadrature rules work best for smooth functions within each interval, so if your
 function has a known discontinuity or other singularity, it is best to subdivide your
 interval to put the singularity at an endpoint. For example, if `f` has a discontinuity at
@@ -231,7 +180,6 @@ subdivide the interval at the point of discontinuity. The integrand is never eva
 exactly at the endpoints of the intervals, so it is possible to integrate functions that
 diverge at the endpoints as long as the singularity is integrable (for example, a `log(x)`
 or `1/sqrt(x)` singularity).
-
 For real-valued endpoints, the starting and/or ending points may be infinite. (A coordinate
 transformation is performed internally to map the infinite interval to a finite one.)
 """
@@ -243,28 +191,6 @@ function quadgk(f, a, b, c...; kws...)
     cT = map(T, c)
     quadgk(f, convert(T, a), convert(T, b), cT...; kws...)
 end
-
-###########################################################################
-# Gauss-Kronrod integration-weight computation for arbitrary floating-point
-# types and precision, implemented based on the description in:
-#
-#    Dirk P. Laurie, "Calculation of Gauss-Kronrod quadrature rules,"
-#    Mathematics of Computation, vol. 66, no. 219, pp. 1133-1145 (1997).
-#
-# for the Kronrod rule, and for the Gauss rule from the description in
-#
-#    Lloyd N. Trefethen and David Bau, Numerical Linear Algebra (SIAM, 1997).
-#
-# Arbitrary-precision eigenvalue (eignewt & eigpoly) and eigenvector
-# (eigvec1) routines are written by SGJ, independent of the above sources.
-#
-# Since we only implement Gauss-Kronrod rules for the unit weight function,
-# the diagonals of the Jacobi matrices are zero and certain things simplify
-# compared to the general case of an arbitrary weight function.
-
-# Given a symmetric tridiagonal matrix H with H[i,i] = 0 and
-# H[i-1,i] = H[i,i-1] = b[i-1], compute p(z) = det(z I - H) and its
-# derivative p'(z), returning (p,p').
 function eigpoly(b,z,m=length(b)+1)
     d1 = z
     d1deriv = d2 = one(z)
@@ -280,15 +206,9 @@ function eigpoly(b,z,m=length(b)+1)
     end
     return (d1, d1deriv)
 end
-
-# compute the n smallest eigenvalues of the symmetric tridiagonal matrix H
-# (defined from b as in eigpoly) using a Newton iteration
-# on det(H - lambda I).  Unlike eig, handles BigFloat.
 function eignewt(b,m,n)
-    # get initial guess from eig on Float64 matrix
     H = SymTridiagonal(zeros(m), Float64[ b[i] for i in 1:m-1 ])
     lambda0 = sort(eigvals(H))
-
     lambda = Array{eltype(b)}(undef, n)
     for i = 1:n
         lambda[i] = lambda0[i]
@@ -299,19 +219,12 @@ function eignewt(b,m,n)
                 break
             end
         end
-        # do one final Newton iteration for luck and profit:
         (p,pderiv) = eigpoly(b,lambda[i],m)
         lambda[i] = lambda[i] - p / pderiv
     end
     return lambda
 end
-
-# given an eigenvalue z and the matrix H(b) from above, return
-# the corresponding eigenvector, normalized to 1.
 function eigvec1(b,z::Number,m=length(b)+1)
-    # "cheat" and use the fact that our eigenvector v must have a
-    # nonzero first entries (since it is a quadrature weight), so we
-    # can set v[1] = 1 to solve for the rest of the components:.
     v = Array{eltype(b)}(undef, m)
     v[1] = 1
     if m > 1
@@ -326,16 +239,13 @@ function eigvec1(b,z::Number,m=length(b)+1)
     end
     return v
 end
-
 """
     gauss([T,] N)
-
 Return a pair `(x, w)` of `N` quadrature points `x[i]` and weights `w[i]` to
 integrate functions on the interval `(-1, 1)`,  i.e. `sum(w .* f.(x))`
 approximates the integral.  Uses the method described in Trefethen &
 Bau, Numerical Linear Algebra, to find the `N`-point Gaussian quadrature
 in O(`N`²) operations.
-
 `T` is an optional parameter specifying the floating-point type, defaulting
 to `Float64`. Arbitrary precision (`BigFloat`) is also supported.
 """
@@ -349,25 +259,19 @@ function gauss(::Type{T}, N::Integer) where T<:AbstractFloat
     w = T[ 2*eigvec1(b,x[i])[1]^2 for i = 1:N ]
     return (x, w)
 end
-
 gauss(N::Integer) = gauss(Float64, N)
-
 """
     kronrod([T,] n)
-
 Compute `2n+1` Kronrod points `x` and weights `w` based on the description in
 Laurie (1997), appendix A, simplified for `a=0`, for integrating on `[-1,1]`.
 Since the rule is symmetric, this only returns the `n+1` points with `x <= 0`.
 The function Also computes the embedded `n`-point Gauss quadrature weights `gw`
 (again for `x <= 0`), corresponding to the points `x[2:2:end]`. Returns `(x,w,wg)`
 in O(`n`²) operations.
-
 `T` is an optional parameter specifying the floating-point type, defaulting
 to `Float64`. Arbitrary precision (`BigFloat`) is also supported.
-
 Given these points and weights, the estimated integral `I` and error `E` can
 be computed for an integrand `f(x)` as follows:
-
     x, w, wg = kronrod(n)
     fx⁰ = f(x[end])                # f(0)
     x⁻ = x[1:end-1]                # the x < 0 Kronrod points
@@ -424,25 +328,13 @@ function kronrod(::Type{T}, n::Integer) where T<:AbstractFloat
     for j = 1:2n
         b[j] = sqrt(b[j+1])
     end
-
-    # get negative quadrature points x
     x = eignewt(b,2n+1,n+1) # x <= 0
-
-    # get quadrature weights
     w = T[ 2*eigvec1(b,x[i],2n+1)[1]^2 for i in 1:n+1 ]
-
-    # Get embedded Gauss rule from even-indexed points, using
-    # the method described in Trefethen and Bau.
     for j = 1:n-1
         b[j] = j / sqrt(4j^2 - o)
     end
     gw = T[ 2*eigvec1(b,x[i],n)[1]^2 for i = 2:2:n+1 ]
-
     return (x, w, gw)
 end
-
 kronrod(N::Integer) = kronrod(Float64, N)
-
-###########################################################################
-
 end # module QuadGK

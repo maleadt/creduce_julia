@@ -1,19 +1,11 @@
 module Tokens
-
 import Base.eof
-
 export Token
-
 include("token_kinds.jl")
-
-
 iskeyword(k::Kind) = begin_keywords < k < end_keywords
 isliteral(k::Kind) = begin_literal < k < end_literal
 isoperator(k::Kind) = begin_ops < k < end_ops
-
-# Create string => keyword kind
 const KEYWORDS = Dict{String, Kind}()
-
 function _add_kws()
     for k in instances(Kind)
         if iskeyword(k)
@@ -22,8 +14,6 @@ function _add_kws()
     end
 end
 _add_kws()
-
-# TODO: more
 @enum(TokenError,
     NO_ERR,
     EOF_MULTICOMMENT,
@@ -32,8 +22,6 @@ _add_kws()
     EOF_CMD,
     UNKNOWN,
 )
-
-# Error kind => description
 TOKEN_ERROR_DESCRIPTION = Dict{TokenError, String}(
     EOF_MULTICOMMENT => "unterminated multi-line comment #= ... =#",
     EOF_STRING => "unterminated string literal",
@@ -41,12 +29,9 @@ TOKEN_ERROR_DESCRIPTION = Dict{TokenError, String}(
     EOF_CMD => "unterminated cmd literal",
     UNKNOWN => "unknown",
 )
-
 abstract type AbstractToken end
-
 struct Token <: AbstractToken
     kind::Kind
-    # Offsets into a string or buffer
     startpos::Tuple{Int, Int} # row, col where token starts /end, col is a string index
     endpos::Tuple{Int, Int}
     startbyte::Int # The byte where the token start in the buffer
@@ -60,10 +45,8 @@ function Token(kind::Kind, startposition::Tuple{Int, Int}, endposition::Tuple{In
 Token(kind, startposition, endposition, startbyte, endbyte, val, NO_ERR, false)
 end
 Token() = Token(ERROR, (0,0), (0,0), 0, 0, "", UNKNOWN, false)
-
 struct RawToken <: AbstractToken
     kind::Kind
-    # Offsets into a string or buffer
     startpos::Tuple{Int, Int} # row, col where token starts /end, col is a string index
     endpos::Tuple{Int, Int}
     startbyte::Int # The byte where the token start in the buffer
@@ -76,13 +59,10 @@ function RawToken(kind::Kind, startposition::Tuple{Int, Int}, endposition::Tuple
 RawToken(kind, startposition, endposition, startbyte, endbyte, NO_ERR, false)
 end
 RawToken() = RawToken(ERROR, (0,0), (0,0), 0, 0, UNKNOWN, false)
-
-
 const _EMPTY_TOKEN = Token()
 const _EMPTY_RAWTOKEN = RawToken()
 EMPTY_TOKEN(::Type{Token}) = _EMPTY_TOKEN
 EMPTY_TOKEN(::Type{RawToken}) = _EMPTY_RAWTOKEN
-
 function kind(t::AbstractToken)
     isoperator(t.kind) && return OP
     iskeyword(t.kind) && return KEYWORD
@@ -127,11 +107,9 @@ function untokenize(t::Token)
         return ""
     end
 end
-
 function untokenize(t::RawToken, str::String)
     String(str[1 + (t.startbyte:t.endbyte)])
 end
-
 function untokenize(ts)
     if !(eltype(ts) <: AbstractToken)
         throw(ArgumentError("element type of iterator has to be Token"))
@@ -142,8 +120,6 @@ function untokenize(ts)
     end
     return String(take!(io))
 end
-
-
 function Base.show(io::IO, t::Token)
     start_r, start_c = startpos(t)
     end_r, end_c = endpos(t)
@@ -152,14 +128,11 @@ function Base.show(io::IO, t::Token)
     print(io, rpad(kind(t), 15, " "))
     print(io, "\"", str, "\"")
 end
-
 Base.print(io::IO, t::Token) = print(io, untokenize(t))
-
 function Base.show(io::IO, t::RawToken)
     start_r, start_c = startpos(t)
     end_r, end_c = endpos(t)
     print(io, rpad(string(start_r, ",", start_c, "-", end_r, ",", end_c), 17, " "))
     print(io, rpad(kind(t), 15, " "))
 end
-
 end # module

@@ -1,11 +1,8 @@
-# Sort for dicts
 import Base: sort, sort!
-
 function sort!(d::OrderedDict; byvalue::Bool=false, args...)
     if d.ndel > 0
         rehash!(d)
     end
-
     if byvalue
         p = sortperm(d.vals; args...)
     else
@@ -16,6 +13,5 @@ function sort!(d::OrderedDict; byvalue::Bool=false, args...)
     rehash!(d)
     return d
 end
-
 sort(d::OrderedDict; args...) = sort!(copy(d); args...)
 sort(d::Dict; args...) = sort!(OrderedDict(d); args...)

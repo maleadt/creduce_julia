@@ -1,18 +1,13 @@
 using RecipesBase
-
 @recipe function f(tree::Phylo.AbstractTree; treetype = :dendrogram, showtips = true, tipfont = (7,))
-
-    #linecolor --> :black
     grid --> false
     framestyle --> :none
     legend --> false
     colorbar --> true
     size --> (1000, 1000)
-
     d, h, n = _findxy(tree)
     adj = 0.03maximum(values(d))
     tipannotations = map(x->(d[x] + adj, h[x], x), leafiter(tree))
-
     x, y = Float64[], Float64[]
     for node ∈ n
         if hasinbound(tree, node)
@@ -20,14 +15,12 @@ using RecipesBase
             push!(y, h[getparent(tree, node)], h[node], h[node], NaN)
         end
     end
-
     marker_x, marker_y = Float64[], Float64[]
     if any(x->occursin(r"marker", String(x)), keys(plotattributes))
         f = nodenamefilter(!isleaf, tree)
         append!(marker_x, getindex.(Ref(d), f))
         append!(marker_y, getindex.(Ref(h), f))
     end
-
     if treetype == :dendrogram
         Dendrogram(x, y, tipannotations, marker_x, marker_y, showtips, tipfont)
     elseif treetype == :fan
@@ -36,26 +29,21 @@ using RecipesBase
         throw(ArgumentError("Unsupported `treetype`; valid values are `:dendrogram` or `:fan`"))
     end
 end
-
 struct Dendrogram; x; y; tipannotations; marker_x; marker_y; showtips; tipfont; end
 struct Fan; x; y; tipannotations; marker_x; marker_y; showtips; tipfont; end
-
 @recipe function f(dend::Dendrogram)
-
     sa = get(plotattributes, :series_annotations, nothing)
     @series begin
         seriestype := :path
         markersize := 0
         markershape := :none
         series_annotations := nothing
-
         lc = _extend(get(plotattributes, :linecolor, nothing), dend.x)
         lc !== nothing && (linecolor := lc)
         la = _extend(get(plotattributes, :linealpha, nothing), dend.x)
         la !== nothing && (linealpha := la)
         lz = _extend(get(plotattributes, :line_z, nothing), dend.x)
         lz !== nothing && (line_z := lz)
-
         dend.x, dend.y
     end
     if !isempty(dend.marker_x) || sa !== nothing
@@ -68,17 +56,14 @@ struct Fan; x; y; tipannotations; marker_x; marker_y; showtips; tipfont; end
     dend.showtips && (annotations := map(x -> (x[1], x[2], (x[3], :left, dend.tipfont...)), dend.tipannotations))
     [],[]
 end
-
 @recipe function f(fan::Fan)
     adjust(y) = 2pi*y / (length(fan.tipannotations) + 1)
-
     sa = get(plotattributes, :series_annotations, nothing)
     @series begin
         seriestype := :path
         markersize := 0
         markershape := :none
         series_annotations := nothing
-
         x, y = _circle_transform_segments(fan.x, adjust(fan.y))
         lc = _extend(get(plotattributes, :linecolor, nothing), x)
         lc !== nothing && (linecolor := lc)
@@ -105,7 +90,6 @@ end
     end
     [],[]
 end
-
 function _extend(tmp, x)
     tmp isa AbstractVector && abs(length(tmp) - count(isnan, x)) < 2 || return nothing
     ret = similar(x, eltype(tmp))
@@ -116,32 +100,21 @@ function _extend(tmp, x)
     end
     return ret
 end
-
 leafiter(tree) = nodenamefilter(isleaf, tree)
-
-
-
 function Base.sort!(tree::AbstractTree)
     function loc!(clade::String)
         if isleaf(tree, clade)
             return 1
         end
-
         sizes = map(loc!, getchildren(tree, clade))
         node = getnode(tree, clade)
         node.outbounds .= node.outbounds[sortperm(sizes)]
         sum(sizes) + 1
     end
-
     loc!(first(nodenamefilter(isroot, tree)))
     tree
 end
-
-
-
 function _findxy(tree::Phylo.AbstractTree)
-
-    # two convenience recursive functions using captured variables
     function findheights!(clade::String)
         if !in(clade, keys(height))
             for subclade in getchildren(tree, clade)
@@ -153,7 +126,6 @@ function _findxy(tree::Phylo.AbstractTree)
             height[clade] = (maximum(ch_heights) + minimum(ch_heights)) / 2.
         end
     end
-
     function finddepths!(clade::String)
         push!(names, clade)
         if hasinbound(tree, clade)
@@ -163,21 +135,17 @@ function _findxy(tree::Phylo.AbstractTree)
             finddepths!(ch)
         end
     end
-
     root = first(nodenamefilter(isroot, tree))
     height = Dict(tip => float(i) for (i, tip) in enumerate(leafiter(tree)))
     sizehint!(height, length(nodeiter(tree)))
     findheights!(root)
-
     depth = Dict{String, Float64}(root => 0)
     names = String[]
     sizehint!(depth, length(nodeiter(tree)))
     sizehint!(names, length(nodeiter(tree)))
     finddepths!(root)
-
     depth, height, names
 end
-
 function _find_tips(depth, height, tree)
     x, y, l = Float64[], Float64[], String[]
     for k in keys(depth)
@@ -189,7 +157,6 @@ function _find_tips(depth, height, tree)
     end
     x, y, l
 end
-
 function _p_circ(start_θ, end_θ, r=1)
     steps = range(start_θ, stop=end_θ, length = 1+ceil(Int, 60abs(end_θ - start_θ)))
     retx = Array{Float64}(undef, length(steps))
@@ -200,11 +167,9 @@ function _p_circ(start_θ, end_θ, r=1)
     end
     retx, rety
 end
-
 _xcirc(x, r) = r*cos(x)
 _ycirc(y, r) = r*sin(y)
 _tocirc(x, y) = _xcirc(y, x), _ycirc(y, x)
-
 function _circle_transform_segments(xs, ys)
     retx, rety = Float64[], Float64[]
     function _transform_seg(_x, _y)
@@ -222,9 +187,6 @@ function _circle_transform_segments(xs, ys)
     end
     retx, rety
 end
-
-
-# a function to update a value successively from the root to the tips
 function map_depthfirst(FUN, start, tree, eltype = nothing)
     root = first(nodenamefilter(isroot, tree))
     eltype === nothing && (eltype = typeof(FUN(start, root)))

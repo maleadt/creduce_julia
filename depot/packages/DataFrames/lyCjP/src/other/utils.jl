@@ -13,7 +13,6 @@ function make_unique!(names::Vector{Symbol}, src::Vector{Symbol}; makeunique::Bo
             push!(seen, name)
         end
     end
-
     if length(dups) > 0
         if !makeunique
             dupstr = join(string.(':', unique(src[dups])), ", ", " and ")
@@ -22,7 +21,6 @@ function make_unique!(names::Vector{Symbol}, src::Vector{Symbol}; makeunique::Bo
             throw(ArgumentError(msg))
         end
     end
-
     for i in dups
         nm = src[i]
         k = 1
@@ -36,17 +34,13 @@ function make_unique!(names::Vector{Symbol}, src::Vector{Symbol}; makeunique::Bo
             k += 1
         end
     end
-
     return names
 end
-
 function make_unique(names::Vector{Symbol}; makeunique::Bool=false)
     make_unique!(similar(names), names, makeunique=makeunique)
 end
-
 """
     gennames(n::Integer)
-
 Generate standardized names for columns of a DataFrame. The first name will be `:x1`, the
 second `:x2`, etc.
 """
@@ -57,4 +51,3 @@ function gennames(n::Integer)
     end
     return res
 end
-

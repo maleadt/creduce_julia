@@ -5,10 +5,8 @@ using Phylo
 using Distributions
 using Missings
 using IterableTables: getiterator
-
 mutable struct Phylogenetics{T <: AbstractTree} <: ValueSupport end
 Base.eltype(::Type{Phylogenetics{T}}) where T <: AbstractTree = T
-
 """
     Nonultrametric{T <: AbstractTree,
                    RNG <: Sampleable}(n::Int,
@@ -16,7 +14,6 @@ Base.eltype(::Type{Phylogenetics{T}}) where T <: AbstractTree = T
     Nonultrametric{T <: AbstractTree,
                    RNG <: Sampleable}(tiplabels::Vector{String},
                                       rng::RNG = Exponential())
-
 The sampler for non-ultrametric phylogenetic trees of size `n` or with
 tip labels `tiplabels`. Generate random trees by calling rand().
 Currently only works for `NamedTree`s.
@@ -28,40 +25,31 @@ struct Nonultrametric{T <: AbstractTree,
     tiplabels::Vector{String}
     rng::RNG
     leafinfo::Any
-
     function Nonultrametric{T, RNG}(n::Int, tiplabels::Vector{String}, rng::RNG, leafinfo) where {T, RNG}
         return new{T, RNG}(n, tiplabels, rng, leafinfo)
     end
-
     function Nonultrametric{T, RNG}(n::Int, rng::RNG) where {T, RNG}
         return new{T, RNG}(n, map(i -> "tip $i", 1:n), rng, missing)
     end
-
     function Nonultrametric{T, RNG}(tiplabels::Vector{String}, rng::RNG) where {T, RNG}
         return new{T, RNG}(length(tiplabels), tiplabels, rng, missing)
     end
 end
-
 function Nonultrametric{T}(n::Int) where T <: AbstractTree
     return Nonultrametric{T, Exponential}(n, Exponential())
 end
-
 function Nonultrametric{T}(tiplabels::Vector{String}) where T <: AbstractTree
     return Nonultrametric{T, Exponential}(tiplabels, Exponential())
 end
-
 function Nonultrametric{T}(leafinfo) where T <: AbstractTree
     tipnames = unique(collect(map(info -> info[1], getiterator(leafinfo))))
     return Nonultrametric{T, Exponential}(length(tipnames), tipnames,
                                           Exponential(), leafinfo)
 end
-
 Nonultrametric(info::LI) where LI =
     Nonultrametric{BinaryTree{LI, Dict{String, Any}}}(info)
-
 Nonultrametric(n::Int) = Nonultrametric{NamedTree}(n)
 Nonultrametric(tiplabels::Vector{String}) = Nonultrametric{NamedTree}(tiplabels)
-
 function rand(t::Nonultrametric{T, RNG}) where {T, RNG}
     t.n >= 2 || error("A tree must have at least 2 tips")
     if ismissing(t.leafinfo)
@@ -79,7 +67,6 @@ function rand(t::Nonultrametric{T, RNG}) where {T, RNG}
     end
     return tree
 end
-
 """
     Ultrametric{T <: AbstractTree,
                 RNG <: Sampleable}(n::Int,
@@ -87,7 +74,6 @@ end
     Ultrametric{T <: AbstractTree,
                 RNG <: Sampleable}(tiplabels::Vector{String},
                                    rng::RNG = Exponential())
-
 The sampler for ultrametric phylogenetic trees of size `n` or with
 tip labels `tiplabels`. Generate random trees by calling rand().
 Currently only works for `NamedTree`s.
@@ -99,40 +85,31 @@ struct Ultrametric{T <: AbstractTree,
     tiplabels::Vector{String}
     rng::RNG
     leafinfo::Any
-
     function Ultrametric{T, RNG}(n::Int, tiplabels::Vector{String}, rng::RNG, leafinfo) where {T, RNG}
         return new{T, RNG}(n, tiplabels, rng, leafinfo)
     end
-
     function Ultrametric{T, RNG}(n::Int, rng::RNG) where {T, RNG}
         return new{T, RNG}(n, map(i -> "tip $i", 1:n), rng, missing)
     end
-
     function Ultrametric{T, RNG}(tiplabels::Vector{String}, rng::RNG) where {T, RNG}
         return new{T, RNG}(length(tiplabels), tiplabels, rng, missing)
     end
 end
-
 function Ultrametric{T}(n::Int) where T <: AbstractTree
     return Ultrametric{T, Exponential}(n, Exponential())
 end
-
 function Ultrametric{T}(tiplabels::Vector{String}) where T <: AbstractTree
     return Ultrametric{T, Exponential}(tiplabels, Exponential())
 end
-
 function Ultrametric{T}(leafinfo) where T <: AbstractTree
     tipnames = unique(collect(map(info -> info[1], getiterator(leafinfo))))
     return Ultrametric{T, Exponential}(length(tipnames), tipnames,
                                        Exponential(), leafinfo)
 end
-
 Ultrametric(info::LI) where LI =
     Ultrametric{BinaryTree{LI, Dict{String, Any}}}(info)
-
 Ultrametric(n::Int) = Ultrametric{NamedTree}(n)
 Ultrametric(tiplabels::Vector{String}) = Ultrametric{NamedTree}(tiplabels)
-
 function rand(t::Ultrametric{T, RNG}) where {T, RNG}
     t.n >= 2 || error("A tree must have at least 2 tips")
     if ismissing(t.leafinfo)
@@ -158,7 +135,6 @@ function rand(t::Ultrametric{T, RNG}) where {T, RNG}
     end
     return tree
 end
-
 function rand(s::S, treenames) where
     {TREE <: AbstractTree,
      S <: Sampleable{Univariate, Phylogenetics{TREE}}}
@@ -168,7 +144,6 @@ function rand(s::S, treenames) where
     end
     return TreeSet(trees, Dict{String, Dict{String, Any}}())
 end
-
 function rand(s::S, n::Int) where
     {TREE <: AbstractTree,
      S <: Sampleable{Univariate, Phylogenetics{TREE}}}

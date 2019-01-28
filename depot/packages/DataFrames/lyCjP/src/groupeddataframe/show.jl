@@ -9,7 +9,6 @@ function Base.show(io::IO, gd::GroupedDataFrame;
     keynames = names(gd.parent)[gd.cols]
     parent_names = names(gd.parent)
     keys = join(string.(keynames), ", ")
-
     keystr = length(gd.cols) > 1 ? "keys" : "key"
     groupstr = N > 1 ? "groups" : "group"
     summary && print(io, "$(typeof(gd).name) with $N $groupstr based on $keystr: $keys")
@@ -17,13 +16,10 @@ function Base.show(io::IO, gd::GroupedDataFrame;
         for i = 1:N
             nrows = size(gd[i], 1)
             rows = nrows > 1 ? "rows" : "row"
-
             identified_groups = [string(parent_names[col], " = ", repr(first(gd[i][col])))
                                  for col in gd.cols]
-
             print(io, "\nGroup $i ($nrows $rows): ")
             join(io, identified_groups, ", ")
-
             show(io, gd[i], summary=false,
                  allrows=allrows, allcols=allcols, rowlabel=rowlabel)
         end
@@ -31,32 +27,26 @@ function Base.show(io::IO, gd::GroupedDataFrame;
         if N > 0
             nrows = size(gd[1], 1)
             rows = nrows > 1 ? "rows" : "row"
-
             identified_groups = [string(parent_names[col], " = ", repr(first(gd[1][col])))
                                  for col in gd.cols]
-
             print(io, "\nFirst Group ($nrows $rows): ")
             join(io, identified_groups, ", ")
-
             show(io, gd[1], summary=false,
                  allrows=allrows, allcols=allcols, rowlabel=rowlabel)
         end
         if N > 1
             nrows = size(gd[N], 1)
             rows = nrows > 1 ? "rows" : "row"
-
             identified_groups = [string(parent_names[col], " = ", repr(first(gd[N][col])))
                                  for col in gd.cols]
             print(io, "\n⋮")
             print(io, "\nLast Group ($nrows $rows): ")
             join(io, identified_groups, ", ")
-
             show(io, gd[N], summary=false,
                  allrows=allrows, allcols=allcols, rowlabel=rowlabel)
         end
     end
 end
-
 function Base.show(df::GroupedDataFrame;
                    allrows::Bool = !get(stdout, :limit, true),
                    allcols::Bool = !get(stdout, :limit, true),

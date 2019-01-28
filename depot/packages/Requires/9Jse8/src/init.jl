@@ -1,5 +1,4 @@
 export @init
-
 function initm(ex)
   quote
     if !@isdefined __inits__
@@ -12,13 +11,11 @@ function initm(ex)
     nothing
   end |> esc
 end
-
 function initm()
   :(for f in __inits__
       f()
     end) |> esc
 end
-
 macro init(args...)
   initm(args...)
 end

@@ -1,5 +1,4 @@
 module OrderedCollections
-
     import Base: <, <=, ==, convert, length, isempty, iterate, delete!,
                  show, dump, empty!, getindex, setindex!, get, get!,
                  in, haskey, keys, merge, copy, cat,
@@ -15,14 +14,11 @@ module OrderedCollections
                  searchsortedfirst, searchsortedlast, in,
                  filter, filter!, ValueIterator, eachindex, keytype,
                  valtype, lastindex, nextind
-
     export OrderedDict, OrderedSet
-
     include("dict_support.jl")
     include("ordered_dict.jl")
     include("ordered_set.jl")
     include("dict_sorting.jl")
-
     import Base: similar
     @deprecate similar(d::OrderedDict) empty(d)
     @deprecate similar(s::OrderedSet) empty(s)

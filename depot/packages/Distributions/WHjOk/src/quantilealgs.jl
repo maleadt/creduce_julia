@@ -1,9 +1,5 @@
-# Various algorithms for computing quantile
-
 function quantile_bisect(d::ContinuousUnivariateDistribution, p::Real,
                          lx::Real, rx::Real, tol::Real)
-
-    # find quantile using bisect algorithm
     cl = cdf(d, lx)
     cr = cdf(d, rx)
     @assert cl <= p <= cr
@@ -20,16 +16,8 @@ function quantile_bisect(d::ContinuousUnivariateDistribution, p::Real,
     end
     return (lx + rx)/2
 end
-
 quantile_bisect(d::ContinuousUnivariateDistribution, p::Real) =
     quantile_bisect(d, p, minimum(d), maximum(d), 1.0e-12)
-
-# if starting at mode, Newton is convergent for any unimodal continuous distribution, see:
-#   Göknur Giner, Gordon K. Smyth (2014)
-#   A Monotonically Convergent Newton Iteration for the Quantiles of any Unimodal
-#   Distribution, with Application to the Inverse Gaussian Distribution
-#   http://www.statsci.org/smyth/pubs/qinvgaussPreprint.pdf
-
 function quantile_newton(d::ContinuousUnivariateDistribution, p::Real, xs::Real=mode(d), tol::Real=1e-12)
     x = xs + (p - cdf(d, xs)) / pdf(d, xs)
     T = typeof(x)
@@ -48,7 +36,6 @@ function quantile_newton(d::ContinuousUnivariateDistribution, p::Real, xs::Real=
         return T(NaN)
     end
 end
-
 function cquantile_newton(d::ContinuousUnivariateDistribution, p::Real, xs::Real=mode(d), tol::Real=1e-12)
     x = xs + (ccdf(d, xs)-p) / pdf(d, xs)
     T = typeof(x)
@@ -67,7 +54,6 @@ function cquantile_newton(d::ContinuousUnivariateDistribution, p::Real, xs::Real
         return T(NaN)
     end
 end
-
 function invlogcdf_newton(d::ContinuousUnivariateDistribution, lp::Real, xs::Real=mode(d), tol::Real=1e-12)
     T = typeof(lp - logpdf(d,xs))
     if -Inf < lp < 0
@@ -94,7 +80,6 @@ function invlogcdf_newton(d::ContinuousUnivariateDistribution, lp::Real, xs::Rea
         return T(NaN)
     end
 end
-
 function invlogccdf_newton(d::ContinuousUnivariateDistribution, lp::Real, xs::Real=mode(d), tol::Real=1e-12)
     T = typeof(lp - logpdf(d,xs))
     if -Inf < lp < 0
@@ -121,9 +106,6 @@ function invlogccdf_newton(d::ContinuousUnivariateDistribution, lp::Real, xs::Re
         return T(NaN)
     end
 end
-
-# A macro: specify that the quantile (and friends) of distribution D
-# is computed using the newton method
 macro quantile_newton(D)
     esc(quote
         quantile(d::$D, p::Real) = quantile_newton(d,p)

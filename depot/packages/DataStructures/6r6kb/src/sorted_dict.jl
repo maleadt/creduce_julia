@@ -1,25 +1,15 @@
-## A SortedDict is a wrapper around balancedTree with
-## methods similiar to those of Julia container Dict.
-
 mutable struct SortedDict{K, D, Ord <: Ordering} <: AbstractDict{K,D}
     bt::BalancedTree23{K,D,Ord}
-
-    ## Base constructors
     """
         SortedDict{K,V}(o=Forward)
-
     Construct an empty `SortedDict` with key type `K` and value type
     `V` with `o` ordering (default to forward ordering).
     """
     SortedDict{K,D,Ord}(o::Ord) where {K, D, Ord <: Ordering} =
         new{K,D,Ord}(BalancedTree23{K,D,Ord}(o))
-
     function SortedDict{K,D,Ord}(o::Ord, kv) where {K, D, Ord <: Ordering}
         s = new{K,D,Ord}(BalancedTree23{K,D,Ord}(o))
-
         if eltype(kv) <: Pair
-            # It's (possibly?) more efficient to access the first and second
-            # elements of Pairs directly, rather than destructure
             for p in kv
                 s[p.first] = p.second
             end
@@ -30,16 +20,11 @@ mutable struct SortedDict{K, D, Ord <: Ordering} <: AbstractDict{K,D}
         end
         return s
     end
-
 end
-
-# Any-Any constructors
 """
     SortedDict()
-
 Construct an empty `SortedDict` with key type `Any` and value type
 `Any`. Ordering defaults to `Forward` ordering.
-
 **Note that a key type of `Any` or any other abstract type will lead
 to slow performance, as the values are stored boxed (i.e., as
 pointers), and insertion will require a run-time lookup of the
@@ -48,15 +33,12 @@ a concrete key type, or to use one of the constructors below in
 which the key type is inferred.**
 """
 SortedDict() = SortedDict{Any,Any,ForwardOrdering}(Forward)
-
 """
     SortedDict(o=Forward)
-
 Construct an empty `SortedDict` with key type `K` and value type
 `V`. If `K` and `V` are not specified, the dictionary defaults to a
 `SortedDict{Any,Any}`. Keys and values are converted to the given
 type upon insertion. Ordering `o` defaults to `Forward` ordering.
-
 **Note that a key type of `Any` or any other abstract type will lead
 to slow performance, as the values are stored boxed (i.e., as
 pointers), and insertion will require a run-time lookup of the
@@ -65,13 +47,9 @@ a concrete key type, or to use one of the constructors below in
 which the key type is inferred.**
 """
 SortedDict(o::Ord) where {Ord <: Ordering} = SortedDict{Any,Any,Ord}(o)
-
-# Construction from Pairs
-# TODO: fix SortedDict(1=>1, 2=>2.0)
 """
     SortedDict(k1=>v1, k2=>v2, ...)
 and `SortedDict{K,V}(k1=>v1, k2=>v2, ...)`
-
 Construct a `SortedDict` from the given key-value pairs. If `K` and
 `V` are not specified, key type and value type are inferred from the
 given key-value pairs, and ordering is assumed to be `Forward`
@@ -79,38 +57,25 @@ ordering.
 """
 SortedDict(ps::Pair...) = SortedDict(Forward, ps)
 SortedDict{K,D}(ps::Pair...) where {K,D} = SortedDict{K,D,ForwardOrdering}(Forward, ps)
-
 """
     SortedDict(o, k1=>v1, k2=>v2, ...)
-
 Construct a `SortedDict` from the given pairs with the specified
 ordering `o`. The key type and value type are inferred from the 
 given pairs.
 """
 SortedDict(o::Ordering, ps::Pair...) = SortedDict(o, ps)
-
 """
     SortedDict{K,V}(o, k1=>v1, k2=>v2, ...)
-
 Construct a `SortedDict` from the given pairs with the specified
 ordering `o`. If `K` and `V` are not specified, the key type and
 value type are inferred from the given pairs. See below for more
 information about ordering.
 """
 SortedDict{K,D}(o::Ord, ps::Pair...) where {K,D,Ord<:Ordering} = SortedDict{K,D,Ord}(o, ps)
-
-
-# Construction from AbstractDicts
 SortedDict(o::Ord, d::AbstractDict{K,D}) where {K,D,Ord<:Ordering} = SortedDict{K,D,Ord}(o, d)
-
-## Construction from iteratables of Pairs/Tuples
-
-# Construction specifying Key/Value types
-# e.g., SortedDict{Int,Float64}([1=>1, 2=>2.0])
 """
     SortedDict(iter, o=Forward)
 and `SortedDict{K,V}(iter, o=Forward)`
-
 Construct a `SortedDict` from an arbitrary iterable object of
 `key=>value` pairs. If `K` and `V` are not specified, the key type
 and value type are inferred from the given iterable. The ordering
@@ -128,28 +93,18 @@ function SortedDict{K,D}(o::Ord, kv) where {K,D,Ord<:Ordering}
         end
     end
 end
-
-# Construction inferring Key/Value types from input
-# e.g. SortedDict{}
-
 SortedDict(o1::Ordering, o2::Ordering) = throw(ArgumentError("SortedDict with two parameters must be called with an Ordering and an interable of pairs"))
-
-
 """
     SortedDict(d, o=Forward)
 and `SortedDict{K,V}(d, o=Forward)`
-
 Construct a `SortedDict` from an ordinary Julia dict `d` (or any
 associative type), e.g.:
-
 ```julia
 d = Dict("New York" => 1788, "Illinois" => 1818)
 c = SortedDict(d)
 ```
-
 In this example the key-type is deduced to be `String`, while the
 value-type is `Int`.
-
 If `K` and `V` are not specified, the key type and value type are
 inferred from the given dictionary. The ordering object `o` defaults
 to `Forward`.
@@ -166,25 +121,14 @@ function SortedDict(o::Ordering, kv)
         end
     end
 end
-
 _sorted_dict_with_eltype(o::Ord, ps, ::Type{Pair{K,D}}) where {K,D,Ord} = SortedDict{  K,  D,Ord}(o, ps)
 _sorted_dict_with_eltype(o::Ord, kv, ::Type{Tuple{K,D}}) where {K,D,Ord} = SortedDict{  K,  D,Ord}(o, kv)
 _sorted_dict_with_eltype(o::Ord, ps, ::Type{Pair{K}}  ) where {K,  Ord} = SortedDict{  K,Any,Ord}(o, ps)
 _sorted_dict_with_eltype(o::Ord, kv, ::Type            ) where {    Ord} = SortedDict{Any,Any,Ord}(o, kv)
-
-## TODO: It seems impossible (or at least very challenging) to create the eltype below.
-##       If deemed possible, please create a test and uncomment this definition.
-# _sorted_dict_with_eltype{  D,Ord}(o::Ord, ps, ::Type{Pair{K,D} where K}) = SortedDict{Any,  D,Ord}(o, ps)
-
 const SDSemiToken = IntSemiToken
-
 const SDToken = Tuple{SortedDict,IntSemiToken}
-
-## This function implements m[k]; it returns the
-## data item associated with key k.
 """
     v = sd[k]
-
 Argument `sd` is a SortedDict and `k` is a key. In an expression,
 this retrieves the value (`v`) associated with the key (or `KeyError` if
 none). On the left-hand side of an assignment, this assigns or
@@ -196,13 +140,8 @@ reassigning, see also `insert!` below.) Time: O(*c* log *n*)
     !exactfound && throw(KeyError(k_))
     return m.bt.data[i].d
 end
-
-
-## This function implements m[k]=d; it sets the
-## data item associated with key k equal to d.
 """
     sc[st] = v
-
 If `st` is a semitoken and `sc` is a SortedDict or SortedMultiDict,
 then `sc[st]` refers to the value field of the (key,value) pair that
 the full token `(sc,st)` refers to. This expression may occur on
@@ -212,11 +151,8 @@ either side of an assignment statement. Time: O(1)
     insert!(m.bt, convert(K,k_), convert(D,d_), false)
     m
 end
-
-## push! is an alternative to insert!; it returns the container.
 """
     push!(sc, k=>v)
-
 Argument `sc` is a SortedDict or SortedMultiDict and `k=>v` is a
 key-value pair. This inserts the key-value pair into the container.
 If the key is already present, this overwrites the old value. The
@@ -226,17 +162,8 @@ return value is `sc`. Time: O(*c* log *n*)
     insert!(m.bt, convert(K, pr[1]), convert(D, pr[2]), false)
     m
 end
-
-
-
-
-## This function looks up a key in the tree;
-## if not found, then it returns a marker for the
-## end of the tree.
-
 """
     findkey(sd, k)
-
 Argument `sd` is a SortedDict and argument `k` is a key. This
 function returns the semitoken that refers to the item whose key is
 `k`, or past-end semitoken if `k` is absent. Time: O(*c* log *n*)
@@ -245,17 +172,8 @@ function returns the semitoken that refers to the item whose key is
     ll, exactfound = findkey(m.bt, convert(keytype(m),k_))
     IntSemiToken(exactfound ? ll : 2)
 end
-
-## This function inserts an item into the tree.
-## Unlike m[k]=d, it also returns a bool and a token.
-## The bool is true if the inserted item is new.
-## It is false if there was already an item
-## with that key.
-## The token points to the newly inserted item.
-
 """
     insert!(sc, k)
-
 Argument `sc` is a SortedDict or SortedMultiDict, `k` is a key and
 `v` is the corresponding value. This inserts the `(k,v)` pair into
 the container. If the key is already present in a SortedDict, this
@@ -272,20 +190,16 @@ boolean). Time: O(*c* log *n*)
     b, i = insert!(m.bt, convert(K,k_), convert(D,d_), false)
     b, IntSemiToken(i)
 end
-
 """
     eltype(sc)
-
 Returns the (key,value) type (a 2-entry pair, i.e., `Pair{K,V}`) for
 SortedDict and SortedMultiDict. Returns the key type for SortedSet.
 This function may also be applied to the type itself. Time: O(1)
 """
 @inline eltype(m::SortedDict{K,D,Ord}) where {K,D,Ord <: Ordering} =  Pair{K,D}
 @inline eltype(::Type{SortedDict{K,D,Ord}}) where {K,D,Ord <: Ordering} =  Pair{K,D}
-
 """
     in(p, sc)
-
 Returns true if `p` is in `sc`. In the case that `sc` is a
 SortedDict or SortedMultiDict, `p` is a key=>value pair. In the
 case that `sc` is a SortedSet, `p` should be a key. Time: O(*c* log
@@ -300,54 +214,37 @@ an alternative should be considered.)
     i, exactfound = findkey(m.bt,convert(K,pr[1]))
     return exactfound && isequal(m.bt.data[i].d,convert(D,pr[2]))
 end
-
 @inline in(::Tuple{Any,Any}, ::SortedDict) =
     throw(ArgumentError("'(k,v) in sorteddict' not supported in Julia 0.4 or 0.5.  See documentation"))
-
 """
     keytype(sc)
-
 Returns the key type for SortedDict, SortedMultiDict and SortedSet.
 This function may also be applied to the type itself. Time: O(1)
 """
 @inline keytype(m::SortedDict{K,D,Ord}) where {K,D,Ord <: Ordering} = K
 @inline keytype(::Type{SortedDict{K,D,Ord}}) where {K,D,Ord <: Ordering} = K
-
 """
     valtype(sc)
-
 Returns the value type for SortedDict and SortedMultiDict. This
 function may also be applied to the type itself. Time: O(1)
 """
 @inline valtype(m::SortedDict{K,D,Ord}) where {K,D,Ord <: Ordering} = D
 @inline valtype(::Type{SortedDict{K,D,Ord}}) where {K,D,Ord <: Ordering} = D
-
 """
     ordtype(sc)
-
 Returns the order type for SortedDict, SortedMultiDict and
 SortedSet. This function may also be applied to the type itself.
 Time: O(1)
 """
 @inline ordtype(m::SortedDict{K,D,Ord}) where {K,D,Ord <: Ordering} = Ord
 @inline ordtype(::Type{SortedDict{K,D,Ord}}) where {K,D,Ord <: Ordering} = Ord
-
-
 """
     orderobject(sc)
-
 Returns the order object used to construct the container. Time: O(1)
 """
 @inline orderobject(m::SortedDict) = m.bt.ord
-
-
-## First and last return the first and last (key,data) pairs
-## in the SortedDict.  It is an error to invoke them on an
-## empty SortedDict.
-
 """
     first(sc)
-
 Argument `sc` is a SortedDict, SortedMultiDict or SortedSet. This
 function returns the first item (a `k=>v` pair for SortedDict and
 SortedMultiDict or a key for SortedSet) according to the sorted
@@ -360,10 +257,8 @@ an empty container. Time: O(log *n*)
     i == 2 && throw(BoundsError())
     return Pair(m.bt.data[i].k, m.bt.data[i].d)
 end
-
 """
     last(sc)
-
 Argument `sc` is a SortedDict, SortedMultiDict or SortedSet. This
 function returns the last item (a `k=>v` pair for SortedDict and
 SortedMultiDict or a key for SortedSet) according to the sorted
@@ -376,10 +271,8 @@ empty container. Time: O(log *n*)
     i == 1 && throw(BoundsError())
     return Pair(m.bt.data[i].k, m.bt.data[i].d)
 end
-
 """
     haskey(sc,k)
-
 Returns true if key `k` is present for SortedDict, SortedMultiDict
 or SortedSet `sc`. For SortedSet, `haskey(sc,k)` is a synonym for
 `in(k,sc)`. For SortedDict and SortedMultiDict, `haskey(sc,k)` is
@@ -389,10 +282,8 @@ equivalent to `in(k,keys(sc))`. Time: O(*c* log *n*)
     i, exactfound = findkey(m.bt, convert(keytype(m), k_))
     exactfound
 end
-
 """
     get(sd,k,v)
-
 Returns the value associated with key `k` where `sd` is a
 SortedDict, or else returns `v` if `k` is not in `sd`. Time: O(*c*
 log *n*)
@@ -401,9 +292,7 @@ function get(default_::Union{Function,Type}, m::SortedDict{K,D}, k_) where {K,D}
     i, exactfound = findkey(m.bt, convert(K, k_))
     return exactfound ? m.bt.data[i].d : convert(D, default_())
 end
-
 get(m::SortedDict, k_, default_) = get(()->default_, m, k_)
-
 """
     get!(sd,k,v)
 Returns the value associated with key `k` where `sd` is a
@@ -421,12 +310,9 @@ function get!(default_::Union{Function,Type}, m::SortedDict{K,D}, k_) where {K,D
         return default
     end
 end
-
 get!(m::SortedDict, k_, default_) = get!(()->default_, m, k_)
-
 """
     getkey(sd,k,defaultk)
-
 Returns key `k` where `sd` is a SortedDict, if `k` is in `sd` else
 it returns `defaultk`. If the container uses in its ordering an `eq`
 method different from isequal (e.g., case-insensitive ASCII strings
@@ -442,12 +328,8 @@ function getkey(m::SortedDict{K,D,Ord}, k_, default_) where {K,D,Ord <: Ordering
     i, exactfound = findkey(m.bt, convert(K, k_))
     exactfound ? m.bt.data[i].k : convert(K, default_)
 end
-
-## Function delete! deletes an item at a given
-## key
 """
     delete!(sc, k)
-
 Argument `sc` is a SortedDict or SortedSet and `k` is a key. This
 operation deletes the item whose key is `k`. It is a `KeyError` if
 `k` is not a key of an item in the container. After this operation
@@ -460,10 +342,8 @@ Returns `sc`. Time: O(*c* log *n*)
     delete!(m.bt, i)
     m
 end
-
 """
     pop!(sc, k)
-
 Deletes the item with key `k` in SortedDict or SortedSet `sc` and
 returns the value that was associated with `k` in the case of
 SortedDict or `k` itself in the case of SortedSet. A `KeyError`
@@ -476,14 +356,8 @@ results if `k` is not in `sc`. Time: O(*c* log *n*)
     delete!(m.bt, i)
     d
 end
-
-
-## Check if two SortedDicts are equal in the sense of containing
-## the same (K,D) pairs.  This sense of equality does not mean
-## that semitokens valid for one are also valid for the other.
 """
     isequal(sc1,sc2)
-
 Checks if two containers are equal in the sense that they contain
 the same items; the keys are compared using the `eq` method, while
 the values are compared with the `isequal` function. In the case of
@@ -519,18 +393,14 @@ function isequal(m1::SortedDict, m2::SortedDict)
         p2 = advance((m2,p2))
     end
 end
-
-
 function mergetwo!(m::SortedDict{K,D,Ord},
                    m2::AbstractDict{K,D}) where {K,D,Ord <: Ordering}
     for (k,v) in m2
         m[convert(K,k)] = convert(D,v)
     end
 end
-
 """
     packcopy(sc)
-
 This returns a copy of `sc` in which the data is packed. When
 deletions take place, the previously allocated memory is not
 returned. This function can be used to reclaim memory after many
@@ -541,10 +411,8 @@ function packcopy(m::SortedDict{K,D,Ord}) where {K,D,Ord <: Ordering}
     mergetwo!(w,m)
     w
 end
-
 """
     packdeepcopy(sc)
-
 This returns a packed copy of `sc` in which the keys and values are
 deep-copied. This function can be used to reclaim memory after many
 deletions. Time: O(*cn* log *n*)
@@ -558,10 +426,8 @@ function packdeepcopy(m::SortedDict{K,D,Ord}) where {K,D,Ord <: Ordering}
     end
     w
 end
-
 """
     merge!(sc, sc1...)
-
 This updates `sc` by merging SortedDicts or SortedMultiDicts `sc1`,
 etc. into `sc`. These must all must have the same key-value types.
 In the case of keys duplicated among the arguments, the rightmost
@@ -578,10 +444,8 @@ function merge!(m::SortedDict{K,D,Ord},
         mergetwo!(m,o)
     end
 end
-
 """
     merge(sc1, sc2...)
-
 This returns a SortedDict or SortedMultiDict that results from
 merging SortedDicts or SortedMultiDicts `sc1`, `sc2`, etc., which
 all must have the same key-value-ordering types. In the case of keys
@@ -599,18 +463,13 @@ function merge(m::SortedDict{K,D,Ord},
     merge!(result, others...)
     result
 end
-
-
 """
     empty(sc)
-
 Returns a new `SortedDict`, `SortedMultiDict`, or `SortedSet` of the same
 type and with the same ordering as `sc` but with no entries (i.e.,
 empty). Time: O(1)
 """
 empty(m::SortedDict{K,D,Ord}) where {K,D,Ord<:Ordering} =
     SortedDict{K,D,Ord}(orderobject(m))
-
 @deprecate similar(m::SortedDict) empty(m)
-
 isordered(::Type{T}) where {T<:SortedDict} = true

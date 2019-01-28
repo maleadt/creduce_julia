@@ -1,6 +1,3 @@
-# Rows grouping.
-# Maps row contents to the indices of all the equal rows.
-# Used by groupby(), join(), nonunique()
 struct RowGroupDict{T<:AbstractDataFrame}
     "source data table"
     df::T
@@ -17,9 +14,6 @@ struct RowGroupDict{T<:AbstractDataFrame}
     "stops of ranges in rperm for each group"
     stops::Vector{Int}
 end
-
-# "kernel" functions for hashrows()
-# adjust row hashes by the hashes of column elements
 function hashrows_col!(h::Vector{UInt},
                        n::Vector{Bool},
                        v::AbstractVector{T},
@@ -33,15 +27,11 @@ function hashrows_col!(h::Vector{UInt},
     end
     h
 end
-
-# should give the same hash as AbstractVector{T}
 function hashrows_col!(h::Vector{UInt},
                        n::Vector{Bool},
                        v::AbstractCategoricalVector,
                        firstcol::Bool)
     index = CategoricalArrays.index(v.pool)
-    # When hashing the first column, no need to take into account previous hash,
-    # which is always zero
     if firstcol
         hashes = Vector{UInt}(undef, length(levels(v.pool))+1)
         hashes[1] = hash(missing)
@@ -58,7 +48,6 @@ function hashrows_col!(h::Vector{UInt},
             end
         end
     end
-    # Doing this step separately is faster, as it would disable SIMD above
     if eltype(v) >: Missing && length(n) > 0
         @inbounds for (i, ref) in enumerate(v.refs)
             n[i] |= (ref == 0)
@@ -66,8 +55,6 @@ function hashrows_col!(h::Vector{UInt},
     end
     h
 end
-
-# Calculate the vector of `df` rows hash values.
 function hashrows(cols::Tuple{Vararg{AbstractVector}}, skipmissing::Bool)
     len = length(cols[1])
     rhashes = zeros(UInt, len)
@@ -77,50 +64,31 @@ function hashrows(cols::Tuple{Vararg{AbstractVector}}, skipmissing::Bool)
     end
     return (rhashes, missings)
 end
-
-# table columns are passed as a tuple of vectors to ensure type specialization
 isequal_row(cols::Tuple{AbstractVector}, r1::Int, r2::Int) =
     isequal(cols[1][r1], cols[1][r2])
 isequal_row(cols::Tuple{Vararg{AbstractVector}}, r1::Int, r2::Int) =
     isequal(cols[1][r1], cols[1][r2]) && isequal_row(Base.tail(cols), r1, r2)
-
 isequal_row(cols1::Tuple{AbstractVector}, r1::Int, cols2::Tuple{AbstractVector}, r2::Int) =
     isequal(cols1[1][r1], cols2[1][r2])
 isequal_row(cols1::Tuple{Vararg{AbstractVector}}, r1::Int,
             cols2::Tuple{Vararg{AbstractVector}}, r2::Int) =
     isequal(cols1[1][r1], cols2[1][r2]) &&
         isequal_row(Base.tail(cols1), r1, Base.tail(cols2), r2)
-
-# Helper function for RowGroupDict.
-# Returns a tuple:
-# 1) the highest group index in the `groups` vector
-# 2) vector of row hashes (may be empty if hash=Val(false))
-# 3) slot array for a hash map, non-zero values are
-#    the indices of the first row in a group
-# 4) whether groups are already sorted
-# Optional `groups` vector is set to the group indices of each row
 function row_group_slots(cols::Tuple{Vararg{AbstractVector}},
                          hash::Val = Val(true),
                          groups::Union{Vector{Int}, Nothing} = nothing,
                          skipmissing::Bool = false)::Tuple{Int, Vector{UInt}, Vector{Int}, Bool}
     @assert groups === nothing || length(groups) == length(cols[1])
     rhashes, missings = hashrows(cols, skipmissing)
-    # inspired by Dict code from base cf. https://github.com/JuliaData/DataTables.jl/pull/17#discussion_r102481481
-    # but using open addressing with a table with as many slots as rows
     sz = Base._tablesz(length(rhashes))
     @assert sz >= length(rhashes)
     szm1 = sz-1
     gslots = zeros(Int, sz)
-    # If missings are to be skipped, they will all go to group 1,
-    # which will be removed by group_rows
     ngroups = skipmissing ? 1 : 0
     @inbounds for i in eachindex(rhashes)
-        # find the slot and group index for a row
         slotix = rhashes[i] & szm1 + 1
-        # Use 0 for non-missing values to catch bugs if group is not found
         gix = skipmissing && missings[i] ? 1 : 0
         probe = 0
-        # If skipmissing=true, assign rows containing at least one missing to group 1
         if !skipmissing || !missings[i]
             while true
                 g_row = gslots[slotix]
@@ -145,44 +113,24 @@ function row_group_slots(cols::Tuple{Vararg{AbstractVector}},
     end
     return ngroups, rhashes, gslots, false
 end
-
 function row_group_slots(cols::NTuple{N,<:CategoricalVector},
                          hash::Val{false},
                          groups::Union{Vector{Int}, Nothing} = nothing,
                          skipmissing::Bool = false)::Tuple{Int, Vector{UInt}, Vector{Int}, Bool} where N
-    # Computing neither hashes nor groups isn't very useful,
-    # and this method needs to allocate a groups vector anyway
     @assert groups !== nothing && all(col -> length(col) == length(groups), cols)
-
-    # If missings are to be skipped, they will all go to group 1,
-    # which will be removed by group_rows
     ngroupstup = map(cols) do c
         length(levels(c)) + (!skipmissing && eltype(c) >: Missing)
     end
     ngroups = prod(ngroupstup) + skipmissing
-
-    # Fall back to hashing if there would be too many empty combinations.
-    # The first check ensures the computation of ngroups did not overflow.
-    # The rationale for the 2 threshold is that while the fallback method is always slower,
-    # it allocates a hash table of size length(groups) instead of the remap vector
-    # of size ngroups (i.e. the number of possible combinations) in this method:
-    # so it makes sense to allocate more memory for better performance,
-    # but it needs to remain reasonable compared with the size of the data frame.
     if prod(Int128.(ngroupstup)) > typemax(Int) || ngroups > 2 * length(groups)
         return invoke(row_group_slots,
                       Tuple{Tuple{Vararg{AbstractVector}}, Val,
                             Union{Vector{Int}, Nothing}, Bool},
                       cols, hash, groups, skipmissing)
     end
-
     seen = fill(false, ngroups)
-    # If skipmissing=true, missings will all go to group 1,
-    # which will be removed by group_rows
     seen[1] = skipmissing
     refmaps = map(cols) do col
-        # When levels are in the same order as the index and there are no missing values,
-        # we could simply use refs, but the performance gain is negligible,
-        # so always sort groups in the order of levels
         nlevels = length(levels(col))
         refmap = Vector{Int}(undef, nlevels + 1)
         refmap[1] = nlevels
@@ -213,32 +161,19 @@ function row_group_slots(cols::NTuple{N,<:CategoricalVector},
         @inbounds for i in eachindex(groups)
             groups[i] = remap[groups[i]]
         end
-        # To catch potential bugs inducing unnecessary computations
         @assert oldngroups != ngroups
     end
     return ngroups, UInt[], Int[], true
 end
-
-# Builds RowGroupDict for a given DataFrame.
-# Partly uses the code of Wes McKinney's groupsort_indexer in pandas (file: src/groupby.pyx).
-# - hash: whether row hashes should be computed (if false, the rhashes and gslots fields
-#   hold empty vectors)
-# - sort: whether groups should be sorted
-# - skipmissing: whether rows with missing values should be skipped
-#   rather than put into a separate group
 function group_rows(df::AbstractDataFrame, hash::Bool = true, sort::Bool = false,
                     skipmissing::Bool = false)
     groups = Vector{Int}(undef, nrow(df))
     ngroups, rhashes, gslots, sorted =
         row_group_slots(ntuple(i -> df[i], ncol(df)), Val(hash), groups, skipmissing)
-
-    # count elements in each group
     stops = zeros(Int, ngroups)
     @inbounds for g_ix in groups
         stops[g_ix] += 1
     end
-
-    # group start positions in a sorted table
     starts = Vector{Int}(undef, ngroups)
     if !isempty(starts)
         starts[1] = 1
@@ -246,8 +181,6 @@ function group_rows(df::AbstractDataFrame, hash::Bool = true, sort::Bool = false
             starts[i+1] = starts[i] + stops[i]
         end
     end
-
-    # define row permutation that sorts them into groups
     rperm = Vector{Int}(undef, length(groups))
     copyto!(stops, starts)
     @inbounds for (i, gix) in enumerate(groups)
@@ -255,16 +188,12 @@ function group_rows(df::AbstractDataFrame, hash::Bool = true, sort::Bool = false
         stops[gix] += 1
     end
     stops .-= 1
-
-    # drop group 1 which contains rows with missings in grouping columns
     if skipmissing
         popfirst!(starts)
         popfirst!(stops)
         groups .-= 1
         ngroups -= 1
     end
-
-    # sort groups if row_group_slots hasn't already done that
     if sort && !sorted
         group_perm = sortperm(view(df, rperm[starts], :))
         group_invperm = invperm(group_perm)
@@ -275,18 +204,14 @@ function group_rows(df::AbstractDataFrame, hash::Bool = true, sort::Bool = false
             groups[i] = gix == 0 ? 0 : group_invperm[gix]
         end
     end
-
     return RowGroupDict(df, rhashes, gslots, groups, rperm, starts, stops)
 end
-
-# Find index of a row in gd that matches given row by content, 0 if not found
 function findrow(gd::RowGroupDict,
                  df::DataFrame,
                  gd_cols::Tuple{Vararg{AbstractVector}},
                  df_cols::Tuple{Vararg{AbstractVector}},
                  row::Int)
     (gd.df === df) && return row # same table, return itself
-    # different tables, content matching required
     rhash = rowhash(df_cols, row)
     szm1 = length(gd.gslots)-1
     slotix = ini_slotix = rhash & szm1 + 1
@@ -302,9 +227,6 @@ function findrow(gd::RowGroupDict,
     end
     return 0 # not found
 end
-
-# Find indices of rows in 'gd' that match given row by content.
-# return empty set if no row matches
 function findrows(gd::RowGroupDict,
                   df::DataFrame,
                   gd_cols::Tuple{Vararg{AbstractVector}},
@@ -315,7 +237,6 @@ function findrows(gd::RowGroupDict,
     gix = gd.groups[g_row]
     return view(gd.rperm, gd.starts[gix]:gd.stops[gix])
 end
-
 function Base.getindex(gd::RowGroupDict, dfr::DataFrameRow)
     g_row = findrow(gd, parent(dfr), ntuple(i -> gd.df[i], ncol(gd.df)),
                     ntuple(i -> parent(dfr)[i], ncol(parent(dfr))), row(dfr))

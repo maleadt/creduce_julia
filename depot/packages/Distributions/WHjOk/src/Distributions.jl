@@ -1,31 +1,20 @@
 module Distributions
-
 using StatsBase, PDMats, StatsFuns, Statistics
-
 import QuadGK: quadgk
 import Base: size, eltype, length, convert, show, getindex, rand
 import Base: sum, maximum, minimum, +, -
 import Base.Math: @horner
-
 using LinearAlgebra, Printf
-
 using Random
 import Random: GLOBAL_RNG, RangeGenerator, rand!, SamplerRangeInt
-
 import Statistics: mean, median, quantile, std, var, cov, cor
 import StatsBase: kurtosis, skewness, entropy, mode, modes,
                   fit, kldivergence, loglikelihood, dof, span,
                   params, params!
-
 import PDMats: dim, PDMat, invquad
-
 using SpecialFunctions
-
 export
-    # re-export Statistics
     mean, median, quantile, std, var, cov, cor,
-
-    # generic types
     VariateForm,
     ValueSupport,
     Univariate,
@@ -53,8 +42,6 @@ export
     AbstractMixtureModel,
     UnivariateMixture,
     MultivariateMixture,
-
-    # distribution types
     Arcsine,
     Bernoulli,
     Beta,
@@ -147,11 +134,7 @@ export
     ZeroMeanDiagNormalCanon,
     ZeroMeanFullNormal,
     ZeroMeanFullNormalCanon,
-
-    # auxiliary types
     RealInterval,
-
-    # methods
     binaryentropy,      # entropy of distribution in bits
     canonform,          # get canonical form of a distribution
     ccdf,               # complementary cdf, i.e. 1 - cdf
@@ -195,7 +178,6 @@ export
     loglikelihood,      # log probability of array of IID draws
     logpdf,             # log probability density
     logpdf!,            # evaluate log pdf to provided storage
-
     invscale,           # Inverse scale parameter
     sqmahal,            # squared Mahalanobis distance to Gaussian center
     sqmahal!,           # inplace evaluation of sqmahal
@@ -240,53 +222,32 @@ export
     varlogx,            # variance of log(x)
     expected_logdet,    # expected logarithm of random matrix determinant
     gradlogpdf,         # gradient (or derivative) of logpdf(d,x) wrt x
-
-    # reexport from StatsBase
     sample, sample!,        # sample from a source array
     wsample, wsample!      # weighted sampling from a source array
-
-
-### source files
-
-# type system
 include("common.jl")
-
-# implementation helpers
 include("utils.jl")
-
-# generic functions
 include("show.jl")
 include("quantilealgs.jl")
 include("genericrand.jl")
 include("functionals.jl")
 include("genericfit.jl")
-
-# specific samplers and distributions
 include("univariates.jl")
 include("empirical.jl")
 include("edgeworth.jl")
 include("multivariates.jl")
 include("matrixvariates.jl")
 include("samplers.jl")
-
-# others
 include("truncate.jl")
 include("conversion.jl")
 include("qq.jl")
 include("estimators.jl")
 include("testutils.jl")
-
-# mixture distributions (TODO: moveout)
 include("mixtures/mixturemodel.jl")
 include("mixtures/unigmm.jl")
-
 include("deprecates.jl")
-
 """
 A Julia package for probability distributions and associated functions.
-
 API overview (major features):
-
 - `d = Dist(parameters...)` creates a distribution instance `d` for some distribution `Dist` (see choices below) with the specified `parameters`
 - `rand(d, sz)` samples from the distribution
 - `pdf(d, x)` and `logpdf(d, x)` compute the probability density or log-probability density of `d` at `x`
@@ -294,14 +255,11 @@ API overview (major features):
 - `quantile(d, p)` is the inverse `cdf` (see also `cquantile`)
 - `mean(d)`, `var(d)`, `std(d)`, `skewness(d)`, `kurtosis(d)` compute moments of `d`
 - `fit(Dist, xs)` generates a distribution of type `Dist` that best fits the samples in `xs`
-
 These represent just a few of the operations supported by this
 package; users are encouraged to refer to the full documentation at
 http://distributionsjl.readthedocs.org/en/latest/ for further
 information.
-
 Supported distributions:
-
     Arcsine, Bernoulli, Beta, BetaBinomial, BetaPrime, Binomial, Biweight,
     Categorical, Cauchy, Chi, Chisq, Cosine, DiagNormal, DiagNormalCanon,
     Dirichlet, DiscreteUniform, DoubleExponential, EdgeworthMean,
@@ -322,8 +280,6 @@ Supported distributions:
     Wishart, ZeroMeanIsoNormal, ZeroMeanIsoNormalCanon,
     ZeroMeanDiagNormal, ZeroMeanDiagNormalCanon, ZeroMeanFullNormal,
     ZeroMeanFullNormalCanon
-
 """
 Distributions
-
 end # module

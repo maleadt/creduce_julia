@@ -1,24 +1,16 @@
 nullable_returntype(::Type{T}) where {T} = isconcretetype(T) ? T : Union{}
-# An element type satisfying for all A:
-# unsafe_get(A)::unsafe_get_eltype(A)
 _unsafe_get_eltype(::Type{T}) where T = Type{T}
 _unsafe_get_eltype(x) = typeof(x)
-
-# Copied from julia 0.6
 maptoTuple(f) = Tuple{}
 maptoTuple(f, a, b...) = Tuple{f(a), maptoTuple(f, b...).types...}
-
 _nullable_eltype(f, A, As...) =
     Base._return_type(f, maptoTuple(_unsafe_get_eltype, A, As...))
-
 function Dates.DateTime(dt::DataValue{T}, format::AbstractString; locale::Dates.Locale=Dates.ENGLISH) where {T <: AbstractString}
     isna(dt) ? DataValue{DateTime}() : DataValue{DateTime}(DateTime(get(dt), format, locale=locale))
 end
-
 function Dates.Date(dt::DataValue{T}, format::AbstractString; locale::Dates.Locale=Dates.ENGLISH) where {T <: AbstractString}
     isna(dt) ? DataValue{Date}() : DataValue{Date}(Date(get(dt), format, locale=locale))
 end
-
 for f in (:(Base.abs), :(Base.abs2), :(Base.conj),:(Base.sign))
     @eval begin
         function $f(a::DataValue{T}) where {T}
@@ -30,8 +22,6 @@ for f in (:(Base.abs), :(Base.abs2), :(Base.conj),:(Base.sign))
         end
     end
 end
-
-
 for f in (:(Base.acos), :(Base.acosh), :(Base.asin), :(Base.asinh),
         :(Base.atan), :(Base.atanh), :(Base.sin), :(Base.sinh), :(Base.cos),
         :(Base.cosh), :(Base.tan), :(Base.tanh), :(Base.exp), :(Base.exp2),
@@ -47,7 +37,6 @@ for f in (:(Base.acos), :(Base.acosh), :(Base.asin), :(Base.asinh),
         end
     end
 end
-
 for op in (:+, :-, :*, :/, :%, :&, :|, :^, :<<, :>>, :div, :mod, :fld,
         :min, :max)
     @eval begin
@@ -61,7 +50,6 @@ for op in (:+, :-, :*, :/, :%, :&, :|, :^, :<<, :>>, :div, :mod, :fld,
                 return DataValue{nullable_returntype(S)}()
             end
         end
-
         function $op(a::DataValue{T1},b::T2) where {T1,T2}
             nonnull = hasvalue(a)
             S = _nullable_eltype($op,a,b)
@@ -71,7 +59,6 @@ for op in (:+, :-, :*, :/, :%, :&, :|, :^, :<<, :>>, :div, :mod, :fld,
                 return DataValue{nullable_returntype(S)}()
             end
         end
-
         function $op(a::T1,b::DataValue{T2}) where {T1,T2}
             nonnull = hasvalue(b)
             S = _nullable_eltype($op,a,b)

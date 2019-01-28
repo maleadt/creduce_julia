@@ -1,5 +1,3 @@
-# functions related to noncentral T distribution
-
 import .RFunctions:
     ntdistpdf,
     ntdistlogpdf,

@@ -1,27 +1,15 @@
-# Compressor Codecs
-# ==================
-
 abstract type CompressorCodec <: TranscodingStreams.Codec end
-
 function Base.show(io::IO, codec::CompressorCodec)
     print(io, summary(codec), "(level=$(codec.level), windowbits=$(codec.windowbits))")
 end
-
-
-# Gzip
-# ----
-
 struct GzipCompressor <: CompressorCodec
     zstream::ZStream
     level::Int
     windowbits::Int
 end
-
 """
     GzipCompressor(;level=$(Z_DEFAULT_COMPRESSION), windowbits=$(Z_DEFAULT_WINDOWBITS))
-
 Create a gzip compression codec.
-
 Arguments
 ---------
 - `level`: compression level (-1..9)
@@ -36,34 +24,23 @@ function GzipCompressor(;level::Integer=Z_DEFAULT_COMPRESSION,
     end
     return GzipCompressor(ZStream(), level, windowbits+16)
 end
-
 const GzipCompressorStream{S} = TranscodingStream{GzipCompressor,S} where S<:IO
-
 """
     GzipCompressorStream(stream::IO; kwargs...)
-
 Create a gzip compression stream (see `GzipCompressor` for `kwargs`).
 """
 function GzipCompressorStream(stream::IO; kwargs...)
     x, y = splitkwargs(kwargs, (:level, :windowbits))
     return TranscodingStream(GzipCompressor(;x...), stream; y...)
 end
-
-
-# Zlib
-# ----
-
 struct ZlibCompressor <: CompressorCodec
     zstream::ZStream
     level::Int
     windowbits::Int
 end
-
 """
     ZlibCompressor(;level=$(Z_DEFAULT_COMPRESSION), windowbits=$(Z_DEFAULT_WINDOWBITS))
-
 Create a zlib compression codec.
-
 Arguments
 ---------
 - `level`: compression level (-1..9)
@@ -78,34 +55,23 @@ function ZlibCompressor(;level::Integer=Z_DEFAULT_COMPRESSION,
     end
     return ZlibCompressor(ZStream(), level, windowbits)
 end
-
 const ZlibCompressorStream{S} = TranscodingStream{ZlibCompressor,S} where S<:IO
-
 """
     ZlibCompressorStream(stream::IO)
-
 Create a zlib compression stream (see `ZlibCompressor` for `kwargs`).
 """
 function ZlibCompressorStream(stream::IO; kwargs...)
     x, y = splitkwargs(kwargs, (:level, :windowbits))
     return TranscodingStream(ZlibCompressor(;x...), stream; y...)
 end
-
-
-# Deflate
-# -------
-
 struct DeflateCompressor <: CompressorCodec
     zstream::ZStream
     level::Int
     windowbits::Int
 end
-
 """
     DeflateCompressor(;level=$(Z_DEFAULT_COMPRESSION), windowbits=$(Z_DEFAULT_COMPRESSION))
-
 Create a deflate compression codec.
-
 Arguments
 ---------
 - `level`: compression level (-1..9)
@@ -120,23 +86,15 @@ function DeflateCompressor(;level::Integer=Z_DEFAULT_COMPRESSION,
     end
     return DeflateCompressor(ZStream(), level, -Int(windowbits))
 end
-
 const DeflateCompressorStream{S} = TranscodingStream{DeflateCompressor,S} where S<:IO
-
 """
     DeflateCompressorStream(stream::IO; kwargs...)
-
 Create a deflate compression stream (see `DeflateCompressor` for `kwargs`).
 """
 function DeflateCompressorStream(stream::IO; kwargs...)
     x, y = splitkwargs(kwargs, (:level, :windowbits))
     return TranscodingStream(DeflateCompressor(;x...), stream; y...)
 end
-
-
-# Methods
-# -------
-
 function TranscodingStreams.initialize(codec::CompressorCodec)
     code = deflate_init!(codec.zstream, codec.level, codec.windowbits)
     if code != Z_OK
@@ -144,7 +102,6 @@ function TranscodingStreams.initialize(codec::CompressorCodec)
     end
     return
 end
-
 function TranscodingStreams.finalize(codec::CompressorCodec)
     zstream = codec.zstream
     if zstream.state != C_NULL
@@ -155,7 +112,6 @@ function TranscodingStreams.finalize(codec::CompressorCodec)
     end
     return
 end
-
 function TranscodingStreams.startproc(codec::CompressorCodec, state::Symbol, error::Error)
     code = deflate_reset!(codec.zstream)
     if code == Z_OK
@@ -165,7 +121,6 @@ function TranscodingStreams.startproc(codec::CompressorCodec, state::Symbol, err
         return :error
     end
 end
-
 function TranscodingStreams.process(codec::CompressorCodec, input::Memory, output::Memory, error::Error)
     zstream = codec.zstream
     zstream.next_in = input.ptr

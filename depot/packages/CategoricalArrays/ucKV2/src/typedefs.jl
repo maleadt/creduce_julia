@@ -1,11 +1,4 @@
 const DefaultRefType = UInt32
-
-## Pools
-
-# Type params:
-# * `T` type of categorized values
-# * `R` integer type for referencing category levels
-# * `V` categorical value type
 mutable struct CategoricalPool{T, R <: Integer, V}
     index::Vector{T}        # category levels ordered by their reference codes
     invindex::Dict{T, R}    # map from category levels to their reference codes
@@ -13,7 +6,6 @@ mutable struct CategoricalPool{T, R <: Integer, V}
     levels::Vector{T}       # category levels ordered by externally specified order
     valindex::Vector{V}     # "category value" objects 1-to-1 matching `index`
     ordered::Bool
-
     function CategoricalPool{T, R, V}(index::Vector{T},
                                       invindex::Dict{T, R},
                                       order::Vector{R},
@@ -37,18 +29,13 @@ mutable struct CategoricalPool{T, R <: Integer, V}
         return pool
     end
 end
-
 struct LevelsException{T, R} <: Exception
     levels::Vector{T}
 end
-
 struct OrderedLevelsException{T, S} <: Exception
     newlevel::S
     levels::Vector{T}
 end
-
-## Values
-
 """
 Default categorical value type for
 referencing values of type `T`.
@@ -57,7 +44,6 @@ struct CategoricalValue{T, R <: Integer}
     level::R
     pool::CategoricalPool{T, R, CategoricalValue{T, R}}
 end
-
 """
 `String` categorical value.
 Provides `AbstractString` interoperability.
@@ -66,24 +52,12 @@ struct CategoricalString{R <: Integer} <: AbstractString
     level::R
     pool::CategoricalPool{String, R, CategoricalString{R}}
 end
-
-## Arrays
-
-# Type params:
-# * `T` original type of elements before categorization, could be Union{T, Missing}
-# * `N` array dimension
-# * `R` integer type for referencing category levels
-# * `V` original type of elements (excluding Missing) before categorization
-# * `C` categorical value type
-# * `U` type of missing value, `Union{}` if missing values are not accepted
 abstract type AbstractCategoricalArray{T, N, R, V, C, U} <: AbstractArray{Union{C, U}, N} end
 const AbstractCategoricalVector{T, R, V, C, U} = AbstractCategoricalArray{T, 1, R, V, C, U}
 const AbstractCategoricalMatrix{T, R, V, C, U} = AbstractCategoricalArray{T, 2, R, V, C, U}
-
 struct CategoricalArray{T, N, R <: Integer, V, C, U} <: AbstractCategoricalArray{T, N, R, V, C, U}
     refs::Array{R, N}
     pool::CategoricalPool{V, R, C}
-
     function CategoricalArray{T, N}(refs::Array{R, N},
                                     pool::CategoricalPool{V, R, C}) where
                                                  {T, N, R <: Integer, V, C}

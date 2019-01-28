@@ -1,17 +1,3 @@
-# Written in Julia by Andreas Noack Jensen
-# January 2013
-#
-# Translation of Fortran file tvpack.f authored by
-#
-# Alan Genz
-# Department of Mathematics
-# Washington State University
-# Pullman, WA 99164-3113
-# Email : alangenz@wsu.edu
-#
-# Original source available from
-# http://www.math.wsu.edu/faculty/genz/software/fort77/tvpack.f
-
 function tvtcdf(nu::Int, h::Vector{Float64}, r::Vector{Float64})
 	pt = 0.5 * pi
 	h1 = h[1]
@@ -20,9 +6,6 @@ function tvtcdf(nu::Int, h::Vector{Float64}, r::Vector{Float64})
 	r12 = r[1]
 	r13 = r[2]
 	r23 = r[3]
-
-	# Sort R's and check for special cases
-
 	if abs(r12) > abs(r13)
 	   h2 = h3
 	   h3 = h[2]
@@ -49,9 +32,6 @@ function tvtcdf(nu::Int, h::Vector{Float64}, r::Vector{Float64})
 	elseif r23 + 1.0 < eps()
 	   	if h2 > -h3 tvt = bvtcdf(nu, h1, h2, r12) - bvtcdf(nu, h1, -h3, r12) end
 	else
-
-	   	# Compute singular TVT value
-
 	   	if nu < 1
 	      	tvt = bvtcdf(nu, h2, h3, r23) * cdf(Normal(), h1)
 	   	elseif r23 > 0
@@ -59,8 +39,6 @@ function tvtcdf(nu::Int, h::Vector{Float64}, r::Vector{Float64})
 	   	elseif h2 > -h3
 	      	tvt = bvtcdf(nu, h1, h2, 0.0) - bvtcdf(nu, h1, -h3, 0.0)
 	   	end
-	   	# Use numerical integration to compute probability
-
 	   	rua = asin(r12)
 	   	rub = asin(r13)
 	   	ar = asin(r23)
@@ -69,8 +47,6 @@ function tvtcdf(nu::Int, h::Vector{Float64}, r::Vector{Float64})
 	end
 	return max(0.0, min(tvt, 1.0))
 end
-
-#Computes Plackett formula integrands
 function tvtmfn(x::Float64, rua::Float64, rub::Float64, nu::Int, h1::Float64, h2::Float64, h3::Float64, r23::Float64, ar::Float64, ruc::Float64)
 	retval = 0.0
 	r12, rr2 = sincs(rua * x)
@@ -87,8 +63,6 @@ function tvtmfn(x::Float64, rua::Float64, rub::Float64, nu::Int, h1::Float64, h2
 	end
 	return retval
 end
-
-# Computes SIN(X), COS(X)^2, with series approx. for |X| near PI/2
 function sincs(x::Float64)
 	ee = (0.5 * pi - abs(x))^2
 	if ee < 5e-5
@@ -100,8 +74,6 @@ function sincs(x::Float64)
 	end
 	return sx, cs
 end
-
-# Computes Plackett formula integrand
 function pntgnd(nu::Int, ba::Float64, bb::Float64, bc::Float64, ra::Float64, rb::Float64, r::Float64, rr::Float64)
 	retval = 0.0
 	dt = rr * (rr - (ra - rb)^2 - 2.0 * ra * rb * (1.0 - r))
@@ -120,9 +92,6 @@ function pntgnd(nu::Int, ba::Float64, bb::Float64, bc::Float64, ra::Float64, rb:
 	end
 	return retval
 end
-
-# # One Dimensional Globally Adaptive Integration Function
-
 function adonet(f::Function, a::Float64, b::Float64, tol::Float64)
 	ai = Vector{Float64}(100)
 	bi = Vector{Float64}(100)
@@ -152,16 +121,12 @@ function adonet(f::Function, a::Float64, b::Float64, tol::Float64)
 	end
 	return fin
 end
-
-# # Kronrod Rule
-
 const kronrod_wg = [0.2729250867779007e+00,
 					0.5566856711617449e-01,
 					0.1255803694649048e+00,
 					0.1862902109277352e+00,
 					0.2331937645919914e+00,
 					0.2628045445102478e+00]
-
 const kronrod_xgk = [0.0000000000000000e+00,
 					 0.9963696138895427e+00,
 					 0.9782286581460570e+00,
@@ -174,7 +139,6 @@ const kronrod_xgk = [0.0000000000000000e+00,
 					 0.3979441409523776e+00,
 					 0.2695431559523450e+00,
 					 0.1361130007993617e+00]
-
 const kronrod_wgk = [0.1365777947111183e+00,
 					 0.9765441045961290e-02,
 					 0.2715655468210443e-01,
@@ -187,7 +151,6 @@ const kronrod_wgk = [0.1365777947111183e+00,
 					 0.1251587991003195e+00,
 					 0.1312806842298057e+00,
 					 0.1351935727998845e+00]
-
 function krnrdt(a::Float64, b::Float64, f::Function)
 	wid = (b - a) * 0.5
 	cen = (b + a) * 0.5
@@ -204,9 +167,6 @@ function krnrdt(a::Float64, b::Float64, f::Function)
 	err = abs(wid * (resk - resg))
 	return retval, err
 end
-
-# # Student t Distribution Function
-
 function tcdf(nu::Int, t::Float64)
 	if nu < 1
    		studnt = cdf(Normal(), t)
@@ -233,7 +193,6 @@ function tcdf(nu::Int, t::Float64)
 	end
 	return studnt
 end
-
 function bvtcdf(nu::Int, dh::Float64, dk::Float64, r::Float64)
 	if nu < 1
 		return bvnuppercdf(-dh, -dk, r)
@@ -306,13 +265,6 @@ function bvtcdf(nu::Int, dh::Float64, dk::Float64, r::Float64)
         return bvt
     end
 end
-
-# This function is based on the method described by
-#     Drezner, Z and G.O. Wesolowsky, (1989),
-#     On the computation of the bivariate normal integral,
-#     Journal of Statist. Comput. Simul. 35, pp. 101-107,
-# with major modifications for double precision, and for |R| close to 1.
-
 const bvncdf_w_array = [0.1713244923791705e+00 0.4717533638651177e-01 0.1761400713915212e-01;
      					0.3607615730481384e+00 0.1069393259953183e+00 0.4060142980038694e-01;
      					0.4679139345726904e+00 0.1600783285433464e+00 0.6267204833410906e-01;
@@ -323,7 +275,6 @@ const bvncdf_w_array = [0.1713244923791705e+00 0.4717533638651177e-01 0.17614007
      					0.0					   0.0					  0.1420961093183821e+00;
      					0.0					   0.0					  0.1491729864726037e+00;
      					0.0					   0.0					  0.1527533871307259e+00]
-
 const bvncdf_x_array = [-0.9324695142031522e+00 -0.9815606342467191e+00 -0.9931285991850949e+00;
 						-0.6612093864662647e+00 -0.9041172563704750e+00 -0.9639719272779138e+00;
 						-0.2386191860831970e+00 -0.7699026741943050e+00 -0.9122344282513259e+00;
@@ -334,7 +285,6 @@ const bvncdf_x_array = [-0.9324695142031522e+00 -0.9815606342467191e+00 -0.99312
 						 0.0 				    0.0 				    -0.3737060887154196e+00;
 						 0.0 				    0.0 				    -0.2277858511416451e+00;
 						 0.0 				    0.0 				    -0.7652652113349733e-01]
-
 function bvnuppercdf(dh::Float64, dk::Float64, r::Float64)
 	if abs(r) < 0.3
 	   ng = 1

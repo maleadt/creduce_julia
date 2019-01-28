@@ -10,14 +10,11 @@ function remove_line_number_nodes(ex)
     deleteat!(ex.args, todelete)
     return ex
 end
-
 tuplesubset(tup, ::Tuple{}) = ()
 tuplesubset(tup, inds) = (tup[inds[1]], tuplesubset(tup, Base.tail(inds))...)
-
 import Base.|
 |(::Type{A}, ::Type{B}) where {A, B} = Union{A, B}
 have(x) = x !== nothing
-
 const QueryCodeType = UInt8
 const UNUSED         = 0x00
 const SELECTED       = 0x01
@@ -28,12 +25,9 @@ const AGGCOMPUTED    = 0x10
 const SORTED         = 0x20
 const GROUPED        = 0x40
 const AAA = 0x80 # unused
-
 unused(code::QueryCodeType) = code === UNUSED
-
 concat!(A, val) = push!(A, val)
 concat!(A, a::AbstractArray) = append!(A, a)
-
 filter(func, val) = func(val)
 function filter(filtered, func, val)
     @inbounds for i = 1:length(val)
@@ -41,37 +35,23 @@ function filter(filtered, func, val)
         filtered[i] = func(val[i])
     end
 end
-
 calculate(func, vals...) = func(vals...)
 calculate(func, vals::AbstractArray...) = func.(vals...)
-
-# Data.Field/Data.Row aggregating
 @generated function aggregate(aggregates, aggkeys, aggvalues)
-    # if @generated
         default = Tuple(:($T[]) for T in aggvalues.parameters)
         q = quote
             entry = get!(aggregates, aggkeys, tuple($(default...)))
             $((:(push!(entry[$i], aggvalues[$i]);) for i = 1:length(aggvalues.parameters))...)
         end
-        # println(q)
         return q
-    # else
-    #     entry = get!(aggregates, aggkeys, Tuple(typeof(val)[] for val in aggvalues))
-    #     for (A, val) in zip(entry, aggvalues)
-    #         push!(A, val)
-    #     end
-    # end
 end
-# Data.Column aggregating
 @generated function aggregate(aggregates::Dict{K}, aggkeys::T, aggvalues) where {K, T <: NTuple{N, Vector{TT} where TT}} where {N}
-    # if @generated
         len = length(aggkeys.parameters)
         vallen = length(aggvalues.parameters)
         inds = Tuple(:(aggkeys[$i][i]) for i = 1:len)
         valueinds = Tuple(:(aggvalues[$i][sortinds]) for i = 1:vallen)
         default = Tuple(:($T[]) for T in aggvalues.parameters)
         q = quote
-            # SoA => AoS
             len = length(aggkeys[1])
             aos = Vector{$K}(undef, len)
             for i = 1:len
@@ -96,14 +76,8 @@ end
             entry = get!(aggregates, key, tuple($(default...)))
             $((:(append!(entry[$i], sortedvalues[$i][n:end]);) for i = 1:vallen)...)
         end
-        # println(q)
         return q
-    # else
-    #     println("slow path")
-    # end
 end
-
-# Nested binary search tree for multi-column sorting
 mutable struct Node{T}
     inds::Vector{Int}
     value::T
@@ -113,7 +87,6 @@ mutable struct Node{T}
 end
 Node(rowind, ::Tuple{}) = nothing
 Node(rowind, t::Tuple) = Node([rowind], t[1], nothing, nothing, Node(rowind, Base.tail(t)))
-
 insert!(node, rowind, dir, ::Tuple{}) = nothing
 function insert!(node, rowind, dir, tup)
     key = tup[1]
@@ -151,7 +124,6 @@ function inds(n::Node, ind, A::Vector{Int})
         inds(n.right, ind, A)
     end
 end
-
 function sort(sortinds, sortkeys::Tuple)
     dirs = Tuple(p.second for p in sortkeys)
     root = Node(1, Tuple(p.first[1] for p in sortkeys))
@@ -161,7 +133,6 @@ function sort(sortinds, sortkeys::Tuple)
     inds(root, Ref(1), sortinds)
     return sortinds
 end
-
 struct Sort{ind, asc} end
 sortind(::Type{Sort{ind, asc}}) where {ind, asc} = ind
 sortasc(::Type{Sort{ind, asc}}) where {ind, asc} = asc

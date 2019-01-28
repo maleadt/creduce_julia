@@ -1,26 +1,16 @@
-##############################################################################
-#
-# Text output
-#
-##############################################################################
-
 function escapedprint(io::IO, x::Any, escapes::AbstractString)
     ourshowcompact(io, x)
 end
-
 function escapedprint(io::IO, x::AbstractString, escapes::AbstractString)
     escape_string(io, x, escapes)
 end
-
 function digitsep(value::Integer)
-    # Adapted from https://github.com/IainNZ/Humanize.jl
     value = string(abs(value))
     group_ends = reverse(collect(length(value):-3:1))
     groups = [value[max(end_index - 2, 1):end_index]
               for end_index in group_ends]
     return join(groups, ',')
 end
-
 function printtable(io::IO,
                     df::AbstractDataFrame;
                     header::Bool = true,
@@ -65,7 +55,6 @@ function printtable(io::IO,
     end
     return
 end
-
 function printtable(df::AbstractDataFrame;
                     header::Bool = true,
                     separator::Char = ',',
@@ -79,22 +68,14 @@ function printtable(df::AbstractDataFrame;
                missingstring = missingstring)
     return
 end
-##############################################################################
-#
-# HTML output
-#
-##############################################################################
-
 function html_escape(cell::AbstractString)
     cell = replace(cell, "&"=>"&amp;")
     cell = replace(cell, "<"=>"&lt;")
     cell = replace(cell, ">"=>"&gt;")
     return cell
 end
-
 Base.show(io::IO, mime::MIME"text/html", df::AbstractDataFrame; summary::Bool=true) =
     _show(io, mime, df, summary=summary)
-
 function _show(io::IO, ::MIME"text/html", df::AbstractDataFrame;
                summary::Bool=true, rowid::Union{Int,Nothing}=nothing)
     n = size(df, 1)
@@ -157,13 +138,11 @@ function _show(io::IO, ::MIME"text/html", df::AbstractDataFrame;
     write(io, "</tbody>")
     write(io, "</table>")
 end
-
 function Base.show(io::IO, mime::MIME"text/html", dfr::DataFrameRow; summary::Bool=true)
     r, c = parentindices(dfr)
     write(io, "<p>DataFrameRow</p>")
     _show(io, mime, view(parent(dfr), [r], c), summary=summary, rowid=r)
 end
-
 function Base.show(io::IO, mime::MIME"text/html", gd::GroupedDataFrame)
     N = length(gd)
     keynames = names(gd.parent)[gd.cols]
@@ -175,10 +154,8 @@ function Base.show(io::IO, mime::MIME"text/html", gd::GroupedDataFrame)
     if N > 0
         nrows = size(gd[1], 1)
         rows = nrows > 1 ? "rows" : "row"
-
         identified_groups = [html_escape(string(parent_names[col], " = ", repr(first(gd[1][col]))))
                              for col in gd.cols]
-
         write(io, "<p><i>First Group ($nrows $rows): ")
         join(io, identified_groups, ", ")
         write(io, "</i></p>")
@@ -187,10 +164,8 @@ function Base.show(io::IO, mime::MIME"text/html", gd::GroupedDataFrame)
     if N > 1
         nrows = size(gd[N], 1)
         rows = nrows > 1 ? "rows" : "row"
-
         identified_groups = [html_escape(string(parent_names[col], " = ", repr(first(gd[N][col]))))
                              for col in gd.cols]
-
         write(io, "<p>&vellip;</p>")
         write(io, "<p><i>Last Group ($nrows $rows): ")
         join(io, identified_groups, ", ")
@@ -198,13 +173,6 @@ function Base.show(io::IO, mime::MIME"text/html", gd::GroupedDataFrame)
         show(io, mime, gd[N], summary=false)
     end
 end
-
-##############################################################################
-#
-# LaTeX output
-#
-##############################################################################
-
 function latex_char_escape(char::Char)
     if char == '\\'
         return "\\textbackslash{}"
@@ -214,22 +182,17 @@ function latex_char_escape(char::Char)
         return string('\\', char)
     end
 end
-
 function latex_escape(cell::AbstractString)
     replace(cell, ['\\','~','#','$','%','&','_','^','{','}']=>latex_char_escape)
 end
-
 Base.show(io::IO, mime::MIME"text/latex", df::AbstractDataFrame) =
     _show(io, mime, df)
-
 function _show(io::IO, ::MIME"text/latex", df::AbstractDataFrame; rowid=nothing)
     nrows = size(df, 1)
     ncols = size(df, 2)
-
     if rowid !== nothing && nrows != 1
         throw(ArgumentError("rowid may be passed only with a single row data frame"))
     end
-
     haslimit = get(io, :limit, true)
     if haslimit
         tty_rows, tty_cols = displaysize(io)
@@ -237,7 +200,6 @@ function _show(io::IO, ::MIME"text/latex", df::AbstractDataFrame; rowid=nothing)
     else
         mxrow = nrows
     end
-
     cnames = _names(df)
     alignment = repeat("c", ncols)
     write(io, "\\begin{tabular}{r|")
@@ -278,12 +240,10 @@ function _show(io::IO, ::MIME"text/latex", df::AbstractDataFrame; rowid=nothing)
     end
     write(io, "\\end{tabular}\n")
 end
-
 function Base.show(io::IO, mime::MIME"text/latex", dfr::DataFrameRow)
     r, c = parentindices(dfr)
     _show(io, mime, view(parent(dfr), [r], c), rowid=r)
 end
-
 function Base.show(io::IO, mime::MIME"text/latex", gd::GroupedDataFrame)
     N = length(gd)
     keynames = names(gd.parent)[gd.cols]
@@ -295,11 +255,9 @@ function Base.show(io::IO, mime::MIME"text/latex", gd::GroupedDataFrame)
     if N > 0
         nrows = size(gd[1], 1)
         rows = nrows > 1 ? "rows" : "row"
-
         identified_groups = [latex_escape(string(parent_names[col], " = ",
                                                  repr(first(gd[1][col]))))
                              for col in gd.cols]
-
         write(io, "First Group ($nrows $rows): ")
         join(io, identified_groups, ", ")
         write(io, "\n\n")
@@ -308,11 +266,9 @@ function Base.show(io::IO, mime::MIME"text/latex", gd::GroupedDataFrame)
     if N > 1
         nrows = size(gd[N], 1)
         rows = nrows > 1 ? "rows" : "row"
-
         identified_groups = [latex_escape(string(parent_names[col], " = ",
                                                  repr(first(gd[N][col]))))
                              for col in gd.cols]
-
         write(io, "\n\$\\dots\$\n\n")
         write(io, "Last Group ($nrows $rows): ")
         join(io, identified_groups, ", ")
@@ -320,67 +276,41 @@ function Base.show(io::IO, mime::MIME"text/latex", gd::GroupedDataFrame)
         show(io, mime, gd[N])
     end
 end
-
-##############################################################################
-#
-# MIME
-#
-##############################################################################
-
 function Base.show(io::IO, mime::MIME"text/csv", dfr::DataFrameRow)
     r, c = parentindices(dfr)
     show(io, mime, view(parent(dfr), [r], c))
 end
-
 function Base.show(io::IO, mime::MIME"text/tab-separated-values", dfr::DataFrameRow)
     r, c = parentindices(dfr)
     show(io, mime, view(parent(dfr), [r], c))
 end
-
 function Base.show(io::IO, ::MIME"text/csv", df::AbstractDataFrame)
     printtable(io, df, header = true, separator = ',')
 end
-
 function Base.show(io::IO, ::MIME"text/tab-separated-values", df::AbstractDataFrame)
     printtable(io, df, header = true, separator = '\t')
 end
-
-##############################################################################
-#
-# DataStreams-based IO
-#
-##############################################################################
-
 using DataStreams, WeakRefStrings
-
 struct DataFrameStream{T}
     columns::T
     header::Vector{String}
 end
 DataFrameStream(df::DataFrame) = DataFrameStream(Tuple(_columns(df)), string.(names(df)))
-
-# DataFrame Data.Source implementation
 Data.schema(df::DataFrame) =
     Data.Schema(Type[eltype(A) for A in _columns(df)], string.(names(df)), size(df, 1))
-
 Data.isdone(source::DataFrame, row, col, rows, cols) = row > rows || col > cols
 function Data.isdone(source::DataFrame, row, col)
     cols = length(source)
     return Data.isdone(source, row, col, cols == 0 ? 0 : length(source.columns[1]), cols)
 end
-
 Data.streamtype(::Type{DataFrame}, ::Type{Data.Column}) = true
 Data.streamtype(::Type{DataFrame}, ::Type{Data.Field}) = true
-
 Data.streamfrom(source::DataFrame, ::Type{Data.Column}, ::Type{T}, row, col) where {T} =
     source[col]
 Data.streamfrom(source::DataFrame, ::Type{Data.Field}, ::Type{T}, row, col) where {T} =
     source[col][row]
-
-# DataFrame Data.Sink implementation
 Data.streamtypes(::Type{DataFrame}) = [Data.Column, Data.Field]
 Data.weakrefstrings(::Type{DataFrame}) = true
-
 allocate(::Type{T}, rows, ref) where {T} = Vector{T}(undef, rows)
 allocate(::Type{CategoricalString{R}}, rows, ref) where {R} =
     CategoricalArray{String, 1, R}(undef, rows)
@@ -395,45 +325,27 @@ allocate(::Type{WeakRefString{T}}, rows, ref) where {T} =
 allocate(::Type{Union{Missing, WeakRefString{T}}}, rows, ref) where {T} =
     WeakRefStringArray(ref, Union{Missing, WeakRefString{T}}, rows)
 allocate(::Type{Missing}, rows, ref) = missings(rows)
-
-# Construct or modify a DataFrame to be ready to stream data from a source with `sch`
 function DataFrame(sch::Data.Schema{R}, ::Type{S}=Data.Field,
                    append::Bool=false, args...;
                    reference::Vector{UInt8}=UInt8[]) where {R, S <: Data.StreamType}
     types = Data.types(sch)
     if !isempty(args) && args[1] isa DataFrame && types == Data.types(Data.schema(args[1]))
-        # passing in an existing DataFrame Sink w/ same types as source
         sink = args[1]
         sinkrows = size(Data.schema(sink), 1)
-        # are we appending and either column-streaming or there are an unknown # of rows
         if append && (S == Data.Column || !R)
             sch.rows = sinkrows
-            # dont' need to do anything because:
-              # for Data.Column, we just append columns anyway (see Data.streamto! below)
-              # for Data.Field, unknown # of source rows, so we'll just push! in streamto!
         else
-            # need to adjust the existing sink
-            # similar to above, for Data.Column or unknown # of rows for Data.Field,
-                # we'll append!/push! in streamto!, so we empty! the columns
-            # if appending, we want to grow our columns to be able to include every row
-                # in source (sinkrows + sch.rows)
-            # if not appending, we're just "re-using" a sink, so we just resize it
-                # to the # of rows in the source
             newsize = ifelse(S == Data.Column || !R, 0,
                         ifelse(append, sinkrows + sch.rows, sch.rows))
             foreach(col->resize!(col, newsize), _columns(sink))
             sch.rows = newsize
         end
-        # take care of a possible reference from source by addint to WeakRefStringArrays
         if !isempty(reference)
             foreach(col-> col isa WeakRefStringArray && push!(col.data, reference),
                     _columns(sink))
         end
         return DataFrameStream(sink)
     else
-        # allocating a fresh DataFrame Sink; append is irrelevant
-        # for Data.Column or unknown # of rows in Data.Field, we only ever append!,
-            # so just allocate empty columns
         rows = ifelse(S == Data.Column, 0, ifelse(!R, 0, sch.rows))
         names = Data.header(sch)
         sch.rows = rows
@@ -441,11 +353,9 @@ function DataFrame(sch::Data.Schema{R}, ::Type{S}=Data.Field,
                                      for i = 1:length(types)), names)
     end
 end
-
 DataFrame(sink, sch::Data.Schema, ::Type{S}, append::Bool;
           reference::Vector{UInt8}=UInt8[]) where {S} =
     DataFrame(sch, S, append, sink; reference=reference)
-
 @inline Data.streamto!(sink::DataFrameStream, ::Type{Data.Field}, val,
                       row, col::Int) =
     (A = sink.columns[col]; row > length(A) ? push!(A, val) : setindex!(A, val, row))
@@ -459,6 +369,5 @@ DataFrame(sink, sch::Data.Schema, ::Type{S}, append::Bool;
                        row, col::Int, knownrows)
     append!(sink.columns[col], column)
 end
-
 Data.close!(df::DataFrameStream) =
     DataFrame(collect(AbstractVector, df.columns), Symbol.(df.header), makeunique=true)

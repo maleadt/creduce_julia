@@ -1,5 +1,4 @@
 import Base: show
-
 function _show_indented(io::IO, dep::LibraryDependency, indent, lib)
     print_indented(io,"- Library \"$(dep.name)\"",indent+1)
     if !applicable(dep)
@@ -26,7 +25,6 @@ function _show_indented(io::IO, dep::LibraryDependency, indent, lib)
 end
 show_indented(io::IO, dep::LibraryDependency, indent) = _show_indented(io,dep,indent, applicable(dep) ? _find_library(dep) : nothing)
 show(io::IO, dep::LibraryDependency) = show_indented(io, dep, 0)
-
 function show(io::IO, deps::LibraryGroup)
     print(io," - Library Group \"$(deps.name)\"")
     all = allf(deps)
@@ -43,7 +41,6 @@ function show(io::IO, deps::LibraryGroup)
         end
     end
 end
-
 function debug_context(pkg::AbstractString)
     Compat.@info("Reading build script...")
     dir = Pkg.dir(pkg)
@@ -52,16 +49,9 @@ function debug_context(pkg::AbstractString)
     eval_anon_module(context, file)
     context
 end
-
 function debug(io,pkg::AbstractString)
     context = debug_context(pkg)
     println(io,"The package declares $(length(context.deps)) dependencies.")
-
-    # We need to `eval()` the rest of this function because `debug_context()` will
-    # `eval()` in things like `Homebrew.jl`, which contain new methods for things
-    # like `can_provide()`, and we cannot deal with those new methods in our
-    # current world age; we need to `eval()` to force ourselves up into a newer
-    # world age.
     @eval for dep in $(context.deps)
         show($io,dep)
     end

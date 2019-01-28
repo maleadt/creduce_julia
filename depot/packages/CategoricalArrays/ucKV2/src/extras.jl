@@ -1,14 +1,11 @@
 using Compat.Statistics
-
 function fill_refs!(refs::AbstractArray, X::AbstractArray,
                     breaks::AbstractVector, extend::Bool, allow_missing::Bool)
     n = length(breaks)
     lower = first(breaks)
     upper = last(breaks)
-
     @inbounds for i in eachindex(X)
         x = X[i]
-
         if extend && x == upper
             refs[i] = n-1
         elseif !extend && !(lower <= x < upper)
@@ -18,18 +15,14 @@ function fill_refs!(refs::AbstractArray, X::AbstractArray,
         end
     end
 end
-
 function fill_refs!(refs::AbstractArray, X::AbstractArray{>: Missing},
                     breaks::AbstractVector, extend::Bool, allow_missing::Bool)
     n = length(breaks)
     lower = first(breaks)
     upper = last(breaks)
-
     @inbounds for i in eachindex(X)
         ismissing(X[i]) && continue
-
         x = X[i]
-
         if extend && x == upper
             refs[i] = n-1
         elseif !extend && !(lower <= x < upper)
@@ -40,19 +33,14 @@ function fill_refs!(refs::AbstractArray, X::AbstractArray{>: Missing},
         end
     end
 end
-
 """
     cut(x::AbstractArray, breaks::AbstractVector;
         extend::Bool=false, labels::AbstractVector=[], allow_missing::Bool=false)
-
 Cut a numeric array into intervals and return an ordered `CategoricalArray` indicating
 the interval into which each entry falls. Intervals are of the form `[lower, upper)`,
 i.e. the lower bound is included and the upper bound is excluded.
-
 If `x` accepts missing values (i.e. `eltype(x) >: Missing`) the returned array will
 also accept them.
-
-# Arguments
 * `extend::Bool=false`: when `false`, an error is raised if some values in `x` fall
   outside of the breaks; when `true`, breaks are automatically added to include all
   values in `x`, and the upper bound is included in the last interval.
@@ -67,7 +55,6 @@ function cut(x::AbstractArray{T, N}, breaks::AbstractVector;
     if !issorted(breaks)
         breaks = sort(breaks)
     end
-
     if extend
         min_x, max_x = extrema(x)
         if !ismissing(min_x) && breaks[1] > min_x
@@ -77,20 +64,16 @@ function cut(x::AbstractArray{T, N}, breaks::AbstractVector;
             breaks = [breaks; max_x]
         end
     end
-
     refs = Array{DefaultRefType, N}(undef, size(x))
     try
         fill_refs!(refs, x, breaks, extend, allow_missing)
     catch err
-        # So that the error appears to come from cut() itself,
-        # since it refers to its keyword arguments
         if isa(err, ArgumentError)
             throw(err)
         else
             rethrow(err)
         end
     end
-
     n = length(breaks)
     if isempty(labels)
         @static if VERSION >= v"0.7.0-DEV.4524"
@@ -111,19 +94,15 @@ function cut(x::AbstractArray{T, N}, breaks::AbstractVector;
         end
     else
         length(labels) == n-1 || throw(ArgumentError("labels must be of length $(n-1), but got length $(length(labels))"))
-        # Levels must have element type String for type stability of the result
         levs::Vector{String} = copy(labels)
     end
-
     pool = CategoricalPool(levs, true)
     S = T >: Missing ? Union{String, Missing} : String
     CategoricalArray{S, N}(refs, pool)
 end
-
 """
     cut(x::AbstractArray, ngroups::Integer;
         labels::AbstractVector=String[])
-
 Cut a numeric array into `ngroups` quantiles, determined using
 [`quantile`](@ref).
 """

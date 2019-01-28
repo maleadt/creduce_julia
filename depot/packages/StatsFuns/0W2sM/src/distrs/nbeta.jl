@@ -1,5 +1,3 @@
-# functions related to noncentral beta distribution
-
 import .RFunctions:
     nbetapdf,
     nbetalogpdf,

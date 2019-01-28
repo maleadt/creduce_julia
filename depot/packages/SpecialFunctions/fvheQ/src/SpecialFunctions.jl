@@ -1,6 +1,4 @@
 module SpecialFunctions
-
-# Load openspecfun libraries from our deps.jl
 let depsjl_path = joinpath(@__DIR__, "..", "deps", "deps.jl")
     if !isfile(depsjl_path)
         error("SpecialFunctions is not installed properly, run `Pkg.build(\"SpecialFunctions\")`," *
@@ -8,9 +6,7 @@ let depsjl_path = joinpath(@__DIR__, "..", "deps", "deps.jl")
     end
     include(depsjl_path)
 end
-
 __init__() = check_deps()
-
 export
     airyai,
     airyaiprime,
@@ -54,13 +50,11 @@ export
     sinint,
     cosint,
     lbinomial
-
 include("bessel.jl")
 include("erf.jl")
 include("sincosint.jl")
 include("gamma.jl")
 include("deprecated.jl")
-
 for f in (:digamma, :erf, :erfc, :erfcinv, :erfcx, :erfi, :erfinv,
           :eta, :gamma, :invdigamma, :lfactorial, :lgamma, :trigamma)
     @eval $(f)(::Missing) = missing
@@ -71,5 +65,4 @@ for f in (:beta, :lbeta)
     @eval $(f)(::Missing, ::Missing) = missing
 end
 polygamma(m::Integer, x::Missing) = missing
-
 end # module
