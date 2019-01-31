@@ -1,3 +1,5 @@
+kill -9 $(pgrep --parent 1 julia)
+
 # C-Reduce for Julia
 
 *Helper scripts to reduce Julia test cases with C-Reduce*
