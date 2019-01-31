@@ -50,30 +50,6 @@ _names(gd::GroupedDataFrame) = _names(gd.parent)
 """ """ function Base.map(f::Any, gd::GroupedDataFrame)
     if length(gd) > 0
         idx, valscat = _combine(f, gd)
-        parent = hcat!(gd.parent[idx, gd.cols], valscat, makeunique=true)
-        starts = Vector{Int}(undef, length(gd))
-        ends = Vector{Int}(undef, length(gd))
-        starts[1] = 1
-        j = 2
-        @inbounds for i in 2:length(idx)
-            if idx[i] != idx[i-1]
-                starts[j] = i
-                ends[j-1] = i - 1
-                j += 1
-            end
-        end
-        resize!(starts, j-1)
-        resize!(ends, j-1)
-        ends[end] = length(idx)
-        return GroupedDataFrame(parent, collect(1:length(gd.cols)), idx,
-                                collect(1:length(idx)), starts, ends)
-    else
-        return GroupedDataFrame(gd.parent[1:0, gd.cols], collect(1:length(gd.cols)),
-                                Int[], Int[], Int[], Int[])
-    end
-end
-""" """ function combine(f::Any, gd::GroupedDataFrame)
-    if length(gd) > 0
         idx, valscat = _combine(f, gd)
         return hcat!(gd.parent[idx, gd.cols], valscat, makeunique=true)
     else
@@ -146,18 +122,6 @@ function fillfirst!(condf, outcol::AbstractVector, incol::AbstractVector,
                     gd::GroupedDataFrame; rev::Bool=false)
     nfilled = 0
     @inbounds for i in eachindex(outcol)
-        s = gd.starts[i]
-        offsets = rev ? (nrow(gd[i])-1:-1:0) : (0:nrow(gd[i])-1)
-        for j in offsets
-            x = incol[gd.idx[s+j]]
-            if !condf === nothing || condf(x)
-                outcol[i] = x
-                nfilled += 1
-                break
-            end
-        end
-    end
-    if nfilled < length(outcol)
         throw(ArgumentError("some groups contain only missing values"))
     end
     outcol
@@ -242,42 +206,6 @@ function (agg::Aggregate{typeof(var)})(incol::AbstractVector, gd::GroupedDataFra
     else
         T = real(eltype(means))
     end
-    res = zeros(T, length(gd))
-    groupreduce!(res, (x, i) -> @inbounds(abs2(x - means[i])), +,
-                 agg.condf, (x, l) -> x / (l-1), incol, gd)
-end
-function (agg::Aggregate{typeof(std)})(incol::AbstractVector, gd::GroupedDataFrame)
-    outcol = Aggregate(var, agg.condf)(incol, gd)
-    map!(sqrt, outcol, outcol)
-end
-for f in (first, last)
-    function (agg::Aggregate{typeof(f)})(incol::AbstractVector, gd::GroupedDataFrame)
-        n = length(gd)
-        outcol = similar(incol, n)
-        if agg.condf === !ismissing
-            fillfirst!(agg.condf, outcol, incol, gd, rev=agg.f === last)
-        else
-            v = agg.f === first ? gd.starts : gd.ends
-            map!(i -> incol[gd.idx[v[i]]], outcol, 1:n)
-        end
-        if isconcretetype(eltype(outcol))
-            return outcol
-        else
-            return copyto_widen!(Tables.allocatecolumn(typeof(first(outcol)), n), outcol)
-        end
-    end
-end
-(agg::Aggregate{typeof(length)})(incol::AbstractVector, gd::GroupedDataFrame) =
-    gd.ends .- gd.starts .+ 1
-function do_f(f, x...)
-    @inline function fun(x...)
-        res = f(x...)
-        if res isa Union{AbstractDataFrame, NamedTuple, DataFrameRow, AbstractMatrix}
-            throw(ArgumentError("a single value or vector result is required when passing " *
-                                "a vector or tuple of functions (got $(typeof(res)))"))
-        end
-        res
-    end
 end
 function _combine(f::Union{AbstractVector{<:Pair}, Tuple{Vararg{Pair}},
                            NamedTuple{<:Any, <:Tuple{Vararg{Pair}}}},
@@ -338,54 +266,6 @@ function _combine(f::Any, gd::GroupedDataFrame)
     else
         firstres = do_call(fun, gd, incols, 1)
         idx, outcols, nms = _combine_with_first(wrap(firstres), fun, gd, incols)
-    end
-    if f isa Pair{<:Union{Symbol,Integer}} &&
-        (agg isa AbstractAggregate ||
-         !isa(firstres, Union{AbstractDataFrame, NamedTuple, DataFrameRow, AbstractMatrix}))
-         nms = [Symbol(names(gd.parent)[index(gd.parent)[first(f)]], '_', funname(fun))]
-    end
-    valscat = DataFrame(collect(outcols), collect(Symbol, nms))
-    return idx, valscat
-end
-function _combine_with_first(first::Union{NamedTuple, DataFrameRow, AbstractDataFrame},
-                             f::Any, gd::GroupedDataFrame,
-                             incols::Union{Nothing, AbstractVector, NamedTuple})
-    if first isa AbstractDataFrame
-        n = 0
-        eltys = eltypes(first)
-    elseif first isa NamedTuple{<:Any, <:Tuple{Vararg{AbstractVector}}}
-        n = 0
-        eltys = map(eltype, first)
-    elseif first isa DataFrameRow
-        n = length(gd)
-        eltys = eltypes(parent(first))
-    else # NamedTuple giving a single row
-        n = length(gd)
-        eltys = map(typeof, first)
-        if any(x -> x <: AbstractVector, eltys)
-            throw(ArgumentError("mixing single values and vectors in a (named) tuple is not allowed"))
-        end
-    end
-    idx = Vector{Int}(undef, n)
-    local initialcols
-    let eltys=eltys, n=n # Workaround for julia#15276
-        initialcols = ntuple(i -> Tables.allocatecolumn(eltys[i], n), _ncol(first))
-    end
-    outcols = _combine_with_first!(first, initialcols, idx, 1, 1, f, gd, incols,
-                                   tuple(propertynames(first)...))
-    idx, outcols, propertynames(first)
-end
-function fill_row!(row, outcols::NTuple{N, AbstractVector},
-                   i::Integer, colstart::Integer,
-                   colnames::NTuple{N, Symbol}) where N
-    if !isa(row, Union{NamedTuple, DataFrameRow})
-        throw(ArgumentError("return value must not change its kind " *
-                            "(single row or variable number of rows) across groups"))
-    elseif _ncol(row) != N
-        throw(ArgumentError("return value must have the same number of columns " *
-                            "for all groups (got $N and $(length(row)))"))
-    end
-    @inbounds for j in colstart:length(outcols)
         col = outcols[j]
         cn = colnames[j]
         local val
@@ -434,18 +314,6 @@ function _combine_with_first!(first::Union{NamedTuple, DataFrameRow}, outcols::N
             end
             return _combine_with_first!(row, newcols, idx, i, j, f, gd, incols, colnames)
         end
-        idx[i] = gd.idx[gd.starts[i]]
-    end
-    outcols
-end
-if VERSION >= v"1.1.0-DEV.723"
-    @inline function do_append!(do_it, col, vals)
-        do_it && append!(col, vals)
-        return do_it
-    end
-else
-    @noinline function do_append!(do_it, col, vals)
-        do_it && append!(col, vals)
         return do_it
     end
 end
@@ -530,27 +398,3 @@ function aggregate(d::AbstractDataFrame, fs::AbstractVector; sort::Bool=false)
     _aggregate(d, fs, headers, sort)
 end
 aggregate(gd::GroupedDataFrame, f::Any; sort::Bool=false) = aggregate(gd, [f], sort=sort)
-function aggregate(gd::GroupedDataFrame, fs::AbstractVector; sort::Bool=false)
-    headers = _makeheaders(fs, setdiff(_names(gd), _names(gd.parent[gd.cols])))
-    res = combine(x -> _aggregate(without(x, gd.cols), fs, headers), gd)
-    sort && sort!(res, headers)
-    res
-end
-function aggregate(d::AbstractDataFrame,
-                   cols::Union{S, AbstractVector{S}},
-                   fs::Any;
-                   sort::Bool=false) where {S<:ColumnIndex}
-    aggregate(groupby(d, cols, sort=sort), fs)
-end
-function funname(f)
-    n = nameof(f)
-    String(n)[1] == '#' ? :function : n
-end
-_makeheaders(fs::AbstractVector, cn::AbstractVector{Symbol}) =
-    [Symbol(colname, '_', funname(f)) for f in fs for colname in cn]
-function _aggregate(d::AbstractDataFrame, fs::AbstractVector,
-                    headers::AbstractVector{Symbol}, sort::Bool=false)
-    res = DataFrame(AbstractVector[vcat(f(d[i])) for f in fs for i in 1:size(d, 2)], headers, makeunique=true)
-    sort && sort!(res, headers)
-    res
-end
