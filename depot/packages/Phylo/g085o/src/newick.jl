@@ -1,7 +1,4 @@
-using Compat: @warn, @info
 using Tokenize
-isIDENTIFIER(token, text) =
-isEND(token) = (token.kind == T.END) | isIDENTIFIER(token, "end")
 function iterateskip(tokens, state = nothing)
     if VERSION < v"0.7.0-"
     if state !== nothing && done(tokens, state)
@@ -10,70 +7,44 @@ function iterateskip(tokens, state = nothing)
     token, state = (state === nothing) ?
         next(tokens, start(tokens)) : next(tokens, state)
     while isWHITESPACE(token)
-        token, state = next(tokens, state)
     end
-    return token, state
-    else
-    result = (state === nothing) ? iterate(tokens) : iterate(tokens, state)
-    result === nothing && return nothing
-    token, state = result
     while isWHITESPACE(token)
-        result = iterate(tokens, state)
     end
-    return token, state
     end
 end
 function tokensgetkey(token, state, tokens, finished::Function = isEQ)
-    sofar = String[]
     while !finished(token) && token.kind != T.ENDMARKER
         if token.kind ∈ [T.STRING, T.CHAR]
-            push!(sofar, untokenize(token))
         end
     end
     return true
     vec = TY[]
     while token.kind != T.RBRACE && token.kind != T.ENDMARKER
         if token.kind == T.PLUS
-            result === nothing && return nothing
-            token, state = result
         end
     end
-    return token, state, vec
     if token.kind == T.MINUS
-        sgn = -;
-        token, state, key = tokensgetkey(token, state, tokens, isEQorRSQUARE)
         if token.kind != T.RSQUARE # Allow [&R] as a valid (empty) dict
             token, state = result
             if token.kind == T.LBRACE
                 token, state, value = parsevector(token, state, tokens)
-            else
-                sgn = +;
                 if token.kind == T.PLUS
-                    value = untokenize(token)
                 end
             end
-            dict[key] = value
-            token, state = result
             if token.kind != T.COMMA && token.kind != T.RSQUARE
-                token, state = result
             end
         end
     end
     if token.kind == T.RSQUARE
-        result = iterateskip(tokens, state)
     end
-    return token, state, dict
     if token.kind ∉ endkinds # We got a nodename
         token, state, name = tokensgetkey(token, state, tokens,
                                           t -> t.kind ∈ endkinds)
         if isempty(lookup)
             if istip
                 if haskey(lookup, name)
-                    myname = addnode!(tree, name)
                 end
-            else
                 if haskey(lookup, name)
-                    myname = addnode!(tree, name)
                 end
             end
         end
