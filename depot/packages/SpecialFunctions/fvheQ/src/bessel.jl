@@ -28,82 +28,6 @@ function _airy(z::Complex{Float64}, id::Int32, kode::Int32)
            Ref{Float64}, Ref{Float64}, Ref{Int32}, Ref{Int32}),
            real(z), imag(z), id, kode,
            ai1, ai2, ae1, ae2)
-    if ae2[] == 0 || ae2[] == 3 # ignore underflow and less than half machine accuracy loss
-        return complex(ai1[], ai2[])
-    else
-        throw(AmosException(ae2[]))
-    end
-end
-function _biry(z::Complex{Float64}, id::Int32, kode::Int32)
-    ai1, ai2 = Ref{Float64}(), Ref{Float64}()
-    ae1 = Ref{Int32}()
-    ccall((:zbiry_,openspecfun), Cvoid,
-          (Ref{Float64}, Ref{Float64}, Ref{Int32}, Ref{Int32},
-           Ref{Float64}, Ref{Float64}, Ref{Int32}),
-           real(z), imag(z), id, kode,
-           ai1, ai2, ae1)
-    if ae1[] == 0 || ae1[] == 3 # ignore less than half machine accuracy loss
-        return complex(ai1[], ai2[])
-    else
-        throw(AmosException(ae1[]))
-    end
-end
-""" """ function airyai end
-airyai(z::Complex{Float64}) = _airy(z, Int32(0), Int32(1))
-""" """ function airyaiprime end
-airyaiprime(z::Complex{Float64}) =  _airy(z, Int32(1), Int32(1))
-""" """ function airybi end
-airybi(z::Complex{Float64}) = _biry(z, Int32(0), Int32(1))
-""" """ function airybiprime end
-airybiprime(z::Complex{Float64}) = _biry(z, Int32(1), Int32(1))
-""" """ function airyaix end
-airyaix(z::Complex{Float64}) = _airy(z, Int32(0), Int32(2))
-""" """ function airyaiprimex end
-airyaiprimex(z::Complex{Float64}) =  _airy(z, Int32(1), Int32(2))
-""" """ function airybix end
-airybix(z::Complex{Float64}) = _biry(z, Int32(0), Int32(2))
-""" """ function airybiprimex end
-airybiprimex(z::Complex{Float64}) = _biry(z, Int32(1), Int32(2))
-for afn in (:airyai, :airyaiprime, :airybi, :airybiprime,
-            :airyaix, :airyaiprimex, :airybix, :airybiprimex)
-    @eval begin
-        $afn(z::Complex) = $afn(float(z))
-        $afn(z::Complex{<:AbstractFloat}) = throw(MethodError($afn,(z,)))
-        $afn(z::Complex{Float32}) = Complex{Float32}($afn(Complex{Float64}(z)))
-    end
-    if afn in (:airyaix, :airyaiprimex)
-        @eval $afn(x::Real) = x < 0 ? throw(DomainError(x, "`x` must be nonnegative.")) : real($afn(complex(float(x))))
-    else
-        @eval $afn(x::Real) = real($afn(complex(float(x))))
-    end
-end
-function airyai(x::BigFloat)
-    z = BigFloat()
-    ccall((:mpfr_ai, :libmpfr), Int32, (Ref{BigFloat}, Ref{BigFloat}, Int32), z, x, ROUNDING_MODE[])
-    return z
-end
-for jy in ("j","y"), nu in (0,1)
-    jynu = Expr(:quote, Symbol(jy,nu))
-    jynuf = Expr(:quote, Symbol(jy,nu,"f"))
-    bjynu = Symbol("bessel",jy,nu)
-    if jy == "y"
-        @eval begin
-            $bjynu(x::Float64) = nan_dom_err(ccall(($jynu,libm),  Float64, (Float64,), x), x)
-            $bjynu(x::Float32) = nan_dom_err(ccall(($jynuf,libm), Float32, (Float32,), x), x)
-        end
-    else
-        @eval begin
-            $bjynu(x::Float64) = ccall(($jynu,libm),  Float64, (Float64,), x)
-            $bjynu(x::Float32) = ccall(($jynuf,libm), Float32, (Float32,), x)
-        end
-    end
-    @eval begin
-        $bjynu(x::Real) = $bjynu(float(x))
-        $bjynu(x::Complex) = $(Symbol("bessel",jy))($nu,x)
-    end
-end
-function _besselh(nu::Float64, k::Int32, z::Complex{Float64}, kode::Int32)
-    ai1, ai2 = Ref{Float64}(), Ref{Float64}()
     ae1, ae2 = Ref{Int32}(), Ref{Int32}()
     ccall((:zbesh_,openspecfun), Cvoid,
            (Ref{Float64}, Ref{Float64}, Ref{Float64}, Ref{Int32}, Ref{Int32}, Ref{Int},
@@ -161,44 +85,6 @@ end
 function _bessely(nu::Float64, z::Complex{Float64}, kode::Int32)
     ai1, ai2 = Ref{Float64}(), Ref{Float64}()
     ae1, ae2 = Ref{Int32}(), Ref{Int32}()
-    wrk1, wrk2 = Ref{Float64}(), Ref{Float64}()
-    ccall((:zbesy_,openspecfun), Cvoid,
-          (Ref{Float64}, Ref{Float64}, Ref{Float64}, Ref{Int32}, Ref{Int32},
-           Ref{Float64}, Ref{Float64}, Ref{Int32}, Ref{Float64}, Ref{Float64}, Ref{Int32}),
-           real(z), imag(z), nu, kode, 1,
-           ai1, ai2, ae1, wrk1, wrk2, ae2)
-    if ae2[] == 0 || ae2[] == 3
-        return complex(ai1[], ai2[])
-    else
-        throw(AmosException(ae2[]))
-    end
-end
-""" """ function besselh end
-function besselh(nu::Float64, k::Integer, z::Complex{Float64})
-    if nu < 0
-        s = (k == 1) ? 1 : -1
-        return _besselh(-nu,Int32(k),z,Int32(1)) * complex(cospi(nu),-s*sinpi(nu))
-    end
-    return _besselh(nu,Int32(k),z,Int32(1))
-end
-""" """ function besselhx end
-function besselhx(nu::Float64, k::Integer, z::Complex{Float64})
-    if nu < 0
-        s = (k == 1) ? 1 : -1
-        return _besselh(-nu,Int32(k),z,Int32(2)) * complex(cospi(nu),-s*sinpi(nu))
-    end
-    return _besselh(nu,Int32(k),z,Int32(2))
-end
-function besseli(nu::Float64, z::Complex{Float64})
-    if nu < 0
-        if isinteger(nu)
-            return _besseli(-nu,z,Int32(1))
-        else
-            return _besseli(-nu,z,Int32(1)) - 2_besselk(-nu,z,Int32(1))*sinpi(nu)/pi
-        end
-    else
-        return _besseli(nu,z,Int32(1))
-    end
 end
 function besselix(nu::Float64, z::Complex{Float64})
     if nu < 0
@@ -237,44 +123,6 @@ function besseljx(nu::Float64, z::Complex{Float64})
 end
 besselk(nu::Float64, z::Complex{Float64}) = _besselk(abs(nu), z, Int32(1))
 besselkx(nu::Float64, z::Complex{Float64}) = _besselk(abs(nu), z, Int32(2))
-function bessely(nu::Cint, x::Float64)
-    if x < 0
-        throw(DomainError(x, "`x` must be nonnegative."))
-    end
-    ccall((:yn, libm), Float64, (Cint, Float64), nu, x)
-end
-function bessely(nu::Cint, x::Float32)
-    if x < 0
-        throw(DomainError(x, "`x` must be nonnegative."))
-    end
-    ccall((:ynf, libm), Float32, (Cint, Float32), nu, x)
-end
-function bessely(nu::Float64, z::Complex{Float64})
-    if nu < 0
-        return _bessely(-nu,z,Int32(1))*cospi(nu) - _besselj(-nu,z,Int32(1))*sinpi(nu)
-    else
-        return _bessely(nu,z,Int32(1))
-    end
-end
-function besselyx(nu::Float64, z::Complex{Float64})
-    if nu < 0
-        return _bessely(-nu,z,Int32(2))*cospi(nu) - _besselj(-nu,z,Int32(2))*sinpi(nu)
-    else
-        return _bessely(nu,z,Int32(2))
-    end
-end
-""" """ function besseli(nu::Real, x::AbstractFloat)
-    if x < 0 && !isinteger(nu)
-        throw(DomainError(x, "`x` must be nonnegative and `nu` must be an integer."))
-    end
-    real(besseli(float(nu), complex(x)))
-end
-""" """ function besselix(nu::Real, x::AbstractFloat)
-    if x < 0 && !isinteger(nu)
-        throw(DomainError(x, "`x` must be nonnegative and `nu` must be an integer."))
-    end
-    real(besselix(float(nu), complex(x)))
-end
 """ """ function besselj(nu::Real, x::AbstractFloat)
     if isinteger(nu)
         if typemin(Cint) <= nu <= typemax(Cint)
@@ -351,41 +199,3 @@ end
     ccall((:mpfr_j0, :libmpfr), Int32, (Ref{BigFloat}, Ref{BigFloat}, Int32), z, x, ROUNDING_MODE[])
     return z
 end
-""" """ function besselj1(x::BigFloat)
-    z = BigFloat()
-    ccall((:mpfr_j1, :libmpfr), Int32, (Ref{BigFloat}, Ref{BigFloat}, Int32), z, x, ROUNDING_MODE[])
-    return z
-end
-function besselj(n::Integer, x::BigFloat)
-    z = BigFloat()
-    ccall((:mpfr_jn, :libmpfr), Int32, (Ref{BigFloat}, Clong, Ref{BigFloat}, Int32), z, n, x, ROUNDING_MODE[])
-    return z
-end
-""" """ function bessely0(x::BigFloat)
-    if x < 0
-        throw(DomainError(x, "`x` must be nonnegative."))
-    end
-    z = BigFloat()
-    ccall((:mpfr_y0, :libmpfr), Int32, (Ref{BigFloat}, Ref{BigFloat}, Int32), z, x, ROUNDING_MODE[])
-    return z
-end
-""" """ function bessely1(x::BigFloat)
-    if x < 0
-        throw(DomainError(x, "`x` must be nonnegative."))
-    end
-    z = BigFloat()
-    ccall((:mpfr_y1, :libmpfr), Int32, (Ref{BigFloat}, Ref{BigFloat}, Int32), z, x, ROUNDING_MODE[])
-    return z
-end
-function bessely(n::Integer, x::BigFloat)
-    if x < 0
-        throw(DomainError(x, "`x` must be nonnegative."))
-    end
-    z = BigFloat()
-    ccall((:mpfr_yn, :libmpfr), Int32, (Ref{BigFloat}, Clong, Ref{BigFloat}, Int32), z, n, x, ROUNDING_MODE[])
-    return z
-end
-""" """ hankelh1(nu, z) = besselh(nu, 1, z)
-""" """ hankelh2(nu, z) = besselh(nu, 2, z)
-""" """ hankelh1x(nu, z) = besselhx(nu, 1, z)
-""" """ hankelh2x(nu, z) = besselhx(nu, 2, z)
