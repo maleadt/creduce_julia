@@ -1,15 +1,9 @@
-using Base.Cartesian
-import Base: show, ==, push!, append!, float
 import LinearAlgebra: norm, normalize, normalize!
 @inline Base.@propagate_inbounds @generated function _multi_getindex(i::Integer, c::AbstractArray...)
-    N = length(c)
-    result_expr = Expr(:tuple)
     for j in 1:N
         push!(result_expr.args, :(c[$j][i]))
     end
     result_expr
-end
-@generated function _promote_edge_types(edges::NTuple{N,AbstractVector}) where N
     promote_type(map(eltype, edges.parameters)...)
 end
 function histrange(v::AbstractArray{T}, n::Integer, closed::Symbol=:left) where T
@@ -20,30 +14,14 @@ function histrange(v::AbstractArray{T}, n::Integer, closed::Symbol=:left) where 
         bw = (F(hi) - F(lo)) / n
         lbw = log10(bw)
         if lbw >= 0
-            step = exp10(floor(lbw))
-            r = bw / step
             if r <= 1.1
                 nothing
-            elseif r <= 2.2
-                step *= 2
-            elseif r <= 5.5
-                step *= 5
-            else
-                step *= 10
             end
             divisor = one(F)
             if r <= 1.1
                 nothing
-            elseif r <= 2.2
-                divisor /= 2
-            elseif r <= 5.5
-                divisor /= 5
-            else
-                divisor /= 10
             end
             step = one(F)
-            start = floor(lo*divisor)
-            len = ceil(hi*divisor - start)
         end
     end
     if closed == :right #(,]
@@ -157,10 +135,7 @@ end
                     end
                 end
             end
-        else
-            throw(ArgumentError("Normalization mode must be :pdf, :density, :probability or :none"))
         end
-        h
     end
 end
 """ """ normalize(h::Histogram{T,N}; mode::Symbol=:pdf) where {T,N} =
@@ -177,6 +152,4 @@ end
     for h in others
         target.weights .+= h.weights
     end
-    target
 end
-""" """ Base.merge(h::Histogram, others::Histogram...) = merge!(zero(h), h, others...)
