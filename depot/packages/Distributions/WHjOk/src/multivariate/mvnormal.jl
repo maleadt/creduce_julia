@@ -104,39 +104,6 @@ _rand!(d::MvNormal, x::AbstractMatrix) = _rand!(Random.GLOBAL_RNG, d, x)
 _rand!(rng::AbstractRNG, d::MvNormal, x::AbstractVector) = _rand_abstr!(rng, d, x)
 _rand!(d::MvNormal, x::AbstractVector) = _rand!(Random.GLOBAL_RNG, d, x)
 struct MvNormalKnownCov{Cov<:AbstractPDMat}
-    Σ::Cov
-end
-MvNormalKnownCov(d::Int, σ::Real) = MvNormalKnownCov(ScalMat(d, abs2(Float64(σ))))
-MvNormalKnownCov(σ::Vector{Float64}) = MvNormalKnownCov(PDiagMat(abs2.(σ)))
-MvNormalKnownCov(Σ::Matrix{Float64}) = MvNormalKnownCov(PDMat(Σ))
-length(g::MvNormalKnownCov) = dim(g.Σ)
-struct MvNormalKnownCovStats{Cov<:AbstractPDMat}
-    invΣ::Cov              # inverse covariance
-    sx::Vector{Float64}    # (weighted) sum of vectors
-    tw::Float64            # sum of weights
-end
-function suffstats(g::MvNormalKnownCov{Cov}, x::AbstractMatrix{Float64}) where Cov<:AbstractPDMat
-    size(x,1) == length(g) || throw(DimensionMismatch("Invalid argument dimensions."))
-    invΣ = inv(g.Σ)
-    sx = vec(sum(x, dims=2))
-    tw = Float64(size(x, 2))
-    MvNormalKnownCovStats{Cov}(invΣ, sx, tw)
-end
-function suffstats(g::MvNormalKnownCov{Cov}, x::AbstractMatrix{Float64}, w::AbstractArray{Float64}) where Cov<:AbstractPDMat
-    (size(x,1) == length(g) && size(x,2) == length(w)) ||
-        throw(DimensionMismatch("Inconsistent argument dimensions."))
-    invΣ = inv(g.Σ)
-    sx = x * vec(w)
-    tw = sum(w)
-    MvNormalKnownCovStats{Cov}(invΣ, sx, tw)
-end
-fit_mle(g::MvNormalKnownCov{C}, ss::MvNormalKnownCovStats{C}) where {C<:AbstractPDMat} =
-    MvNormal(ss.sx * inv(ss.tw), g.Σ)
-function fit_mle(g::MvNormalKnownCov, x::AbstractMatrix{Float64})
-    d = length(g)
-    size(x,1) == d || throw(DimensionMismatch("Invalid argument dimensions."))
-    μ = multiply!(vec(sum(x,dims=2)), 1.0 / size(x,2))
-    MvNormal(μ, g.Σ)
 end
 function fit_mle(g::MvNormalKnownCov, x::AbstractMatrix{Float64}, w::AbstractArray{Float64})
     d = length(g)
@@ -170,39 +137,6 @@ function suffstats(D::Type{MvNormal}, x::AbstractMatrix{Float64}, w::Array{Float
     z = similar(x)
     for j = 1:n
         xj = view(x,:,j)
-        zj = view(z,:,j)
-        swj = sqrt(w[j])
-        for i = 1:d
-            @inbounds zj[i] = swj * (xj[i] - m[i])
-        end
-    end
-    s2 = z * z'
-    MvNormalStats(s, m, s2, tw)
-end
-fit_mle(D::Type{MvNormal}, ss::MvNormalStats) = fit_mle(FullNormal, ss)
-fit_mle(D::Type{MvNormal}, x::AbstractMatrix{Float64}) = fit_mle(FullNormal, x)
-fit_mle(D::Type{MvNormal}, x::AbstractMatrix{Float64}, w::AbstractArray{Float64}) = fit_mle(FullNormal, x, w)
-fit_mle(D::Type{FullNormal}, ss::MvNormalStats) = MvNormal(ss.m, ss.s2 * inv(ss.tw))
-function fit_mle(D::Type{FullNormal}, x::AbstractMatrix{Float64})
-    n = size(x, 2)
-    mu = vec(mean(x, dims=2))
-    z = x .- mu
-    C = BLAS.syrk('U', 'N', 1.0/n, z)
-    LinearAlgebra.copytri!(C, 'U')
-    MvNormal(mu, PDMat(C))
-end
-function fit_mle(D::Type{FullNormal}, x::AbstractMatrix{Float64}, w::AbstractVector{Float64})
-    m = size(x, 1)
-    n = size(x, 2)
-    length(w) == n || throw(DimensionMismatch("Inconsistent argument dimensions"))
-    inv_sw = 1.0 / sum(w)
-    mu = BLAS.gemv('N', inv_sw, x, w)
-    z = Matrix{Float64}(undef, m, n)
-    for j = 1:n
-        cj = sqrt(w[j])
-        for i = 1:m
-            @inbounds z[i,j] = (x[i,j] - mu[i]) * cj
-        end
     end
     C = BLAS.syrk('U', 'N', inv_sw, z)
     LinearAlgebra.copytri!(C, 'U')
