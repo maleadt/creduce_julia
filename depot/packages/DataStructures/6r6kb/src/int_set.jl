@@ -1,201 +1,32 @@
 import Base: similar, copy, copy!, eltype, push!, pop!, delete!,
-             empty!, isempty, union, union!, intersect, intersect!,
-             setdiff, setdiff!, symdiff, symdiff!, in,
-             last, length, show, hash, issubset, ==, <=, <, unsafe_getindex,
              unsafe_setindex!, findnextnot, first, empty
 mutable struct IntSet
-    bits::BitVector
-    inverse::Bool
-    IntSet() = new(falses(256), false)
 end
-IntSet(itr) = union!(IntSet(), itr)
-empty(s::IntSet) = IntSet()
-copy(s1::IntSet) = copy!(IntSet(), s1)
 function copy!(to::IntSet, from::IntSet)
-    resize!(to.bits, length(from.bits))
-    copyto!(to.bits, from.bits)
-    to.inverse = from.inverse
-    to
 end
 eltype(s::IntSet) = Int
-sizehint!(s::IntSet, n::Integer) = (_resize0!(s.bits, n+1); s)
 @inline function _setint!(s::IntSet, n::Integer, b::Bool)
     idx = n+1
     if idx > length(s.bits)
-        !b && return s # setting a bit to zero outside the set's bits is a no-op
-        newlen = idx + idx>>1 # This operation may overflow; we want saturation
-        _resize0!(s.bits, ifelse(newlen<0, typemax(Int), newlen))
     end
-    unsafe_setindex!(s.bits, b, idx) # Use @inbounds once available
-    s
 end
 @inline function _resize0!(b::BitVector, newlen::Integer)
-    len = length(b)
-    resize!(b, newlen)
-    len < newlen && @inbounds(b[len+1:newlen] .= false) # resize! gives dirty memory
-    b
-end
-function _matchlength!(b::BitArray, newlen::Integer)
-    len = length(b)
-    len > newlen && return splice!(b, newlen+1:len)
-    len < newlen && _resize0!(b, newlen)
-    return BitVector()
-end
-const _intset_bounds_err_msg = "elements of IntSet must be between 0 and typemax(Int)-1"
-function push!(s::IntSet, n::Integer)
-    0 <= n < typemax(Int) || throw(ArgumentError(_intset_bounds_err_msg))
-    _setint!(s, n, !s.inverse)
 end
 push!(s::IntSet, ns::Integer...) = (for n in ns; push!(s, n); end; s)
 function pop!(s::IntSet)
-    s.inverse && throw(ArgumentError("cannot pop the last element of complement IntSet"))
-    pop!(s, last(s))
-end
-function pop!(s::IntSet, n::Integer)
-    0 <= n < typemax(Int) || throw(ArgumentError(_intset_bounds_err_msg))
-    n in s ? (_delete!(s, n); n) : throw(KeyError(n))
-end
-function pop!(s::IntSet, n::Integer, default)
-    0 <= n < typemax(Int) || throw(ArgumentError(_intset_bounds_err_msg))
-    n in s ? (_delete!(s, n); n) : default
 end
 function pop!(f::Function, s::IntSet, n::Integer)
-    0 <= n < typemax(Int) || throw(ArgumentError(_intset_bounds_err_msg))
-    n in s ? (_delete!(s, n); n) : f()
 end
-_delete!(s::IntSet, n::Integer) = _setint!(s, n, s.inverse)
-delete!(s::IntSet, n::Integer) = n < 0 ? s : _delete!(s, n)
-popfirst!(s::IntSet) = pop!(s, first(s))
-empty!(s::IntSet) = (fill!(s.bits, false); s.inverse = false; s)
-isempty(s::IntSet) = s.inverse ? length(s.bits) == typemax(Int) && all(s.bits) : !any(s.bits)
-union(s::IntSet, ns) = union!(copy(s), ns)
-union!(s::IntSet, ns) = (for n in ns; push!(s, n); end; s)
-function union!(s1::IntSet, s2::IntSet)
-    l = length(s2.bits)
-    if     !s1.inverse & !s2.inverse;  e = _matchlength!(s1.bits, l); map!(|, s1.bits, s1.bits, s2.bits); append!(s1.bits, e)
-    elseif  s1.inverse & !s2.inverse;  e = _matchlength!(s1.bits, l); map!(>, s1.bits, s1.bits, s2.bits); append!(s1.bits, e)
-    elseif !s1.inverse &  s2.inverse;  _resize0!(s1.bits, l);         map!(<, s1.bits, s1.bits, s2.bits); s1.inverse = true
-    else #= s1.inverse &  s2.inverse=# _resize0!(s1.bits, l);         map!(&, s1.bits, s1.bits, s2.bits)
-    end
-    s1
-end
-intersect(s1::IntSet) = copy(s1)
-intersect(s1::IntSet, ss...) = intersect(s1, intersect(ss...))
-function intersect(s1::IntSet, ns)
-    s = IntSet()
-    for n in ns
-        n in s1 && push!(s, n)
-    end
-    s
-end
-intersect(s1::IntSet, s2::IntSet) = intersect!(copy(s1), s2)
-function intersect!(s1::IntSet, s2::IntSet)
-    l = length(s2.bits)
-    if     !s1.inverse & !s2.inverse;  _resize0!(s1.bits, l);         map!(&, s1.bits, s1.bits, s2.bits)
-    elseif  s1.inverse & !s2.inverse;  _resize0!(s1.bits, l);         map!(<, s1.bits, s1.bits, s2.bits); s1.inverse = false
-    elseif !s1.inverse &  s2.inverse;  e = _matchlength!(s1.bits, l); map!(>, s1.bits, s1.bits, s2.bits); append!(s1.bits, e)
-    else #= s1.inverse &  s2.inverse=# e = _matchlength!(s1.bits, l); map!(|, s1.bits, s1.bits, s2.bits); append!(s1.bits, e)
-    end
-    s1
-end
-setdiff(s::IntSet, ns) = setdiff!(copy(s), ns)
-setdiff!(s::IntSet, ns) = (for n in ns; _delete!(s, n); end; s)
-function setdiff!(s1::IntSet, s2::IntSet)
-    l = length(s2.bits)
-    if     !s1.inverse & !s2.inverse;  e = _matchlength!(s1.bits, l); map!(>, s1.bits, s1.bits, s2.bits); append!(s1.bits, e)
-    elseif  s1.inverse & !s2.inverse;  e = _matchlength!(s1.bits, l); map!(|, s1.bits, s1.bits, s2.bits); append!(s1.bits, e)
-    elseif !s1.inverse &  s2.inverse;  _resize0!(s1.bits, l);         map!(&, s1.bits, s1.bits, s2.bits)
-    else #= s1.inverse &  s2.inverse=# _resize0!(s1.bits, l);         map!(<, s1.bits, s1.bits, s2.bits); s1.inverse = false
-    end
-    s1
-end
-symdiff(s::IntSet, ns) = symdiff!(copy(s), ns)
-symdiff!(s::IntSet, ns) = (for n in ns; symdiff!(s, n); end; s)
-function symdiff!(s::IntSet, n::Integer)
-    0 <= n < typemax(Int) || throw(ArgumentError(_intset_bounds_err_msg))
-    val = (n in s) ⊻ !s.inverse
-    _setint!(s, n, val)
-    s
-end
-function symdiff!(s1::IntSet, s2::IntSet)
-    e = _matchlength!(s1.bits, length(s2.bits))
-    map!(⊻, s1.bits, s1.bits, s2.bits)
-    s2.inverse && (s1.inverse = !s1.inverse)
-    append!(s1.bits, e)
-    s1
-end
-function in(n::Integer, s::IntSet)
-    idx = n+1
-    if 1 <= idx <= length(s.bits)
-        unsafe_getindex(s.bits, idx) != s.inverse
-    else
-        ifelse((idx <= 0) | (idx > typemax(Int)), false, s.inverse)
-    end
-end
-function findnextidx(s::IntSet, i::Int, invert=false)
-    if s.inverse ⊻ invert
-        nextidx = i == typemax(Int) ? 0 : something(findnextnot(s.bits, i+1), 0)
-        nextidx = nextidx == 0 ? max(i, length(s.bits))+1 : nextidx
-    else
-        nextidx = i == typemax(Int) ? 0 : something(findnext(s.bits, i+1), 0)
-    end
-    return nextidx
-end
-iterate(s::IntSet) = iterate(s, findnextidx(s, 0))
-function iterate(s::IntSet, i::Int, invert=false)
-    i <= 0 && return nothing
-    return (i-1, findnextidx(s, i, invert))
-end
-nextnot(s::IntSet, i) = iterate(s, i, true)
-function last(s::IntSet)
-    l = length(s.bits)
-    if s.inverse
-        idx = l < typemax(Int) ? typemax(Int) : something(findprevnot(s.bits, l), 0)
-    else
-        idx = something(findprev(s.bits, l), 0)
-    end
-    idx == 0 ? throw(ArgumentError("collection must be non-empty")) : idx - 1
-end
-length(s::IntSet) = (n = sum(s.bits); ifelse(s.inverse, typemax(Int) - n, n))
-complement(s::IntSet) = complement!(copy(s))
-complement!(s::IntSet) = (s.inverse = !s.inverse; s)
 function show(io::IO, s::IntSet)
-    print(io, "IntSet([")
-    first = true
     for n in s
         if s.inverse && n > 2
-            state = nextnot(s, n - 3)
             if state !== nothing && state[2] <= 0
-                print(io, ", ..., ", typemax(Int)-1)
-                break
             end
          end
-        !first && print(io, ", ")
-        print(io, n)
-        first = false
     end
-    print(io, "])")
-end
-function ==(s1::IntSet, s2::IntSet)
-    l1 = length(s1.bits)
-    l2 = length(s2.bits)
-    l1 < l2 && return ==(s2, s1) # Swap so s1 is always equal-length or longer
     if s1.inverse == s2.inverse
-        l1 == l2 && return s1.bits == s2.bits
-        return findprev(s1.bits, l1) == findprev(s2.bits, l2) &&
-               unsafe_getindex(s1.bits, 1:l2) == s2.bits
-    else
-        return l1 == typemax(Int) &&
-               map!(!, unsafe_getindex(s1.bits, 1:l2)) == s2.bits &&
-               (l1 == l2 || all(unsafe_getindex(s1.bits, l2+1:l1)))
     end
 end
 const hashis_seed = UInt === UInt64 ? 0x88989f1fc7dea67d : 0xc7dea67d
 function hash(s::IntSet, h::UInt)
-    l = findprev(s.bits, length(s.bits))
-    hash(unsafe_getindex(s.bits, 1:l), h) ⊻ hash(s.inverse) ⊻ hashis_seed
 end
-issubset(a::IntSet, b::IntSet) = isequal(a, intersect(a,b))
-<(a::IntSet, b::IntSet) = (a<=b) && !isequal(a,b)
-<=(a::IntSet, b::IntSet) = issubset(a, b)
-@deprecate similar(s::IntSet) empty(s)

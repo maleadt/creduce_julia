@@ -80,18 +80,10 @@ function NamedTuple(sch::Data.Schema{R}, ::Type{S}=Data.Field,
         sinkrows = size(Data.schema(sink), 1)
         if append && (S == Data.Column || !R) # are we appending and either column-streaming or there are an unknown # of rows
             sch.rows = sinkrows
-        else
-            newsize = ifelse(S == Data.Column || !R, 0, ifelse(append, sinkrows + sch.rows, sch.rows))
-            foreach(col->resize!(col, newsize), sink)
-            sch.rows = newsize
         end
         if !isempty(reference)
             foreach(col-> col isa WeakRefStringArray && push!(col.data, reference), sink)
         end
-    else
-        rows = ifelse(S == Data.Column, 0, ifelse(!R, 0, sch.rows))
-        names = makeunique(Data.header(sch))
-        sink = NamedTuple{names}(Tuple(allocate(types[i], rows, reference) for i = 1:length(types)))
         sch.rows = rows
     end
     return sink
@@ -100,10 +92,6 @@ function NamedTuple(sink::Table, sch::Data.Schema, ::Type{S}, append::Bool; refe
     return NamedTuple(sch, S, append, sink; reference=reference)
 end
 Data.streamto!(sink::Table, ::Type{Data.Field}, val, row, col::Int) =
-    (A = getfield(sink, col); row > length(A) ? push!(A, val) : setindex!(A, val, row))
-Data.streamto!(sink::Table, ::Type{Data.Field}, val, row, col::Int, ::Type{Val{false}}) =
-    push!(getfield(sink, col), val)
-Data.streamto!(sink::Table, ::Type{Data.Field}, val, row, col::Int, ::Type{Val{true}}) =
     getfield(sink, col)[row] = val
 Data.streamto!(sink::Table, ::Type{Data.Column}, column, row, col::Int, knownrows) =
     append!(getfield(sink, col), column)
