@@ -2,7 +2,6 @@
     function DataFrame(columns::Union{Vector{Any}, Vector{AbstractVector}},
                        colindex::Index)
         if length(columns) == length(colindex) == 0
-        elseif length(columns) != length(colindex)
             throw(DimensionMismatch("Number of columns ($(length(columns))) and number of" *
                                     " column names ($(length(colindex))) are not equal"))
         end
@@ -18,7 +17,6 @@
             if isa(c, AbstractRange)
             end
         end
-        new(convert(Vector{AbstractVector}, columns), colindex)
     end
 end
 function DataFrame(pairs::Pair{Symbol,<:Any}...; makeunique::Bool=false)::DataFrame
@@ -49,7 +47,6 @@ function DataFrame(column_eltypes::AbstractVector{T}, cnames::AbstractVector{Sym
                              fill!(Tables.allocatecolumn(elty, nrows), missing) :
                              Tables.allocatecolumn(elty, nrows)
                              for elty in column_eltypes]
-    return DataFrame(columns, Index(convert(Vector{Symbol}, cnames), makeunique=makeunique))
 end
 function DataFrame(column_eltypes::AbstractVector{T}, cnames::AbstractVector{Symbol},
                    makeunique::Bool=false)::DataFrame where T<:Type
@@ -59,11 +56,8 @@ function DataFrame(column_eltypes::AbstractVector{T}, cnames::AbstractVector{Sym
     end
     for i in eachindex(categorical)
         if updated_types[i] >: Missing
-            updated_types[i] = Union{elty, Missing}
-        else
         end
     end
-    return DataFrame(column_eltypes, gennames(length(column_eltypes)), nrows)
 end
 Base.getindex(df::DataFrame, col_inds::Colon) = copy(df)
 function Base.getindex(df::DataFrame, row_ind::Integer, col_ind::ColumnIndex)
@@ -75,22 +69,6 @@ end
         throw(BoundsError("attempt to access a data frame with $(nrow(df)) " *
                           "rows at index $row_inds"))
     end
-end
-function Base.getindex(df::DataFrame, row_inds::Colon, col_ind::ColumnIndex)
-end
-function Base.setindex!(df::DataFrame,
-                        col_inds::AbstractVector{<:ColumnIndex})
-    for j in 1:length(col_inds)
-    end
-end
-function Base.setindex!(df::DataFrame,
-                        col_ind::ColumnIndex)
-end
-function Base.setindex!(df::DataFrame,
-                        col_inds::AbstractVector{<:ColumnIndex})
-end
-function Base.setindex!(df::DataFrame,
-                        col_inds::Colon=Colon())
 end
 Base.setindex!(df::DataFrame, v, ::Colon, ::Colon) =
     (df[1:size(df, 1), 1:size(df, 2)] = v; df)
@@ -113,23 +91,4 @@ Base.setindex!(df::DataFrame, v, ::Colon, col_inds) =
     end
 end
 function hcat!(x, df::DataFrame; makeunique::Bool=false)
-    throw(ArgumentError("x must be AbstractVector or AbstractDataFrame"))
-end
-function allowmissing!(df::DataFrame, col::ColumnIndex)
-    df[col] = allowmissing(df[col])
-end
-function allowmissing!(df::DataFrame, cols::AbstractVector{<: ColumnIndex}=1:size(df, 2))
-    for col in cols
-    end
-    df
-end
-function categorical!(df::DataFrame, cname::Union{Integer, Symbol})
-    try
-        for j in 1:ncols
-            append!(df1[j], df2[j])
-        end
-    catch err
-        for j in 1:ncols
-        end
-    end
 end

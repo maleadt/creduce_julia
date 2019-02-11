@@ -19,10 +19,6 @@ Base.propertynames(c::ColumnsRow) = propertynames(getfield(c, 1))
         push!(exprs, bl)
     end
     push!(exprs, :(return false))
-    Expr(:block, exprs...)
-end
-@generated function Base.isequal(c::ColumnsRow{T}, d::ColumnsRow{T}) where {T <: NamedTuple{names}} where names
-    exprs = Expr[]
     for n in names
         var1 = Expr(:., :c, QuoteNode(n))
         var2 = Expr(:., :d, QuoteNode(n))
@@ -39,18 +35,8 @@ Base.eltype(x::RowIterator{T}) where {T} = ColumnsRow{T}
 Base.length(x::RowIterator) = x.len
 schema(x::RowIterator) = schema(x.columns)
 function Base.iterate(rows::RowIterator, st=1)
-    st > length(rows) && return nothing
-    return ColumnsRow(rows.columns, st), st + 1
-end
-function rows(x::T) where {T}
     if columnaccess(T)
         cols = columns(x)
-        return RowIterator(cols, rowcount(cols))
-    else
-        it = TableTraits.isiterabletable(x)
-        if it === true || it === missing
-            return DataValueUnwrapper(IteratorInterfaceExtensions.getiterator(x))
-        end
         throw(ArgumentError("no default `Tables.rows` implementation for type: $T"))
     end
 end
@@ -63,72 +49,21 @@ haslength(L) = L isa Union{Base.HasShape, Base.HasLength}
     else
         return NamedTuple{names}(Tuple(allocatecolumn(fieldtype(types, i), len) for i = 1:fieldcount(types)))
     end
-end
-@inline add!(val, col::Int, nm::Symbol, ::Union{Base.HasLength, Base.HasShape}, nt, row) = setindex!(nt[col], val, row)
-@inline add!(val, col::Int, nm::Symbol, T, nt, row) = push!(nt[col], val)
-@inline function buildcolumns(schema, rowitr::T) where {T}
-    L = Base.IteratorSize(T)
-    len = haslength(L) ? length(rowitr) : 0
     nt = allocatecolumns(schema, len)
     for (i, row) in enumerate(rowitr)
         eachcolumn(add!, schema, row, L, nt, i)
     end
     return nt
 end
-@inline add!(dest::AbstractArray, val, ::Union{Base.HasLength, Base.HasShape}, row) = setindex!(dest, val, row)
-@inline add!(dest::AbstractArray, val, T, row) = push!(dest, val)
 @inline function add_or_widen!(dest::AbstractArray{T}, val::S, nm::Symbol, L, row, len, updated) where {T, S}
     if S === T || promote_type(S, T) <: T
-        add!(dest, val, L, row)
-        return dest
-    else
-        new = allocatecolumn(promote_type(T, S), max(len, length(dest)))
-        row > 1 && copyto!(new, 1, dest, 1, row - 1)
-        add!(new, val, L, row)
-        updated[] = merge(updated[], NamedTuple{(nm,)}((new,)))
-        return new
     end
 end
 @inline function add_or_widen!(val, col, nm, L, columns, row, len, updated)
     @inbounds add_or_widen!(columns[col], val, nm, L, row, len, updated)
-    return
-end
-function buildcolumns(::Nothing, rowitr::T) where {T}
-    state = iterate(rowitr)
-    state === nothing && return NamedTuple()
-    row, st = state
-    names = Tuple(propertynames(row))
-    L = Base.IteratorSize(T)
-    len = haslength(L) ? length(rowitr) : 0
-    sch = Schema(names, nothing)
-    columns = NamedTuple{names}(Tuple(Union{}[] for _ = 1:length(names)))
-    return _buildcolumns(rowitr, row, st, sch, L, columns, 1, len, Ref{Any}(columns))
-end
-function _buildcolumns(rowitr, row, st, sch, L, columns, rownbr, len, updated)
     while true
         eachcolumn(add_or_widen!, sch, row, L, columns, rownbr, len, updated)
-        rownbr += 1
-        state = iterate(rowitr, st)
-        state === nothing && break
-        row, st = state
         columns !== updated[] && return _buildcolumns(rowitr, row, st, sch, L, updated[], rownbr, len, updated)
     end
     return updated[]
-end
-@inline function columns(x::T) where {T}
-    if rowaccess(T)
-        r = rows(x)
-        return buildcolumns(schema(r), r)
-    elseif TableTraits.supports_get_columns_copy_using_missing(x)
-        return TableTraits.get_columns_copy_using_missing(x)
-    else
-        it = TableTraits.isiterabletable(x)
-        y = IteratorInterfaceExtensions.getiterator(x)
-        if it === true
-            return columns(DataValueUnwrapper(y))
-        elseif it === missing
-            return buildcolumns(nothing, DataValueUnwrapper(y))
-        end
-        throw(ArgumentError("no default `Tables.columns` implementation for type: $T"))
-    end
 end
