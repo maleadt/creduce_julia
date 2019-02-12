@@ -1,8 +1,3 @@
-function quantile_bisect(d::ContinuousUnivariateDistribution, p::Real,
-                         lx::Real, rx::Real, tol::Real)
-    cl = cdf(d, lx)
-    cr = cdf(d, rx)
-    @assert cl <= p <= cr
     while rx - lx > tol
         m = (lx + rx)/2
         c = cdf(d, m)
