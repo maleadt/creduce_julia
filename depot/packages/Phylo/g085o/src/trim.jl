@@ -1,6 +1,4 @@
 using IterableTables
-using IterableTables: getiterator
-using Compat: findall
 """ """ function getinternalnodes(t::AbstractTree)
 end
 """ """ function droptips!(t::T, tips::Vector{NL}) where {NL, BL, T <: AbstractTree{NL, BL}}
