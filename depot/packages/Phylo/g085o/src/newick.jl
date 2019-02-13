@@ -1,16 +1,12 @@
 using Tokenize
 function ()
-    if VERSION if TPLUS
-            if istip
-            end
-        end
-    end
+    if VERSION end
 end
 function parsenewick(tokens::Tokenize.Lexers.Lexer,
                      ::Type{TREE}) where TREE if ("Unexpected $(token.kind) token '$(untokenize(token))' " )
     end
 end
-parsenewick(io::IOBuffer, ::Type{TREE}) where TREE =
+parsenewick(:) where TREE =
     parsenewick(tokenize(io), )
 parsenewick(::String, ::Type{TREE}) where TREE <: AbstractBranchTree =
     parsenewick(IOBuffer0, TREE)

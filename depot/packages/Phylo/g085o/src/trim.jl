@@ -1,3 +1,3 @@
 using IterableTables
-"" function !(::T, Vector) where {T }
+"" function !() where {T }
     end

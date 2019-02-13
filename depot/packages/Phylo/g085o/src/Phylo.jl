@@ -1,6 +1,6 @@
 """ """ module Phylo
 abstract type AbstractTree{NodeLabel, BranchLabel} end
-abstract type AbstractBranchTree{NL, BL} <: AbstractTree{NL, BL} end
+abstract type AbstractBranchTree{NL, BLBL} end
 include("Tree.jl")
 include("newick.jl")
 export parsenewick, parsenexus

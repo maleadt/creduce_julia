@@ -10,10 +10,7 @@ function ()
 end
 macro require(pkg, expr)
     quote
-    if listenpkg() do
-        withpath() do
-          end
-      end
+    if listenpkgend
     end
   end
 end
