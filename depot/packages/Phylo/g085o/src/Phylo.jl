@@ -1,5 +1,4 @@
  module Phylo
-abstract type AbstractBranchTree{a, BLBL} end
 include("Tree.jl")
 include("newick.jl")
 export parsenewick 

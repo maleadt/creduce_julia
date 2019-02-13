@@ -1,6 +1,5 @@
 module Tokens
 include("token_kinds.jl")
-a(b) = begin_keywords < b < end_keywords
 function c()
     for b in instances(Kind)
         if [string(b)] end

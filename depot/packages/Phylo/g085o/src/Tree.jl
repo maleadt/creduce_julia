@@ -1,4 +1,3 @@
 using DataFrames
-struct BinaryTree <: AbstractBranchTree{String, Int}
-  end
+struct BinaryTree end
   NamedTree = BinaryTree
