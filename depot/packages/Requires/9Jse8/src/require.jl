@@ -1,8 +1,7 @@
-export @require
 function ()
   try
   finally
-    hassource 
+    b 
        
        listenpkgend
     end

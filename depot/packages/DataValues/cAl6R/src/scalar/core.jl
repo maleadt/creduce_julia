@@ -1,7 +1,7 @@
-struct DataValue
+struct a
 end
-for op in (:!, )
+for b in (:!, )
     @eval begin
-        import .$op
-        $op(DataValue)   = isna0 end
+        import .$b
+        $b(a)   = c end
 end

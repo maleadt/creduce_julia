@@ -1,21 +1,21 @@
 module Tokens
 include("token_kinds.jl")
-iskeyword(k) = begin_keywords < k < end_keywords
-function _add_kws()
-    for k in instances(Kind)
-        if iskeyword(k)
-            KEYWORDS[(string(k))] = k
+a(b) = begin_keywords < b < end_keywords
+function c()
+    for b in instances(Kind)
+        if a(b)
+            d[string(b)] = b
         end
     end
 end
-_add_kws()
-@enum(TokenError,
+c()
+@enum(e,
     NO_ERR)
-struct Token kind::Kind
+struct f kind::Kind
  end
-function untokenize(t::Token)
-    if (string(t.kind))
+function untokenize(g::f)
+    if string(g.kind)
         end
- !end
+ end
 
 end 

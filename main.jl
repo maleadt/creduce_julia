@@ -1,2 +1,2 @@
 using Phylo
-@assert parsenewick("0;") 
+@assert parsenewick("0") 

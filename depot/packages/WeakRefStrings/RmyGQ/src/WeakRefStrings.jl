@@ -1,5 +1,5 @@
 module WeakRefStrings
-"" struct WeakRefString <: AbstractString
+ struct a <: AbstractString
 end
-Base.thisind(::WeakRefString, Int) = _thisind_str0
+Base.thisind(::a, Int) = b
 end 
