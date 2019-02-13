@@ -1,5 +1,3 @@
-struct a
-end
 for b in (:!, )
     @eval begin
         import .$b

@@ -3,7 +3,7 @@ struct Lexer
     end
 function () if '='
         if if 'n'
-            if  c == if if 't'
+            if  if if 't'
                         end
                     end
                 end
