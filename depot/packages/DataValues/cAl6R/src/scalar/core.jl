@@ -1,7 +1,7 @@
-struct DataValue;
+struct DataValue
 end
 for op in (:!, )
     @eval begin
-        import .$(op)
-        $op(DataValue) where {} = isna0 end
+        import .$op
+        $op(DataValue)   = isna0 end
 end

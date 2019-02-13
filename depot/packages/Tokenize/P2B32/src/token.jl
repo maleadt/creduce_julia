@@ -12,10 +12,10 @@ _add_kws()
 @enum(TokenError,
     NO_ERR)
 struct Token kind::Kind
-RawToken end
+ end
 function untokenize(t::Token)
     if (string(t.kind))
         end
-if !end
-end
+ !end
+
 end 

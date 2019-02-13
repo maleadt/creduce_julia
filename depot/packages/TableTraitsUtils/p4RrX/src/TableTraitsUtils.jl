@@ -1,5 +1,5 @@
 module TableTraitsUtils
-using IteratorInterfaceExtensions, DataValues, Missings
-function mapend
-end
+using  DataValues, Missings
+ 
+
 end 
