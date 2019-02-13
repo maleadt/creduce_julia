@@ -1,12 +1,3 @@
-module TableTraits
-function isiterabletable(x::T) where {T}
-    isiterable(x) || return false
-    if Base.IteratorEltype(x)==Base.HasEltype()
-        et = Base.eltype(x)
-        if et <: NamedTuple
-        end
-    else
-        return missing
-    end
-end
-end # module
+module TableTraits function isiterabletable(x::T) where {
+  T}
+       if Base.IteratorEltype(x)==Base.HasEltype()         if et <: NamedTuple         end     else     end end end  

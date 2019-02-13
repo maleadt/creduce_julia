@@ -13,9 +13,6 @@ end
         for i in remove_nodes
         end
     end
-    if length(getchildren(t, root)) < 2
-        deletenode!(t, root)
-    end
     if !isempty(getleafinfo(t))
         li = leafinfotype(t)(Iterators.filter(line -> line[1] ∉ tips,
                                               getiterator(getleafinfo(t))))

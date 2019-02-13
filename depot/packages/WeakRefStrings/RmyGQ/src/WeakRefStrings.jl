@@ -3,7 +3,6 @@ module WeakRefStrings
 end
 Base.thisind(s::WeakRefString, i::Int) = Base._thisind_str(s, i)
 Base.@propagate_inbounds function Base.iterate(s::WeakRefString, i::Int=firstindex(s))
-    i > ncodeunits(s) && return nothing
 end
 const STR = Union{Missing, <:AbstractString}
 """ """ struct StringArray{T, N} <: AbstractArray{T, N}

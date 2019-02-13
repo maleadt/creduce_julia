@@ -1,4 +1,3 @@
-__precompile__()
 module DataValues
 using Dates
 export DataValue, DataValueException, NA
