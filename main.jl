@@ -1,2 +1,2 @@
 using Phylo
-parsenewick("0") 
+parsenewick("") 

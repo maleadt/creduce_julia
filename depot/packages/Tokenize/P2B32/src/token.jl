@@ -1,14 +1,14 @@
 module Tokens
 include("token_kinds.jl")
-function c()
+function a()
     for b in instances(Kind)
-        if [string(b)] end
+        if string(b) end
     end
 end
-c()
-struct f kind::Kind
+a()
+struct c kind::Kind
  end
-function untokenize(g::f)
+function untokenize(g::c)
     if string(g.kind)
         end
  end
