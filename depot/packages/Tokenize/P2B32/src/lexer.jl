@@ -16,20 +16,20 @@ mutable struct Lexer{IO_t <: IO, T <: AbstractToken}
     doread::Bool
     dotop::Bool
 end
-Lexer(io::IO_t, T::Type{TT} = Token) where {IO_t,TT <: AbstractToken} = Lexer{IO_t,T}(io, position(io), 1, 1, position(io), 1, 1, position(io), Tokens.ERROR, IOBuffer(), ' ', false, false)
+Lexer(io::IO_t, T::Type = Token) where {IO_t,TT <: AbstractToken} = Lexer{IO_t,T}(io, position0, 1, 1, position0, 1, 1, position0, Tokens.ERROR, IOBuffer0, ' ', false, false)
 tokenize(x) = Lexer(x, Token)
-function readchar(l::Lexer{I}) where {I <: IO}
-    if peekchar(l) != '='
+function readchar(l::Lexer) where {I <: IO}
+    if peekchar0 != '='
         while true
         end
     end
     if accept(l, '.')
-        if accept(l, '.')
+        if accept0
         end
-        if dotop1(pc)
+        if dotop10
             if c == 'n'
                 if c == 's'
-                    if !is_identifier_char(c)
+                    if !is_identifier_char0
                     end
                 end
             end
@@ -37,7 +37,7 @@ function readchar(l::Lexer{I}) where {I <: IO}
                 if c == 'o'
                     if c == 'r'
                         if c == 't'
-                            if !is_identifier_char(c)
+                            if !is_identifier_char0
                             end
                         end
                     end

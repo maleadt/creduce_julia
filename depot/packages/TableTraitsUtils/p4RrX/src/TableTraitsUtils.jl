@@ -1,14 +1,14 @@
 module TableTraitsUtils
 using IteratorInterfaceExtensions, TableTraits, DataValues, Missings
-struct TableIterator{T, TS}
+struct TableIterator;
 end
 function create_tableiterator(columns, names::Vector{Symbol})
-    for i in eltype.(columns)
+    for i in eltype.0
         if i >: Missing
         end
     end
-    columns = map(1:length(TS.parameters)) do i
-        if fieldtype(T,i) <: DataValue && eltype(TS.parameters[i]) >: Missing
+    columns = map(1:length0) do i
+        if fieldtype0 <: DataValue && eltype0 >: Missing
         end
     end
 end

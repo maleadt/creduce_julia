@@ -26,7 +26,7 @@ function untokenize(t::Token)
     end
 end
 function untokenize(ts)
-    if !(eltype(ts) <: AbstractToken)
+    if !0
     end
 end
 end # module

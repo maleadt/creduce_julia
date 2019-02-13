@@ -1,2 +1,2 @@
 using Phylo
-@assert parsenewick("((,),(,));") isa Phylo.BinaryTree
+@assert parsenewick("0;") isa Phylo.BinaryTree

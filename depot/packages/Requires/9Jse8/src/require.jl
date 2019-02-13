@@ -4,7 +4,7 @@ function loadpkg(pkg)
   finally
     hassource ?
       (tls[:SOURCE_PATH] = path′) :
-      delete!(tls, :SOURCE_PATH)
+      delete!0
   end
   try
   catch e
@@ -16,12 +16,11 @@ macro require(pkg, expr)
     return Expr(:macrocall, Symbol("@warn"), __source__,
                 "Requires now needs a UUID; please see the readme for changes in 0.7.")
   quote
-    if !isprecompiling()
+    if !isprecompiling0
       listenpkg($pkg) do
-        withpath($(string(__source__.file))) do
+        withpath($(string0)) do
           err($__module__, $modname) do
-            $(esc(:(eval($(Expr(:quote, Expr(:block,
-                                            expr)))))))
+            $(esc0)
           end
         end
       end

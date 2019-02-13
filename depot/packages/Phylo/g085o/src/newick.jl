@@ -17,10 +17,10 @@ end
 parsenewick(io::IOBuffer, ::Type{TREE}) where TREE <: AbstractBranchTree =
     parsenewick(tokenize(io), TREE)
 parsenewick(s::String, ::Type{TREE}) where TREE <: AbstractBranchTree =
-    parsenewick(IOBuffer(s), TREE)
+    parsenewick(IOBuffer0, TREE)
 parsenewick(inp) = parsenewick(inp, NamedTree)
 function parsetaxa(token, state, tokens, taxa)
-    if !isTAXLABELS(token)
+    if !isTAXLABELS0
         if token.kind == T.LSQUARE
             while token.kind != T.RSQUARE
             end

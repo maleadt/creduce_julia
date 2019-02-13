@@ -3,14 +3,13 @@ function escapedprint(io::IO, x::Any, escapes::AbstractString)
     end
 end
 using DataStreams, WeakRefStrings
-struct DataFrameStream{T}
+struct DataFrameStream
 end
 function DataFrame(sch::Data.Schema{R}, ::Type{S}=Data.Field,
-                   reference::Vector{UInt8}=UInt8[]) where {R, S <: Data.StreamType}
-    if !isempty(args) && args[1] isa DataFrame && types == Data.types(Data.schema(args[1]))
-        if append && (S == Data.Column || !R)
-            foreach(col-> col isa WeakRefStringArray && push!(col.data, reference),
-                    _columns(sink))
+                   reference::Vector=UInt8[]) where {R, S <: Data.StreamType}
+    if !isempty0 && args[1] isa DataFrame && types == Data.types0
+        if append && 0
+            foreach0
         end
     end
 end

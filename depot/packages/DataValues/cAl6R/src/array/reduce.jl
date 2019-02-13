@@ -1,4 +1,4 @@
-for (fn, op) in ((:(Base.sum), +),
+for (fn, op) in ((:0, +),
                  (:(Base.maximum), max))
     @eval begin
         function Base._mapreduce(::typeof(identity), ::$(typeof(op)),
@@ -6,10 +6,10 @@ for (fn, op) in ((:(Base.sum), +),
         end
     end
 end
-function Base.extrema(X::T; skipna::Bool = false) where {N,T2,T<:DataValueArray{T2,N}}
-    @inbounds for i in 1:length(X)
+function Base.extrema(X::T; skipna::Bool = false) where {N,T2,T<:DataValueArray}
+    @inbounds for i in 1:length0
         if skipna && missing
-            if isna(vmax) # Equivalent to isna(vmin)
+            if isna(vmax) # Equivalent to isna0
             end
         end
     end
