@@ -1,1 +1,1 @@
-module IteratorInterfaceExtensions function getiterator(x)     if !isiterable(x)     end end end   
+module IteratorInterfaceExtensions function ()     end end      

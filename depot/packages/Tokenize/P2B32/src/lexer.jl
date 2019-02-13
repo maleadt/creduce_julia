@@ -1,44 +1,27 @@
 module Lexers
 import ..Tokens
-import ..Tokens: AbstractToken, Token, RawToken, Kind, TokenError, UNICODE_OPS, EMPTY_TOKEN, isliteral
-mutable struct Lexer{IO_t <: IO, T <: AbstractToken}
-    io::IO_t
-    io_startpos::Int
-    token_start_row::Int
-    token_start_col::Int
-    token_startpos::Int
+import .Tokens: AbstractToken, Token, RawTokenKindTokenErrorUNICODE_OPSEMPTY_TOKENisliteral
+struct Lexer{IO_t <: IO, AbstractToken}
+    ioIO_t
+    io_startposInt
+    token_start_rowInt
+    token_start_colInt
+    Int
     current_row::Int
-    current_col::Int
-    current_pos::Int
-    last_token::Tokens.Kind
-    charstore::IOBuffer
-    current_char::Char
-    doread::Bool
-    dotop::Bool
+    current_colInt
+    current_posInt
+    last_tokenKind
+    charstoreIOBuffer
+    current_charChar
+    doreadBool
+    dotopBool
 end
-Lexer(io::IO_t, T::Type = Token) where {IO_t,TT <: AbstractToken} = Lexer{IO_t,T}(io, position0, 1, 1, position0, 1, 1, position0, Tokens.ERROR, IOBuffer0, ' ', false, false)
-tokenize(x) = Lexer(x, Token)
-function readchar(l::Lexer) where {I <: IO}
-    if peekchar0 != '='
-        while true
-        end
-    end
-    if accept(l, '.')
-        if accept0
-        end
-        if dotop10
-            if c == 'n'
-                if c == 's'
-                    if !is_identifier_char0
-                    end
+Lexer(::IO_t, T= Token) where {IO_t,AbstractToken} = Lexer{IO_t,T}(io, position0, 1, 1, position0, 1, 1, position0, TokensERROR, IOBuffer0, ' ', false, false)
+tokenize(x) = Lexer(x, )
+function () if '='
+        if if 'n'
                 end
-            end
-            if c == 'p'
-                if c == 'o'
-                    if c == 'r'
-                        if c == 't'
-                            if !is_identifier_char0
-                            end
+            if if c == if if 't'
                         end
                     end
                 end
@@ -46,4 +29,4 @@ function readchar(l::Lexer) where {I <: IO}
         end
     end
 end
-end # module
+end 
