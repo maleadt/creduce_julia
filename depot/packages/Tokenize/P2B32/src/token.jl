@@ -6,10 +6,10 @@ function a()
     end
 end
 a()
-struct c kind::Kind
+struct c e::Kind
  end
-function untokenize(g::c)
-    if string(g.kind)
+function untokenize(d::c)
+    if string(d.e)
         end
  end
 

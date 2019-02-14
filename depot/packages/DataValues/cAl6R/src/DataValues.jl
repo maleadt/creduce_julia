@@ -1,1 +1,1 @@
-module DataValues   include("scalar/core.jl") end        
+module DataValues include("scalar/core.jl") end
