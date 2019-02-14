@@ -36,4 +36,4 @@ for path in "${SOURCES[@]}"; do
 done
 
 chmod +w src/*
-nice -n 20 creduce --tidy --n $(nproc) --not-c ./run src/*
+nice -n 20 creduce --tidy --n $(nproc) --not-c "$@" ./run src/*
