@@ -1,1 +1,3 @@
-module IterableTables using Requires, TableTraitsUtils end
+module IterableTables
+using Requires, TableTraitsUtils
+end

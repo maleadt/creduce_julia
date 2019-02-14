@@ -1,1 +1,3 @@
-module TableTraitsUtils using DataValues  end          
+module TableTraitsUtils
+using DataValues
+end

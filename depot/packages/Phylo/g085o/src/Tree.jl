@@ -1,3 +1,3 @@
 using DataFrames
 struct BinaryTree end
-  NamedTree = BinaryTree
+NamedTree = BinaryTree

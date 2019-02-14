@@ -1,1 +1,3 @@
-module Lexers struct Lexer end end 
+module Lexers
+struct Lexer end
+end
