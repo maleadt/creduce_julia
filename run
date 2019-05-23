@@ -6,5 +6,4 @@ set -ue
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "$DIR"/activate
 
-
 julia --compiled-modules=no -O0 main.jl |& grep "example error message"

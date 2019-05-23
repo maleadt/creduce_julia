@@ -22,6 +22,8 @@ $ julia
 ...
 ```
 
+Note that **only `dev`ed packages will be considered for reduction**.
+
 You might want to reduce the number of Julia sources that exist in the `depot`
 directory (eg. remove tests, examples, etc) to speed-up the process.
 
