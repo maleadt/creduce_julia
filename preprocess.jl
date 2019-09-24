@@ -80,7 +80,7 @@ end
 
 ## main
 
-const pkgdir = joinpath(@__DIR__, "depot", "packages")
+const pkgdir = joinpath(@__DIR__, "depot", "dev")
 
 function process(dir)
     for entry in readdir(dir)
