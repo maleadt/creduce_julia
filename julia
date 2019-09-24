@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -ue
+
+# script to prepare the environment and launch julia
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "$DIR"/activate
+
+julia "$@"
