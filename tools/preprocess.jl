@@ -15,16 +15,24 @@ mutable struct State{T}
     edits::T
 end
 
-function pass(x, state, f = (x,state)->nothing)
+function pass(x::CSTParser.EXPR, state, f = (x, state)->nothing)
+    f(x, state)
+    if x.args isa Vector
+        for a in x.args
+            pass(a, state, f)
+        end
+    else
+        state.offset += x.fullspan
+    end
+    state
+end
+
+function pass(x::Vector{<:Tokens.AbstractToken}, state, f = (x,edits)->nothing)
     f(x, state)
     for a in x
         pass(a, state, f)
     end
     state
-end
-
-function pass(x::CSTParser.LeafNode, state, f = (x,edits)->nothing)
-    state.offset += x.fullspan
 end
 
 function pass(x::Tokens.AbstractToken, state, f = (x,edits)->nothing)
@@ -51,19 +59,14 @@ function remove_comments(x, state)
     end
 end
 
-function remove_docstrings(x, state)
-    if x isa CSTParser.EXPR{CSTParser.MacroCall} && x.args[1] isa CSTParser.EXPR{CSTParser.GlobalRefDoc}
+function empty_docstrings(x, state)
+    if x isa CSTParser.EXPR && x.typ == CSTParser.MacroCall &&
+       x.args[1] isa CSTParser.EXPR && x.args[1].typ == CSTParser.GlobalRefDoc
         offset = state.offset + x.args[1].fullspan
         doc = x.args[2]
 
-        # remove docstring
-        push!(state.edits, Edit(offset+1:offset+doc.fullspan, ""))
-
-        # remove target if it is an identifier or function call
-        if x.args[3] isa CSTParser.IDENTIFIER || x.args[3] isa CSTParser.EXPR{CSTParser.Call}
-            target = x.args[3]
-            push!(state.edits, Edit(offset+1:offset+target.fullspan, ""))
-        end
+        # empty docstring
+        push!(state.edits, Edit(offset+1:offset+doc.fullspan, "\"\"\"\"\"\" "))
     end
 end
 
@@ -80,7 +83,7 @@ end
 
 ## main
 
-const pkgdir = joinpath(@__DIR__, "depot", "dev")
+const pkgdir = joinpath(dirname(@__DIR__), "depot", "dev")
 
 function process(dir)
     for entry in readdir(dir)
@@ -97,8 +100,8 @@ function rewrite(path)
     println("Processing $path...")
     text = read(path, String)
     for (pt, p) in (Lexical     => remove_comments,
-                    Semantic    => remove_docstrings,
-                    Lexical     => compact_whitespace
+                    Semantic    => empty_docstrings,
+                    Lexical     => compact_whitespace,
                    )
         state = State(0, Edit[])
         if pt == Lexical
