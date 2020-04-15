@@ -1,5 +1,4 @@
-/depot/registries
-/depot/compiled
-/depot/logs
+/depot/*
+!/depot/dev
 /src/
 /src.lst
