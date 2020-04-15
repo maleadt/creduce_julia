@@ -12,24 +12,24 @@
 ## Usage
 
 Start by **putting your test case in `main.jl`**. If your script needs any
-packages, activate the package environment by sourcing the `activate` script
-from the repository's root directory, and installing packages:
+packages, activate a Julia instance in the C-Reduce environment by executing the
+`julia` wrapper script from the repository's root directory:
 
 ```
 $ cd /path/to/checkout
-$ source activate
-$ julia
-...
+$ ./julia
+] add ...
+] dev ...
 ```
 
-Note that **only `dev`ed packages will be considered for reduction**.
-
-You might want to reduce the number of Julia sources that exist in the `depot`
-directory (eg. remove tests, examples, etc) to speed-up the process.
+Packages that you `add` will be ignored by the reduction process; only packages
+you `dev` will take part in it. However, all Julia code in those packages will
+be considered, so you might want to reduce the amount of it to speed up the
+reduction process (e.g. remove tests, examples, etc) to speed-up the process.
 
 Next, **modify the `run` script** to properly catch the error you are dealing
-with and return 0 if the reduced file is good. Often, you might just want to
-`grep` on an error message there.
+with and return 0 if the reduced file is good. Often, you want to look for
+specific output in the standard error stream.
 
 Finally, **execute the `reduce` script**. This should finalize the environment
 and start C-Reduce.
@@ -39,10 +39,9 @@ and start C-Reduce.
 
 Test case reduction happens in parallel, so make sure there's no global effects.
 
-If reducing an assertion error, you need to have built Julia with the following
-options:
+When you're reducing a large project, you often will need to do some manual
+editing to help the process. In that case, it can be useful to stage (`git add`)
+the `depot/dev` directory to keep track of changes by C-Reduce.
 
-```
-LLVM_ASSERTIONS=1
-FORCE_ASSERTIONS=1
-```
+To use a different build of Julia, e.g. with assertions enabled or using a
+sanitizer, change the invocation in the `run` script.
