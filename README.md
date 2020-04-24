@@ -22,17 +22,22 @@ $ ./julia
 ] dev ...
 ```
 
-Packages that you `add` will be ignored by the reduction process; only packages
-you `dev` will take part in it. However, all Julia code in those packages will
-be considered, so you might want to reduce the amount of it to speed up the
-reduction process (e.g. remove tests, examples, etc) to speed-up the process.
+Packages that you `add` will be ignored by the reduction process; only packages you `dev`
+will take part in it. If you don't need any packages, make sure you don't have a `depot`
+folder before starting the reduction.
 
-Next, **modify the `run` script** to properly catch the error you are dealing
-with and return 0 if the reduced file is good. Often, you want to look for
-specific output in the standard error stream.
+Next, **modify the `run` script** to properly catch the error you are dealing with and
+return 0 if the reduced file is good. Often, you want to look for specific output in the
+standard error stream. If you need to use any Julia flags, or want to use a specific build,
+edit the `julia` wrapper script accordingly.
 
-Finally, **execute the `reduce` script**. This should finalize the environment
-and start C-Reduce.
+Optionally, **preprocess the source** to get rid of irrelevant source code by running the
+`tools/preprocess.jl` script. It is recommended to remove other irrelevant sources as well,
+such as tests, examples, or documentation. Always verify that the `run` script still returns
+0 afterwards.
+
+Finally, **execute the `reduce` script**. This should finalize the environment and start
+C-Reduce.
 
 
 ## Notes
@@ -43,5 +48,159 @@ When you're reducing a large project, you often will need to do some manual
 editing to help the process. In that case, it can be useful to stage (`git add`)
 the `depot/dev` directory to keep track of changes by C-Reduce.
 
-To use a different build of Julia, e.g. with assertions enabled or using a
-sanitizer, change the invocation in the `run` script.
+
+## Example
+
+After a refactor, CUDAnative's tests triggered an LLVM assertion when running
+with `julia-debug`. To reduce this, I started by installing the necessary
+packages:
+
+```
+creduce$ ./julia
+
+julia>
+] dev GPUCompiler
+] dev CUDAnative
+] add CUDAdrv
+# the tests rely on CUDAdrv, but I'm certain the error isn't there
+```
+
+As the situation depends on running with `julia-debug`, I edited the `julia` script to use
+`julia-debug` and copied the failing test into `main.jl`:
+
+```
+creduce$ ./julia main.jl
+PHI node entries do not match predecessors!
+julia-debug: /home/tbesard/Julia/julia/src/codegen.cpp:1511: void jl_generate_fptr(jl_code_instance_t*): Assertion `specptr != NULL' failed.
+```
+
+To trap exactly this error condition, I edit the `run` script tp grep on this error:
+
+```sh
+$DIR/julia main.jl |& grep "PHI node entries do not match predecessors!"
+```
+
+To speed up the search, I ran the preprocess script to get rid of comments,
+whitespace, and documentation, and removed sources that are not used during
+execution:
+
+```
+creduce/tools$ julia --project
+] instantiate
+
+creduce/tools$ julia --project preprocess.jl
+
+creduce$ rm -rf depot/dev/*/{test,examples,docs,res}
+```
+
+As a final check, I ran the `run` script (as it will be run by C-Reduce)
+and inspected the exit code (which initially should be 0):
+
+```
+creduce$ ./run
+
+creduce$ echo $?
+0
+```
+
+Kicking off the process, I staged all files with `git` (so that I can keep track
+of C-Reduce's progress) and launched the reduce script:
+
+```
+creduce$ git add main.jl depot
+
+creduce$ ./reduce
+```
+
+After a day or two on a system with 32 cores / 64 threads (debug builds are slow, and this
+failure involved a fair number of packages and around 10.000 lines of code to reduce), all
+of GPUCompiler.jl and CUDAnative.jl got reduced to the following:
+
+```julia
+using CUDAnative
+# /home/tbesard/Julia/tools/creduce/src/50.jl
+
+function code_llvm(a) codegen(b, a) end
+# /home/tbesard/Julia/tools/creduce/src/38.jl
+
+module a
+
+    using GPUCompiler
+
+        include("reflection.jl") end
+
+# /home/tbesard/Julia/tools/creduce/src/8.jl
+
+for a in (:code_llvm, )     @eval GPUCompiler.$a(0 )         end
+# /home/tbesard/Julia/tools/creduce/src/42.jl
+
+Base.@kwdef struct a
+    b::Union{Nothing,Int}  = c
+end
+similar(:, d) =
+    a()
+
+# /home/tbesard/Julia/tools/creduce/src/52.jl
+
+module GPUCompiler
+
+include("ptx.jl")
+include("driver.jl")
+include("reflection.jl")
+end
+
+# /home/tbesard/Julia/tools/creduce/src/48.jl
+
+function codegen(::Symbol, a)
+    begin
+        b = Dict()
+        if for c in d
+                e = similar(f, g)
+                get(b, e) do
+                 end
+            end
+        end
+    end
+end
+```
+
+To reduce this even further, I then inlined the reduced code into `main.jl`, preserving
+modules and functions but removing the file structure. The error still reproduced, so this
+bug isn't sensitive to the way modules are compiled and loaded. I then removed the `depot`
+and kicked off another reduction that resulted with the following:
+
+```julia
+function codegen(::Symbol, a)
+    begin
+        b = Dict()
+        if for c in d
+                e = h(f, g)
+                get(b, e) do
+                 end
+            end
+        end
+    end
+end
+Base.@kwdef struct a
+    b::Union{Nothing,Int}  = c
+end
+h(:, d) = a()
+function i(a) codegen(b, a) end
+i(0)
+```
+
+After some manual clean-up, I ended up with the final reproducer:
+
+```julia
+struct a
+    b::Union{Nothing,Int}
+end
+
+function main()
+    c = Dict()
+    d = a(undefined)
+    c[d]
+end
+
+main()
+```
