@@ -6,4 +6,4 @@ set -ue
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "$DIR"/activate
 
-julia "$@"
+julia -O0 --compiled-modules=no "$@"
