@@ -66,7 +66,7 @@ function empty_docstrings(x, state)
         doc = x.args[2]
 
         # empty docstring
-        push!(state.edits, Edit(offset+1:offset+doc.fullspan, "\"\"\"\"\"\" "))
+        push!(state.edits, Edit(offset+1:offset+doc.fullspan, "\"\"\"\"\"\"\n"))
     end
 end
 
