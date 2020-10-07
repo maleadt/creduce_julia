@@ -5,4 +5,4 @@ set -ue
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-$DIR/julia main.jl |& grep "example error message"
+timeout -s KILL --foreground 60 $DIR/julia main.jl |& grep "example error message"
