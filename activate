@@ -11,7 +11,7 @@ if [[ "$(pwd)" == "$DIR" ]]; then
 else
     # out-of-tree execution, by creduce
 
-    if [[ -d "$DEPOT" ]]; then
+    if [[ ! -d depot ]] && [[ -d "$DEPOT" ]]; then
         # start with the initial depot (linking immutable files, copying otherwise)
         mkdir depot
         ln -s "$DEPOT"/{packages,artifacts} depot/
