@@ -5,4 +5,42 @@ set -ue
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-timeout -s KILL --foreground 60 $DIR/julia main.jl |& grep "example error message"
+# create a temporary pipe
+PIPE=$(mktemp -u)
+mkfifo $PIPE
+
+# launch Julia, redirecting all output
+$DIR/julia main.jl &>$PIPE &
+PID=$!
+
+# bind the pipe to a file descriptor
+exec 3<>$PIPE
+rm $PIPE
+
+# monitor our command
+START=$EPOCHSECONDS
+while true; do
+    # check the output
+    if read -r -t 1 -u 3 line; then
+        echo "$line"
+        if [[ $line =~ "example error message" ]]; then
+            echo "++ Found matching string ++"
+            pkill -9 -s $$ || true
+            exit 0
+        fi
+    else
+        # no output, ensure the process is still running
+        if ! kill -0 $PID 2>/dev/null; then
+            echo "!! Process exited !!"
+            exit 1
+        fi
+    fi
+
+    # check for timeout
+    elapsed=$(( $EPOCHSECONDS - $START ))
+    if [ $elapsed -ge 180 ]; then
+        echo "!! Process timed out !!"
+        pkill -9 -s $$ || true
+        exit 1
+    fi
+done
