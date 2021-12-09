@@ -5,6 +5,11 @@ set -ue
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# kill orphaned processes
+# XXX: this shouldn't be necessary, but apparently we don't kill
+#      all descendant processes thorougly enough
+pkill -9 -P 1 -f julia || true
+
 # create a temporary pipe
 PIPE=$(mktemp -u)
 mkfifo $PIPE
