@@ -15,7 +15,7 @@ else
         # start with the initial depot (linking immutable files, copying otherwise)
         mkdir depot
         ln -s "$DEPOT"/{packages,artifacts} depot/
-        cp -ar "$DEPOT"/{dev,environments} depot/
+        cp -ar "$DEPOT"/{dev,environments,compiled} depot/
 
         # rewrite manifests to point to our new depot
         sed -i "s#path = \".*/depot/dev#path = \"$(pwd)/depot/dev#g" depot/environments/*/Manifest.toml
