@@ -10,7 +10,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # kill orphaned processes
 # XXX: this shouldn't be necessary, but apparently we don't kill
 #      all descendant processes thorougly enough
-pkill -9 -P 1 -f julia || true
+pkill -9 -P 1 -u $USER -f julia || true
 
 search_output() {
     match="$1"
