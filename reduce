@@ -9,10 +9,6 @@ cd "$DIR"
 rm -rf src
 rm -f src.lst
 
-if [[ -d depot ]]; then
-    mkdir -p depot/{dev,packages,environments}
-fi
-
 # creduce works with flat files, and doesn't respect directories.
 #
 # to overcome this, we first discover which files to reduce,
@@ -21,9 +17,11 @@ fi
 # during execution, we'll use that file to recover the original file hierarchy.
 
 SOURCES=(main.jl)
-while IFS= read -r -d $'\0'; do
-    SOURCES+=("$REPLY")
-done < <(find depot/dev -type f -name "*.jl" -print0)
+if [[ -d "depot/dev" ]]; then
+    while IFS= read -r -d $'\0'; do
+        SOURCES+=("$REPLY")
+    done < <(find depot/dev -type f -name "*.jl" -print0)
+fi
 
 i=1
 mkdir src
@@ -31,7 +29,7 @@ echo "Reducing the following sources:"
 for path in "${SOURCES[@]}"; do
     echo "- $path"
     echo "$path" >> src.lst
-    ln -s "../$path" "src/$i.jl"
+    ln -s "$DIR/$path" "src/$i.jl"
     (( i++ ))
 done
 

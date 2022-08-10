@@ -4,30 +4,31 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 DEPOT="$DIR/depot"
 
+export JULIA_DEPOT_PATH=$DEPOT
+
 if [[ "$(pwd)" == "$DIR" ]]; then
     # in-tree execution, not by creduce
-    export JULIA_DEPOT_PATH=$DEPOT
     export JULIA_PKG_DEVDIR=$DEPOT/dev
 else
     # out-of-tree execution, by creduce
 
-    if [[ ! -d depot ]] && [[ -d "$DEPOT" ]]; then
-        # start with the initial depot (linking immutable files, copying otherwise)
-        mkdir depot
-        ln -s "$DEPOT"/{packages,artifacts} depot/
-        cp -ar "$DEPOT"/{dev,environments,compiled} depot/
+    # start with the initial devdir (there may be non-source files we need)
+    mkdir -p depot
+    cp -arf $DEPOT/dev depot
+    export JULIA_PKG_DEVDIR="$(pwd)/depot/dev"
 
-        # rewrite manifests to point to our new depot
-        sed -i "s#path = \".*/depot/dev#path = \"$(pwd)/depot/dev#g" depot/environments/*/Manifest.toml
-    fi
-
-    # link in the files created by creduce
+    # copy-in the files created by creduce
     i=1
     while IFS= read -r path; do
+        mkdir -p $(dirname $path)
         cp "$i.jl" "$path"
         (( i++ ))
     done < "$DIR/src.lst"
 
-    export JULIA_DEPOT_PATH="$(pwd)/depot"
-    export JULIA_PKG_DEVDIR="$(pwd)/depot/dev"
+    # use a layered depot so that we don't contaminate the global one
+    export JULIA_DEPOT_PATH="$(pwd)/depot:$JULIA_DEPOT_PATH"
+    # HACK: juliaup doesn't support layered depots (JuliaLang/juliaup#323)
+    if [[ -d "$DEPOT/juliaup" ]]; then
+        ln -s "$DEPOT/juliaup" "$(pwd)/depot/juliaup"
+    fi
 fi

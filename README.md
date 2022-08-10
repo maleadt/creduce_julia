@@ -23,8 +23,7 @@ $ ./julia
 ```
 
 Packages that you `add` will be ignored by the reduction process; only packages you `dev`
-will take part in it. If you don't need any packages, make sure you don't have a `depot`
-folder before starting the reduction.
+will take part in it.
 
 Next, **modify the `run` script** to properly catch the error you are dealing with and
 return 0 if the reduced file is good. Often, you want to look for specific output in the
@@ -74,10 +73,10 @@ PHI node entries do not match predecessors!
 julia-debug: /home/tbesard/Julia/julia/src/codegen.cpp:1511: void jl_generate_fptr(jl_code_instance_t*): Assertion `specptr != NULL' failed.
 ```
 
-To trap exactly this error condition, I edit the `run` script tp grep on this error:
+To trap exactly this error condition, I edit the `run` script to look for this error:
 
 ```sh
-$DIR/julia main.jl |& grep "PHI node entries do not match predecessors!"
+search_output "PHI node entries do not match predecessors!" || exit 1
 ```
 
 To speed up the search, I ran the preprocess script to get rid of comments,
