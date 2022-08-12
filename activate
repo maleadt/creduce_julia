@@ -32,7 +32,7 @@ if [[ "$(pwd)" != "$DIR" ]]; then
     # use a layered depot so that we don't contaminate the global one
     export JULIA_DEPOT_PATH="$(pwd)/depot:$JULIA_DEPOT_PATH"
     # HACK: juliaup doesn't support layered depots (JuliaLang/juliaup#323)
-    if [[ -d "$DEPOT/juliaup" ]]; then
+    if [[ -d "$DEPOT/juliaup" ]] && [[ ! -e "$DEPOT/juliaup" ]]; then
         ln -s "$DEPOT/juliaup" "$(pwd)/depot/juliaup"
     fi
 fi
