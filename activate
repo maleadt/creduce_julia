@@ -5,17 +5,21 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 DEPOT="$DIR/depot"
 
 export JULIA_DEPOT_PATH=$DEPOT
+export JULIA_PKG_DEVDIR=$DEPOT/dev  # only for Pkg operations, not used by code loading
 
-if [[ "$(pwd)" == "$DIR" ]]; then
-    # in-tree execution, not by creduce
-    export JULIA_PKG_DEVDIR=$DEPOT/dev
-else
+if [[ "$(pwd)" != "$DIR" ]]; then
     # out-of-tree execution, by creduce
 
-    # start with the initial devdir (there may be non-source files we need)
     mkdir -p depot
-    cp -arf $DEPOT/dev depot
-    export JULIA_PKG_DEVDIR="$(pwd)/depot/dev"
+
+    # we need to copy the devdir (even though we'll overwrite sources from src.list,
+    # there may be non-sources we need) and the environment (to rewrite the Manifest)
+    cp -arf "$DEPOT"/{dev,environments} depot/
+
+    if [[ -d depot/environments ]]; then
+        # rewrite manifests to point dev'ed packages to our new depot
+        sed -i "s#path = \".*/depot/dev#path = \"$(pwd)/depot/dev#g" depot/environments/*/Manifest.toml
+    fi
 
     # copy-in the files created by creduce
     i=1
