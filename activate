@@ -10,15 +10,17 @@ export JULIA_PKG_DEVDIR=$DEPOT/dev  # only for Pkg operations, not used by code 
 if [[ "$(pwd)" != "$DIR" ]]; then
     # out-of-tree execution, by creduce
 
-    mkdir -p depot
+    if [[ -d depot ]]; then
+        mkdir -p depot
 
-    # we need to copy the devdir (even though we'll overwrite sources from src.list,
-    # there may be non-sources we need) and the environment (to rewrite the Manifest)
-    cp -arf "$DEPOT"/{dev,environments} depot/
+        # we need to copy the devdir (even though we'll overwrite sources from src.list,
+        # there may be non-sources we need) and the environment (to rewrite the Manifest)
+        cp -arf "$DEPOT"/{dev,environments} depot/
 
-    if [[ -d depot/environments ]]; then
-        # rewrite manifests to point dev'ed packages to our new depot
-        sed -i "s#path = \".*/depot/dev#path = \"$(pwd)/depot/dev#g" depot/environments/*/Manifest.toml
+        if [[ -d depot/environments ]]; then
+            # rewrite manifests to point dev'ed packages to our new depot
+            sed -i "s#path = \".*/depot/dev#path = \"$(pwd)/depot/dev#g" depot/environments/*/Manifest.toml
+        fi
     fi
 
     # copy-in the files created by creduce
