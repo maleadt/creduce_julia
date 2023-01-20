@@ -83,15 +83,12 @@ end
 
 ## main
 
-const pkgdir = joinpath(dirname(@__DIR__), "depot", "dev")
-
-function process(dir)
-    for entry in readdir(dir)
-        path = joinpath(dir, entry)
-        if isdir(path)
-            process(path)
-        elseif isfile(path) && endswith(entry, ".jl")
-            rewrite(path)
+function process(path)
+    if isfile(path) && endswith(path, ".jl")
+        rewrite(path)
+    elseif isdir(path)
+        for entry in readdir(path)
+            process(joinpath(path, entry))
         end
     end
 end
@@ -125,5 +122,10 @@ function rewrite(path)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    process(pkgdir)
+    if length(ARGS) == 0
+        pkgdir = joinpath(dirname(@__DIR__), "depot", "dev")
+        process(pkgdir)
+    else
+        process.(ARGS)
+    end
 end
