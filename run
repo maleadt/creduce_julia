@@ -1,64 +1,10 @@
 #!/usr/bin/env bash
-set -ue
-
-TIMEOUT=20
+set -euo pipefail
 
 # script to execute the main.jl script and catch our error condition
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# kill orphaned processes
-# XXX: this shouldn't be necessary, but apparently we don't kill
-#      all descendant processes thorougly enough
-pkill -9 -P 1 -u $USER -f julia || true
-
-search_output() {
-    match="$1"
-
-    # create a temporary pipe
-    PIPE=$(mktemp -u)
-    mkfifo $PIPE
-
-    # launch Julia, redirecting all output
-    $DIR/julia main.jl &>$PIPE &
-    PID=$!
-
-    # bind the pipe to a file descriptor
-    exec 3<>$PIPE
-    rm $PIPE
-
-    # monitor our command
-    START=$EPOCHSECONDS
-    while true; do
-        # is there any data to read?
-        if read -r -t 0 -u 3 line; then
-            # try to read a line
-            if read -r -t $TIMEOUT -u 3 line; then
-                echo "$line"
-                if [[ $line =~ $match ]]; then
-                    echo "++ Found matching string ++"
-                    pkill -9 -s $$ || true
-                    return 0
-                fi
-            fi
-        else
-            # no data, ensure the process is still running
-            if ! kill -0 $PID 2>/dev/null; then
-                echo "!! Process exited !!"
-                return 1
-            fi
-        fi
-
-        # check for timeout
-        elapsed=$(( $EPOCHSECONDS - $START ))
-        if [ $elapsed -ge $TIMEOUT ]; then
-            echo "!! Process timed out !!"
-            pkill -9 -s $$ || true
-            return 1
-        fi
-    done
-}
-
-search_output "example error message" || exit 1
+timeout -s KILL --foreground 60 $DIR/julia main.jl |& grep "example error message"
 
 exit 0
