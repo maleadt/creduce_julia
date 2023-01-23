@@ -1,10 +1,23 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -u
 
 # script to execute the main.jl script and catch our error condition
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 timeout -s KILL --foreground 60 $DIR/julia main.jl |& grep "example error message"
-
-exit 0
+exit_codes=("${PIPESTATUS[@]}")
+if [[ ${exit_codes[0]} -eq 124 ]]; then
+    # timeout; propagate this to creduce
+    exit 124
+elif [[ ${exit_codes[0]} -ne 0 ]]; then
+    # our Julia process exited with a non-zero error.
+    # if this is what you want (e.g. to reduce segfault or abort), then filter here:
+    #[[ ${exit_codes[0]} -eq 132 ]] && exit 0
+    exit 1
+elif [[ ${exit_codes[1]} -ne 0 ]]; then
+    # we didn't find the string we were looking for
+    exit 1
+else
+    exit 0
+fi
