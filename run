@@ -3,6 +3,9 @@ set -u
 
 # script to execute the main.jl script and catch our error condition
 
+# kill orphaned processes that may have been left behind
+pkill -9 -P 1 -u $USER -f julia
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 timeout -s KILL --foreground 60 $DIR/julia main.jl |& grep "example error message"
