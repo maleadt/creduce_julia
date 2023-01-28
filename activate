@@ -10,7 +10,7 @@ export JULIA_PKG_DEVDIR=$DEPOT/dev  # only for Pkg operations, not used by code 
 if [[ "$(pwd)" != "$DIR" ]]; then
     # out-of-tree execution, by creduce
 
-    if [[ ! -d depot ]]; then
+    if [[ -d "$DEPOT" && ! -d depot ]]; then
         mkdir -p depot
 
         # we need to copy the devdir (even though we'll overwrite sources from src.list,
