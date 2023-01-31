@@ -28,7 +28,8 @@ will take part in it.
 Next, **modify the `run` script** to properly catch the error you are dealing with and
 return 0 if the reduced file is good. Often, you want to look for specific output in the
 standard error stream. If you need to use any Julia flags, or want to use a specific build,
-edit the `julia` wrapper script accordingly.
+edit the `julia` wrapper script accordingly. You may also want to edit the `creduce` script
+to adjust the timeout, which defaults to 1 minute.
 
 Optionally, **preprocess the source** to get rid of irrelevant source code by running the
 `tools/preprocess.jl` script. It is recommended to remove other irrelevant sources as well,
@@ -76,7 +77,7 @@ julia-debug: /home/tbesard/Julia/julia/src/codegen.cpp:1511: void jl_generate_fp
 To trap exactly this error condition, I edit the `run` script to look for this error:
 
 ```sh
-search_output "PHI node entries do not match predecessors!" || exit 1
+$DIR/julia main.jl |& grep "PHI node entries do not match predecessors!"
 ```
 
 To speed up the search, I ran the preprocess script to get rid of comments,
