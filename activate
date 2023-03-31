@@ -15,7 +15,11 @@ if [[ "$(pwd)" != "$DIR" ]]; then
 
         # we need to copy the devdir (even though we'll overwrite sources from src.list,
         # there may be non-sources we need) and the environment (to rewrite the Manifest)
-        cp -arf "$DEPOT"/{dev,environments} depot/
+        for dir in dev environments; do
+            if [[ -d "$DEPOT/$dir" ]]; then
+                cp -arf "$DEPOT/$dir" depot/
+            fi
+        done
 
         if [[ -d depot/environments ]]; then
             # rewrite manifests to point dev'ed packages to our new depot
