@@ -1,6 +1,12 @@
 # C-Reduce for Julia
 
-*Helper scripts to reduce Julia test cases with C-Reduce*
+This repository contains a set of scripts to reduce Julia test cases with C-Reduce. It can
+be helpful if you want to minimize code that causes a crash or bug, without having to
+iteratively edit a script and manually verify the bug still occurs.
+
+Note that testcase reduction works best if the testcase can be evaluated quickly (i.e.,
+seconds rather than minutes). If your testcase takes a long time to run, you may want to do
+some manual editing first to get rid of dependencies that take a long time to load.
 
 
 ## Requirements
