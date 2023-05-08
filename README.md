@@ -28,7 +28,7 @@ will take part in it.
 Next, **modify the `run` script** to properly catch the error you are dealing with and
 return 0 if the reduced file is good. Often, you want to look for specific output in the
 standard error stream. If you need to use any Julia flags, or want to use a specific build,
-edit the `julia` wrapper script accordingly. You may also want to edit the `creduce` script
+edit the `julia` wrapper script accordingly. You may also want to edit the `reduce` script
 to adjust the timeout, which defaults to 1 minute.
 
 Optionally, **preprocess the source** to get rid of irrelevant source code by running the
@@ -40,6 +40,57 @@ Finally, **execute the `reduce` script**. This should finalize the environment a
 C-Reduce.
 
 
+## Demo
+
+Let's start with a `main.jl` that prints `Hello, world!`:
+
+```julia
+println("Hello, World!")
+println("1 + 1 = ", 1 + 1)
+exit(0)
+```
+
+We can verify this executes correctly by running the `julia` wrapper script:
+
+```
+❯ ./julia main.jl
+Hello, World!
+1 + 1 = 2
+```
+
+Say we are only interested in the `Hello, World!`, so we adapt the `run` script as follows
+(keeping the surrounding boilerplate, which among other things ensures the process exited
+successfully):
+
+```
+...
+$DIR/julia main.jl |& grep "example error message"
+...
+```
+
+Let's verify this works as expected by executing the `run` script directly:
+
+```
+❯ ./run
+Hello, World!
+❯ echo $?
+0
+```
+
+Notice how the exit code is 0, as expected. We're now ready to start the reduction:
+
+```
+❯ ./reduce
+Reducing the following sources:
+- main.jl
+...
+===================== done ====================
+println("Hello, World!")
+```
+
+As expected, all lines except the one printing `Hello, World!` got removed.
+
+
 ## Notes
 
 Test case reduction happens in parallel, so make sure there's no global effects.
@@ -48,8 +99,12 @@ When you're reducing a large project, you often will need to do some manual
 editing to help the process. In that case, it can be useful to stage (`git add`)
 the `depot/dev` directory to keep track of changes by C-Reduce.
 
+If you want to reduce a test case that involves a lot of packages, ensure you run the test
+case beforehand as to precompile all packages involved. The scripts in this repository use a
+layered depot, making it possible to load these precompilation images during the reduction.
 
-## Example
+
+## Realistic example
 
 After a refactor, CUDAnative's tests triggered an LLVM assertion when running
 with `julia-debug`. To reduce this, I started by installing the necessary
@@ -114,7 +169,7 @@ creduce$ ./reduce
 
 After a day or two on a system with 32 cores / 64 threads (debug builds are slow, and this
 failure involved a fair number of packages and around 10.000 lines of code to reduce), all
-of GPUCompiler.jl and CUDAnative.jl got reduced to the following:
+of GPUCompiler.jl and CUDA.jl got reduced to the following:
 
 ```julia
 using CUDAnative

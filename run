@@ -8,7 +8,7 @@ pkill -9 -P 1 -u $USER -f julia
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-$DIR/julia main.jl |& grep "example error message"
+$DIR/julia main.jl |& grep "Hello, World!"
 exit_codes=("${PIPESTATUS[@]}")
 if [[ ${exit_codes[0]} -ne 0 ]]; then
     # our Julia process exited with a non-zero error.
