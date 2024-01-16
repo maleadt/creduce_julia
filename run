@@ -2,20 +2,23 @@
 set -u
 
 # script to execute the main.jl script and catch our error condition
+clear
 
 # kill orphaned processes that may have been left behind
 pkill -9 -P 1 -u $USER -f julia
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-$DIR/julia main.jl |& grep "Hello, World!"
+$DIR/julia main.jl |& grep "ends in return or unreachable, but has successors"
 exit_codes=("${PIPESTATUS[@]}")
-if [[ ${exit_codes[0]} -ne 0 ]]; then
-    # our Julia process exited with a non-zero error.
-    # if this is what you want (e.g. to reduce segfault or abort), then filter here:
-    #[[ ${exit_codes[0]} -eq 132 ]] && exit 0
-    exit 1
-elif [[ ${exit_codes[1]} -ne 0 ]]; then
+
+# if needed, act based on the Julia exit code
+#if [[ ${exit_codes[0]} -ne 0 ]]; then
+#    exit 1
+#fi
+
+# by default, we only look at the grep exit code
+if [[ ${exit_codes[1]} -ne 0 ]]; then
     # we didn't find the string we were looking for
     exit 1
 else
