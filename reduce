@@ -34,4 +34,8 @@ for path in "${SOURCES[@]}"; do
 done
 
 chmod +w src/*
+
 nice -n 20 creduce --timeout 60 --tidy --n $(nproc) --not-c "$@" ./run src/*
+
+# when using cvise, make sure to enter the src directory first
+#cd src && nice -n 20 cvise --timeout 60 --tidy --n $(nproc) --not-c "$@" ../run *
