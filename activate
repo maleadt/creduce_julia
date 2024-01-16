@@ -4,12 +4,15 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 DEPOT="$DIR/depot"
 
-export JULIA_DEPOT_PATH=$DEPOT
 export JULIA_PKG_DEVDIR=$DEPOT/dev  # only for Pkg operations, not used by code loading
 
 if [[ "$(pwd)" != "$DIR" ]]; then
     # out-of-tree execution, by creduce
 
+    # use a layered depot so that we don't contaminate the global one
+    export JULIA_DEPOT_PATH="$(pwd)/depot:$DEPOT:"
+
+    # initialize the depot if it doesn't exist
     if [[ -d "$DEPOT" && ! -d depot ]]; then
         mkdir -p depot
 
@@ -34,7 +37,6 @@ if [[ "$(pwd)" != "$DIR" ]]; then
         cp "$i.jl" "$path"
         (( i++ ))
     done < "$DIR/src.lst"
-
-    # use a layered depot so that we don't contaminate the global one
-    export JULIA_DEPOT_PATH="$(pwd)/depot:$JULIA_DEPOT_PATH"
+else
+    export JULIA_DEPOT_PATH="$DEPOT:"
 fi
