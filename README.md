@@ -11,7 +11,7 @@ some manual editing first to get rid of dependencies that take a long time to lo
 
 ## Requirements
 
-- [C-Reduce](https://embed.cs.utah.edu/creduce/) 2.8.0+, on PATH
+- [C-Reduce](https://github.com/csmith-project/creduce) 2.8.0+, on PATH
 - Julia 1.0+, on PATH
 
 
