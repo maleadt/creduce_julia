@@ -9,7 +9,10 @@ pkill -9 -P 1 -u $USER -f julia
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-$DIR/julia main.jl |& grep "ends in return or unreachable, but has successors"
+# if applicable, verify that some execution _does_ succeed
+#$DIR/julia -L $DIR/setup.jl main.jl || exit 1
+
+$DIR/julia -L $DIR/setup.jl main.jl |& grep "ends in return or unreachable, but has successors"
 exit_codes=("${PIPESTATUS[@]}")
 
 # if needed, act based on the Julia exit code

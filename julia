@@ -6,4 +6,4 @@ set -ue
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "$DIR"/activate
 
-julia -O0 -t1 --startup-file=no "$@"
+julia +nightly -O0 -t1 --startup-file=no "$@"
