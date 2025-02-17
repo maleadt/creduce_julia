@@ -35,7 +35,8 @@ done
 
 chmod +w src/*
 
-nice -n 20 creduce --timeout 60 --tidy --n $(nproc) --not-c "$@" ./run src/*
+CORES=$(sysctl -n hw.ncpu 2>/dev/null || nproc)
+nice -n 20 creduce --timeout 60 --tidy --n $CORES --not-c "$@" ./run src/*
 
 # when using cvise, make sure to enter the src directory first
 #cd src && nice -n 20 cvise --timeout 60 --tidy --n $(nproc) --not-c "$@" ../run *
