@@ -35,7 +35,17 @@ done
 
 chmod +w src/*
 
-CORES=$(sysctl -n hw.ncpu 2>/dev/null || nproc)
+case "$(uname -s)" in
+    Darwin|FreeBSD|NetBSD|OpenBSD)
+        CORES=$(sysctl -n hw.ncpu)
+        ;;
+    Linux)
+        CORES=$(nproc)
+        ;;
+    *)
+        CORES=1
+        ;;
+esac
 nice -n 20 creduce --timeout 60 --tidy --n $CORES --not-c "$@" ./run src/*
 
 # when using cvise, make sure to enter the src directory first
