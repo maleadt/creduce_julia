@@ -12,7 +12,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # if applicable, verify that some execution _does_ succeed
 #$DIR/julia -L $DIR/setup.jl main.jl || exit 1
 
-$DIR/julia -L $DIR/setup.jl main.jl |& grep "ends in return or unreachable, but has successors"
+$DIR/julia -L $DIR/setup.jl main.jl 2>&1 | grep "fatal error in type inference (type bound)"
 exit_codes=("${PIPESTATUS[@]}")
 
 # if needed, act based on the Julia exit code
