@@ -20,13 +20,13 @@ if [[ "$(pwd)" != "$DIR" ]]; then
         # there may be non-sources we need) and the environment (to rewrite the Manifest)
         for dir in dev environments; do
             if [[ -d "$DEPOT/$dir" ]]; then
-                cp -arf "$DEPOT/$dir" depot/
+                cp -Rp "$DEPOT/$dir" depot/
             fi
         done
 
         if [[ -d depot/environments ]]; then
             # rewrite manifests to point dev'ed packages to our new depot
-            sed -i "s#path = \".*/depot/dev#path = \"$(pwd)/depot/dev#g" depot/environments/*/Manifest.toml
+            sed -i '' "s#path = \".*/depot/dev#path = \"$(pwd)/depot/dev#g" depot/environments/*/Manifest.toml
         fi
     fi
 
