@@ -26,7 +26,11 @@ if [[ "$(pwd)" != "$DIR" ]]; then
 
         if [[ -d depot/environments ]]; then
             # rewrite manifests to point dev'ed packages to our new depot
-            sed -i '' "s#path = \".*/depot/dev#path = \"$(pwd)/depot/dev#g" depot/environments/*/Manifest.toml
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' "s#path = \".*/depot/dev#path = \"$(pwd)/depot/dev#g" depot/environments/*/Manifest.toml
+            else
+                sed -i "s#path = \".*/depot/dev#path = \"$(pwd)/depot/dev#g" depot/environments/*/Manifest.toml
+            fi
         fi
     fi
 
