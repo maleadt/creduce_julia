@@ -17,8 +17,8 @@ end
 
 function pass(x::CSTParser.EXPR, state, f = (x, state)->nothing)
     f(x, state)
-    if x.args isa Vector
-        for a in x.args
+    if length(x) > 0
+        for a in x  # iterates args and trivia in source order
             pass(a, state, f)
         end
     else
@@ -60,13 +60,14 @@ function remove_comments(x, state)
 end
 
 function empty_docstrings(x, state)
-    if x isa CSTParser.EXPR && x.typ == CSTParser.MacroCall &&
-       x.args[1] isa CSTParser.EXPR && x.args[1].typ == CSTParser.GlobalRefDoc
-        offset = state.offset + x.args[1].fullspan
-        doc = x.args[2]
+    if x isa CSTParser.EXPR && CSTParser.ismacrocall(x) &&
+       x.args isa Vector && length(x.args) >= 4 &&
+       x.args[1] isa CSTParser.EXPR && x.args[1].head === :globalrefdoc
+        doc = x.args[3]
+        doc_offset = state.offset + x.args[1].fullspan + x.args[2].fullspan
 
         # empty docstring
-        push!(state.edits, Edit(offset+1:offset+doc.fullspan, "\"\"\"\"\"\"\n"))
+        push!(state.edits, Edit(doc_offset+1:doc_offset+doc.fullspan, "\"\"\"\"\"\"\n"))
     end
 end
 
