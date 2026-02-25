@@ -1,5 +1,2 @@
-/depot/*
-!/depot/dev
-/src/
-/src.lst
-creduce_bug_*/
+/depot/
+/repro/Manifest.toml

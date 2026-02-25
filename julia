@@ -4,6 +4,18 @@ set -ue
 # script to prepare the environment and launch julia
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-source "$DIR"/activate
 
-julia -O0 -t1 --startup-file=no "$@"
+# Set up depot layering.
+# repro/ is included as a depot entry so that source paths inside it
+# get @depot-tagged in precompilation caches, making them relocatable
+# when cvise copies repro/ to temp directories.
+if [[ "$(pwd)" != "$DIR" ]]; then
+    # out-of-tree (cvise temp dir): local depot/repro → shared depot/repro → default
+    mkdir -p depot
+    export JULIA_DEPOT_PATH="$(pwd)/depot:$(pwd)/repro:$DIR/depot:$DIR/repro:"
+else
+    # in-tree: project depot → repro → default
+    export JULIA_DEPOT_PATH="$DIR/depot:$DIR/repro:"
+fi
+
+julia -O0 -t1 --startup-file=no --project=repro "$@"

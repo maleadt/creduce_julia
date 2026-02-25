@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
 set -u
 
-# script to execute the main.jl script and catch our error condition
-clear
-
 # kill orphaned processes that may have been left behind
 pkill -9 -P 1 -u $USER -f julia
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# if applicable, verify that some execution _does_ succeed
+# if applicable, verify that some execution _does_ succeed (e.g., on an older Julia version)
 #$DIR/julia -L $DIR/setup.jl main.jl || exit 1
 
-$DIR/julia -L $DIR/setup.jl main.jl 2>&1 | grep "fatal error in type inference (type bound)"
+$DIR/julia --project=repro -L $DIR/setup.jl repro/main.jl 2>&1 | grep "Interesting error"
 exit_codes=("${PIPESTATUS[@]}")
 
 # if needed, act based on the Julia exit code
