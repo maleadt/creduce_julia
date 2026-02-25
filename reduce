@@ -6,47 +6,24 @@ set -ue
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR"
 
-rm -rf src
-rm -f src.lst
-
-# creduce works with flat files, and doesn't respect directories.
-#
-# to overcome this, we first discover which files to reduce,
-# write them to a flat directory (src) and save the paths to a file (src.lst).
-#
-# during execution, we'll use that file to recover the original file hierarchy.
-
-SOURCES=(main.jl)
-if [[ -d "depot/dev" ]]; then
-    while IFS= read -r -d $'\0'; do
-        SOURCES+=("$REPLY")
-    done < <(find depot/dev -type f -name "*.jl" -print0)
+if [[ ! -d repro ]]; then
+    echo "Error: repro/ directory not found."
+    echo "Create it with at least main.jl and Project.toml inside."
+    exit 1
+fi
+if [[ ! -f repro/main.jl ]]; then
+    echo "Error: repro/main.jl not found."
+    exit 1
 fi
 
-i=1
-mkdir src
+# list files being reduced
 echo "Reducing the following sources:"
-for path in "${SOURCES[@]}"; do
-    echo "- $path"
-    echo "$path" >> src.lst
-    ln -s "$DIR/$path" "src/$i.jl"
-    (( i++ ))
-done
-
-chmod +w src/*
+find repro -name "*.jl" -type f | sort | while read -r f; do echo "  $f"; done
 
 case "$(uname -s)" in
-    Darwin|FreeBSD|NetBSD|OpenBSD)
-        CORES=$(sysctl -n hw.ncpu)
-        ;;
-    Linux)
-        CORES=$(nproc)
-        ;;
-    *)
-        CORES=1
-        ;;
+    Darwin|FreeBSD|NetBSD|OpenBSD) CORES=$(sysctl -n hw.ncpu) ;;
+    Linux)                         CORES=$(nproc) ;;
+    *)                             CORES=1 ;;
 esac
-nice -n 20 creduce --timeout 60 --tidy --n $CORES --not-c "$@" ./run src/*
 
-# when using cvise, make sure to enter the src directory first
-#cd src && nice -n 20 cvise --timeout 60 --tidy --n $(nproc) --not-c "$@" ../run *
+nice -n 20 cvise --timeout 60 --tidy --n "$CORES" --not-c "$@" "$DIR/run" repro

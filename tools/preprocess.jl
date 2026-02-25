@@ -124,7 +124,7 @@ end
 
 if abspath(PROGRAM_FILE) == @__FILE__
     if length(ARGS) == 0
-        pkgdir = joinpath(dirname(@__DIR__), "depot", "dev")
+        pkgdir = joinpath(dirname(@__DIR__), "repro")
         process(pkgdir)
     else
         process.(ARGS)
